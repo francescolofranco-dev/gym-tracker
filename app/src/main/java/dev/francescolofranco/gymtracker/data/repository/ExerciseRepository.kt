@@ -1,0 +1,45 @@
+package dev.francescolofranco.gymtracker.data.repository
+
+import dev.francescolofranco.gymtracker.data.db.dao.ExerciseDao
+import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
+import dev.francescolofranco.gymtracker.domain.Muscle
+import kotlinx.coroutines.flow.Flow
+import java.time.Instant
+import javax.inject.Inject
+import javax.inject.Singleton
+
+@Singleton
+class ExerciseRepository @Inject constructor(
+    private val dao: ExerciseDao
+) {
+    fun observeActive(): Flow<List<ExerciseEntity>> = dao.observeActive()
+
+    suspend fun byId(id: Long): ExerciseEntity? = dao.byId(id)
+
+    suspend fun create(
+        name: String,
+        primaryMuscle: Muscle,
+        secondaryMuscles: Set<Muscle>,
+        targetSets: Int,
+        repRangeMin: Int,
+        repRangeMax: Int,
+        isBodyweight: Boolean,
+    ): Long = dao.insert(
+        ExerciseEntity(
+            name = name.trim(),
+            primaryMuscle = primaryMuscle,
+            secondaryMuscles = secondaryMuscles - primaryMuscle,
+            targetSets = targetSets,
+            repRangeMin = repRangeMin,
+            repRangeMax = repRangeMax,
+            isBodyweight = isBodyweight,
+            createdAt = Instant.now(),
+        )
+    )
+
+    suspend fun rename(id: Long, newName: String) = dao.rename(id, newName.trim())
+
+    suspend fun softDelete(id: Long) = dao.softDelete(id)
+
+    suspend fun restore(id: Long) = dao.restore(id)
+}
