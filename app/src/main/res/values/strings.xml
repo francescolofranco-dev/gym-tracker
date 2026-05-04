@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Gym Tracker</string>
+    <string name="tab_sessions">Sessions</string>
+    <string name="tab_exercises">Exercises</string>
+    <string name="tab_stats">Stats</string>
+    <string name="tab_settings">Settings</string>
+</resources>

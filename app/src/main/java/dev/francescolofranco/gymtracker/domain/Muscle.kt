@@ -1,0 +1,27 @@
+package dev.francescolofranco.gymtracker.domain
+
+enum class Muscle(val displayName: String) {
+    CHEST("Chest"),
+    LATS("Back (Lats)"),
+    UPPER_BACK_TRAPS("Back (Upper / Traps)"),
+    FRONT_DELTS("Shoulders (Front)"),
+    SIDE_DELTS("Shoulders (Side)"),
+    REAR_DELTS("Shoulders (Rear)"),
+    BICEPS("Biceps"),
+    TRICEPS("Triceps"),
+    FOREARMS("Forearms"),
+    QUADS("Quads"),
+    HAMSTRINGS("Hamstrings"),
+    GLUTES("Glutes"),
+    CALVES("Calves"),
+    CORE("Core / Abs");
+
+    companion object {
+        const val WEEKLY_MIN = 3
+        const val WEEKLY_MAX = 10
+    }
+}
+
+enum class WeightUnit { KG, LBS }
+
+enum class WeekMode { ROLLING_7, MON_SUN }
