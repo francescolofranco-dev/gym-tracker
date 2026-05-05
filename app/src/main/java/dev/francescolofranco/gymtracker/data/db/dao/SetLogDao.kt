@@ -17,6 +17,18 @@ interface SetLogDao {
     @Query("SELECT * FROM set_log WHERE sessionExerciseId = :sessionExerciseId ORDER BY setNumber")
     suspend fun forSessionExercise(sessionExerciseId: Long): List<SetLogEntity>
 
+    @Query("SELECT * FROM set_log WHERE id = :id LIMIT 1")
+    suspend fun byId(id: Long): SetLogEntity?
+
+    @Query("SELECT * FROM set_log ORDER BY id")
+    suspend fun all(): List<SetLogEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun replaceAll(items: List<SetLogEntity>)
+
+    @Query("DELETE FROM set_log")
+    suspend fun deleteAll()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(setLog: SetLogEntity): Long
 
@@ -27,20 +39,29 @@ interface SetLogDao {
     suspend fun delete(id: Long)
 
     /**
-     * Latest set logs for a given exercise across the user's history (used for "last time" pre-fill).
-     * Returns at most [limit] sets ordered by their original setNumber.
+     * Reps/kg from the last completed session of an exercise (used to pre-fill stepper values).
+     * Returns up to [limit] sets ordered by their original setNumber.
      */
     @Query(
         """
         SELECT sl.* FROM set_log sl
         JOIN session_exercise se ON sl.sessionExerciseId = se.id
-        JOIN session s ON se.sessionId = s.id
         WHERE se.exerciseId = :exerciseId
           AND sl.reps IS NOT NULL
           AND sl.isSkipped = 0
-        ORDER BY s.startedAt DESC, sl.setNumber ASC
+          AND se.sessionId = (
+              SELECT s.id FROM session s
+              JOIN session_exercise se2 ON se2.sessionId = s.id
+              JOIN set_log sl2 ON sl2.sessionExerciseId = se2.id
+              WHERE se2.exerciseId = :exerciseId
+                AND sl2.reps IS NOT NULL
+                AND sl2.isSkipped = 0
+              ORDER BY s.startedAt DESC
+              LIMIT 1
+          )
+        ORDER BY sl.setNumber ASC
         LIMIT :limit
         """
     )
-    suspend fun lastPerformed(exerciseId: Long, limit: Int): List<SetLogEntity>
+    suspend fun lastSessionSets(exerciseId: Long, limit: Int): List<SetLogEntity>
 }

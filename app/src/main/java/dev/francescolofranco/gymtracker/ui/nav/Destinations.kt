@@ -17,3 +17,23 @@ enum class TopDestination(
     Stats("stats", dev.francescolofranco.gymtracker.R.string.tab_stats, Icons.Filled.BarChart),
     Settings("settings", dev.francescolofranco.gymtracker.R.string.tab_settings, Icons.Filled.Settings)
 }
+
+object SessionRoutes {
+    const val ACTIVE_ARG = "sessionId"
+    const val ACTIVE = "session/active/{$ACTIVE_ARG}"
+    const val DETAIL_ARG = "sessionId"
+    const val DETAIL = "session/detail/{$DETAIL_ARG}"
+
+    fun active(sessionId: Long) = "session/active/$sessionId"
+    fun detail(sessionId: Long) = "session/detail/$sessionId"
+}
+
+object TemplateRoutes {
+    const val LIST = "template/list"
+    const val EDIT_ARG = "templateId"
+    /** Use 0 (or any non-positive) to indicate "create new". */
+    const val EDIT = "template/edit/{$EDIT_ARG}"
+
+    fun edit(templateId: Long) = "template/edit/$templateId"
+    fun create() = "template/edit/0"
+}
