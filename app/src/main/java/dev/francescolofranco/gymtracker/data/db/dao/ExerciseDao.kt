@@ -5,6 +5,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
+import dev.francescolofranco.gymtracker.data.db.projections.ExerciseSessionPoint
 import dev.francescolofranco.gymtracker.data.db.projections.ExerciseWithRecency
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
@@ -61,4 +62,28 @@ interface ExerciseDao {
 
     @Query("UPDATE exercise SET deletedAt = NULL WHERE id = :id")
     suspend fun restore(id: Long)
+
+    /**
+     * Per-session aggregate for an exercise: one row per session that included a non-skipped
+     * occurrence of the exercise, with set count + total volume. Sessions with no logged sets
+     * for the exercise are filtered out (HAVING setsLogged > 0).
+     */
+    @Query(
+        """
+        SELECT s.id AS sessionId,
+               s.startedAt AS sessionStartedAt,
+               s.endedAt AS sessionEndedAt,
+               COUNT(sl.id) AS setsLogged,
+               COALESCE(SUM(sl.reps * COALESCE(sl.kg, 0.0)), 0.0) AS volumeKg
+        FROM session s
+        JOIN session_exercise se ON se.sessionId = s.id AND se.isSkipped = 0
+        LEFT JOIN set_log sl ON sl.sessionExerciseId = se.id
+            AND sl.reps IS NOT NULL AND sl.isSkipped = 0
+        WHERE se.exerciseId = :exerciseId
+        GROUP BY s.id
+        HAVING setsLogged > 0
+        ORDER BY s.startedAt ASC
+        """
+    )
+    fun observeHistory(exerciseId: Long): Flow<List<ExerciseSessionPoint>>
 }

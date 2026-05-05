@@ -63,10 +63,6 @@ class ExercisesViewModel @Inject constructor(
         }
     }
 
-    fun rename(id: Long, newName: String) = viewModelScope.launch {
-        repo.rename(id, newName)
-    }
-
     fun softDelete(id: Long) = viewModelScope.launch {
         repo.softDelete(id)
     }

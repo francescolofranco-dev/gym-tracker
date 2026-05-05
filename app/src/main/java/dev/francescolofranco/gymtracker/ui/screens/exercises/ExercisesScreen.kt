@@ -37,14 +37,16 @@ import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-fun ExercisesScreen(viewModel: ExercisesViewModel = hiltViewModel()) {
+fun ExercisesScreen(
+    onOpenDetail: (Long) -> Unit = {},
+    viewModel: ExercisesViewModel = hiltViewModel(),
+) {
     val grouped by viewModel.grouped.collectAsStateWithLifecycle()
     val editing by viewModel.editing.collectAsStateWithLifecycle()
 
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    var renameTarget by remember { mutableStateOf<ExerciseEntity?>(null) }
     var actionTarget by remember { mutableStateOf<ExerciseEntity?>(null) }
     var deleteConfirmTarget by remember { mutableStateOf<ExerciseEntity?>(null) }
 
@@ -96,7 +98,7 @@ fun ExercisesScreen(viewModel: ExercisesViewModel = hiltViewModel()) {
                     ) { exercise ->
                         ExerciseRow(
                             exercise = exercise,
-                            onTap = { renameTarget = exercise },
+                            onTap = { onOpenDetail(exercise.id) },
                             onLongPress = { actionTarget = exercise },
                             onSwipeDelete = { deleteWithUndo(exercise) },
                         )
@@ -116,17 +118,6 @@ fun ExercisesScreen(viewModel: ExercisesViewModel = hiltViewModel()) {
                 onSave = { viewModel.save(it) },
             )
         }
-    }
-
-    renameTarget?.let { target ->
-        RenameDialog(
-            initial = target.name,
-            onCancel = { renameTarget = null },
-            onConfirm = { newName ->
-                viewModel.rename(target.id, newName)
-                renameTarget = null
-            },
-        )
     }
 
     actionTarget?.let { target ->

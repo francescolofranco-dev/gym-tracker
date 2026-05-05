@@ -18,9 +18,11 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import dev.francescolofranco.gymtracker.ui.nav.ExerciseRoutes
 import dev.francescolofranco.gymtracker.ui.nav.SessionRoutes
 import dev.francescolofranco.gymtracker.ui.nav.TemplateRoutes
 import dev.francescolofranco.gymtracker.ui.nav.TopDestination
+import dev.francescolofranco.gymtracker.ui.screens.exercises.ExerciseDetailScreen
 import dev.francescolofranco.gymtracker.ui.screens.exercises.ExercisesScreen
 import dev.francescolofranco.gymtracker.ui.screens.sessions.ActiveSessionScreen
 import dev.francescolofranco.gymtracker.ui.screens.sessions.SessionDetailScreen
@@ -71,7 +73,9 @@ fun GymApp() {
                     onOpenDetail = { id -> nav.navigate(SessionRoutes.detail(id)) },
                 )
             }
-            composable(TopDestination.Exercises.route) { ExercisesScreen() }
+            composable(TopDestination.Exercises.route) {
+                ExercisesScreen(onOpenDetail = { id -> nav.navigate(ExerciseRoutes.detail(id)) })
+            }
             composable(TopDestination.Stats.route) { StatsScreen() }
             composable(TopDestination.Settings.route) {
                 SettingsScreen(onOpenTemplates = { nav.navigate(TemplateRoutes.LIST) })
@@ -89,6 +93,16 @@ fun GymApp() {
                 arguments = listOf(navArgument(TemplateRoutes.EDIT_ARG) { type = NavType.LongType }),
             ) {
                 TemplateEditScreen(onBack = { nav.popBackStack() })
+            }
+
+            composable(
+                route = ExerciseRoutes.DETAIL,
+                arguments = listOf(navArgument(ExerciseRoutes.DETAIL_ARG) { type = NavType.LongType }),
+            ) {
+                ExerciseDetailScreen(
+                    onBack = { nav.popBackStack() },
+                    onOpenSession = { id -> nav.navigate(SessionRoutes.detail(id)) },
+                )
             }
 
             composable(
