@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.SessionEntity
+import dev.francescolofranco.gymtracker.data.db.entities.TemplateEntity
 import dev.francescolofranco.gymtracker.data.db.projections.SessionSummary
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import kotlinx.coroutines.delay
@@ -55,6 +56,7 @@ fun SessionsScreen(
     val active by viewModel.active.collectAsStateWithLifecycle()
     val past by viewModel.past.collectAsStateWithLifecycle()
     val unit by viewModel.unit.collectAsStateWithLifecycle()
+    val suggestion by viewModel.suggestion.collectAsStateWithLifecycle()
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -101,12 +103,18 @@ fun SessionsScreen(
                 }
             }
 
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
-                contentAlignment = Alignment.Center,
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                if (active == null && suggestion != null) {
+                    SuggestionBanner(
+                        template = suggestion!!,
+                        onUseTemplate = { viewModel.startWithTemplate(suggestion!!.id) },
+                    )
+                }
                 Button(
                     onClick = { viewModel.startBlankSession() },
                     modifier = Modifier
@@ -115,9 +123,47 @@ fun SessionsScreen(
                 ) {
                     Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
-                    Text(if (active != null) "Resume session" else "Start session")
+                    Text(
+                        text = when {
+                            active != null -> "Resume session"
+                            suggestion != null -> "Start blank"
+                            else -> "Start session"
+                        },
+                    )
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun SuggestionBanner(template: TemplateEntity, onUseTemplate: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .clickable(onClick = onUseTemplate)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = "Today's suggestion",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+                Text(
+                    text = "${template.name} — based on your rotation",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
+            Text(
+                text = "Use",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+            )
         }
     }
 }

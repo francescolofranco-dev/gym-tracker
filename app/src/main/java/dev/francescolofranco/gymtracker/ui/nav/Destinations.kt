@@ -27,3 +27,13 @@ object SessionRoutes {
     fun active(sessionId: Long) = "session/active/$sessionId"
     fun detail(sessionId: Long) = "session/detail/$sessionId"
 }
+
+object TemplateRoutes {
+    const val LIST = "template/list"
+    const val EDIT_ARG = "templateId"
+    /** Use 0 (or any non-positive) to indicate "create new". */
+    const val EDIT = "template/edit/{$EDIT_ARG}"
+
+    fun edit(templateId: Long) = "template/edit/$templateId"
+    fun create() = "template/edit/0"
+}

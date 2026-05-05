@@ -19,6 +19,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dev.francescolofranco.gymtracker.ui.nav.SessionRoutes
+import dev.francescolofranco.gymtracker.ui.nav.TemplateRoutes
 import dev.francescolofranco.gymtracker.ui.nav.TopDestination
 import dev.francescolofranco.gymtracker.ui.screens.exercises.ExercisesScreen
 import dev.francescolofranco.gymtracker.ui.screens.sessions.ActiveSessionScreen
@@ -26,6 +27,8 @@ import dev.francescolofranco.gymtracker.ui.screens.sessions.SessionDetailScreen
 import dev.francescolofranco.gymtracker.ui.screens.sessions.SessionsScreen
 import dev.francescolofranco.gymtracker.ui.screens.settings.SettingsScreen
 import dev.francescolofranco.gymtracker.ui.screens.stats.StatsScreen
+import dev.francescolofranco.gymtracker.ui.screens.templates.TemplateEditScreen
+import dev.francescolofranco.gymtracker.ui.screens.templates.TemplatesListScreen
 
 @Composable
 fun GymApp() {
@@ -70,7 +73,23 @@ fun GymApp() {
             }
             composable(TopDestination.Exercises.route) { ExercisesScreen() }
             composable(TopDestination.Stats.route) { StatsScreen() }
-            composable(TopDestination.Settings.route) { SettingsScreen() }
+            composable(TopDestination.Settings.route) {
+                SettingsScreen(onOpenTemplates = { nav.navigate(TemplateRoutes.LIST) })
+            }
+
+            composable(TemplateRoutes.LIST) {
+                TemplatesListScreen(
+                    onBack = { nav.popBackStack() },
+                    onCreate = { nav.navigate(TemplateRoutes.create()) },
+                    onEdit = { id -> nav.navigate(TemplateRoutes.edit(id)) },
+                )
+            }
+            composable(
+                route = TemplateRoutes.EDIT,
+                arguments = listOf(navArgument(TemplateRoutes.EDIT_ARG) { type = NavType.LongType }),
+            ) {
+                TemplateEditScreen(onBack = { nav.popBackStack() })
+            }
 
             composable(
                 route = SessionRoutes.ACTIVE,

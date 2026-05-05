@@ -19,6 +19,7 @@ class SessionRepository @Inject constructor(
     private val sessionDao: SessionDao,
     private val setLogDao: SetLogDao,
     private val exerciseDao: ExerciseDao,
+    private val templateDao: dev.francescolofranco.gymtracker.data.db.dao.TemplateDao,
 ) {
 
     fun observeAllSummaries(): Flow<List<SessionSummary>> = sessionDao.observeAllSummaries()
@@ -36,13 +37,19 @@ class SessionRepository @Inject constructor(
     suspend fun activeSession(): SessionEntity? = sessionDao.activeSession()
 
     /**
-     * Start a new session. If [templateId] is non-null, also seed it with the template's exercises.
-     * Returns the new session id.
+     * Start a new session. If [templateId] is non-null, also seeds the session with the
+     * template's (non-deleted) exercises in their template order, each pre-filling planned
+     * sets from the user's previous session for that exercise.
      */
     suspend fun startSession(templateId: Long? = null): Long {
         val sessionId = sessionDao.insert(
             SessionEntity(startedAt = Instant.now(), templateId = templateId)
         )
+        if (templateId != null) {
+            templateDao.exercisesFor(templateId).forEach { exercise ->
+                addExerciseToSession(sessionId, exercise.id)
+            }
+        }
         return sessionId
     }
 
