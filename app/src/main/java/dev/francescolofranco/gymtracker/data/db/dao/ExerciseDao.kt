@@ -15,6 +15,15 @@ interface ExerciseDao {
     @Query("SELECT * FROM exercise WHERE deletedAt IS NULL ORDER BY name COLLATE NOCASE")
     fun observeActive(): Flow<List<ExerciseEntity>>
 
+    @Query("SELECT * FROM exercise ORDER BY id")
+    suspend fun all(): List<ExerciseEntity>
+
+    @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
+    suspend fun replaceAll(items: List<ExerciseEntity>)
+
+    @Query("DELETE FROM exercise")
+    suspend fun deleteAll()
+
     /**
      * Active exercises ordered by most-recently-used first, then alphabetically.
      * SQLite has no NULLS LAST; the `IS NULL` boolean coerces to 0/1 so non-null sorts ahead.

@@ -20,6 +20,15 @@ interface SetLogDao {
     @Query("SELECT * FROM set_log WHERE id = :id LIMIT 1")
     suspend fun byId(id: Long): SetLogEntity?
 
+    @Query("SELECT * FROM set_log ORDER BY id")
+    suspend fun all(): List<SetLogEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun replaceAll(items: List<SetLogEntity>)
+
+    @Query("DELETE FROM set_log")
+    suspend fun deleteAll()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun upsert(setLog: SetLogEntity): Long
 

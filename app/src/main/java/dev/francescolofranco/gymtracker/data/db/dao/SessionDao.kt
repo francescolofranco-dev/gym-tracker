@@ -81,6 +81,24 @@ interface SessionDao {
     @Query("DELETE FROM session_exercise WHERE id = :id")
     suspend fun removeExercise(id: Long)
 
+    @Query("SELECT * FROM session ORDER BY id")
+    suspend fun allSessions(): List<SessionEntity>
+
+    @Query("SELECT * FROM session_exercise ORDER BY id")
+    suspend fun allSessionExercises(): List<SessionExerciseEntity>
+
+    @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
+    suspend fun replaceSessions(items: List<SessionEntity>)
+
+    @Insert(onConflict = androidx.room.OnConflictStrategy.REPLACE)
+    suspend fun replaceSessionExercises(items: List<SessionExerciseEntity>)
+
+    @Query("DELETE FROM session")
+    suspend fun deleteAllSessions()
+
+    @Query("DELETE FROM session_exercise")
+    suspend fun deleteAllSessionExercises()
+
     /** Latest log timestamp across all sets in a session, or null if nothing logged yet. */
     @Query(
         """

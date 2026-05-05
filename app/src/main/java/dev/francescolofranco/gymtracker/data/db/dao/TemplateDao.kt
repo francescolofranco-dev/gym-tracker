@@ -2,6 +2,7 @@ package dev.francescolofranco.gymtracker.data.db.dao
 
 import androidx.room.Dao
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
@@ -35,6 +36,21 @@ interface TemplateDao {
 
     @Query("DELETE FROM template WHERE id = :id")
     suspend fun deleteTemplate(id: Long)
+
+    @Query("SELECT * FROM template_exercise ORDER BY templateId, orderInTemplate")
+    suspend fun allTemplateExercises(): List<TemplateExerciseEntity>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun replaceTemplates(items: List<TemplateEntity>)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun replaceTemplateExercises(items: List<TemplateExerciseEntity>)
+
+    @Query("DELETE FROM template")
+    suspend fun deleteAllTemplates()
+
+    @Query("DELETE FROM template_exercise")
+    suspend fun deleteAllTemplateExercises()
 
     @Insert
     suspend fun insertTemplateExercise(item: TemplateExerciseEntity)

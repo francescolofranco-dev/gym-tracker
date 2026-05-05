@@ -1,0 +1,21 @@
+package dev.francescolofranco.gymtracker.data.backup
+
+/**
+ * Versioned wire format for the JSON backup. Bump [CURRENT_SCHEMA_VERSION] when a structural
+ * change requires migration logic on import.
+ *
+ * The format is intentionally portable (timestamps as ISO-8601, muscles as enum names) so
+ * exports survive across schema migrations and can be eyeballed without tooling.
+ */
+object BackupSchema {
+    const val CURRENT_SCHEMA_VERSION = 1
+
+    const val K_SCHEMA_VERSION = "schemaVersion"
+    const val K_EXPORTED_AT = "exportedAt"
+    const val K_EXERCISES = "exercises"
+    const val K_TEMPLATES = "templates"
+    const val K_TEMPLATE_EXERCISES = "templateExercises"
+    const val K_SESSIONS = "sessions"
+    const val K_SESSION_EXERCISES = "sessionExercises"
+    const val K_SET_LOGS = "setLogs"
+}
