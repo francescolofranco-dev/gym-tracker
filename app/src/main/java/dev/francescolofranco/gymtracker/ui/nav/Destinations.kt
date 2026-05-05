@@ -37,3 +37,10 @@ object TemplateRoutes {
     fun edit(templateId: Long) = "template/edit/$templateId"
     fun create() = "template/edit/0"
 }
+
+object ExerciseRoutes {
+    const val DETAIL_ARG = "exerciseId"
+    const val DETAIL = "exercise/detail/{$DETAIL_ARG}"
+
+    fun detail(exerciseId: Long) = "exercise/detail/$exerciseId"
+}
