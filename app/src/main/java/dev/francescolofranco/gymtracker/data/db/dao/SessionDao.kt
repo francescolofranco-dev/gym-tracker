@@ -9,6 +9,7 @@ import dev.francescolofranco.gymtracker.data.db.entities.SessionEntity
 import dev.francescolofranco.gymtracker.data.db.entities.SessionExerciseEntity
 import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetail
 import dev.francescolofranco.gymtracker.data.db.projections.SessionSummary
+import dev.francescolofranco.gymtracker.data.db.projections.StatSetRow
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 
@@ -89,4 +90,29 @@ interface SessionDao {
         """
     )
     suspend fun lastActivityAt(sessionId: Long): Instant?
+
+    /**
+     * Logged sets in a date range with denormalised exercise + session info.
+     * Filters out skipped session-exercises and skipped/unlogged sets.
+     */
+    @Query(
+        """
+        SELECT s.id AS sessionId, s.startedAt AS sessionStartedAt,
+               e.id AS exerciseId, e.name AS exerciseName,
+               e.primaryMuscle AS primaryMuscle, e.secondaryMuscles AS secondaryMuscles,
+               e.isBodyweight AS isBodyweight,
+               sl.reps AS reps, sl.kg AS kg
+        FROM set_log sl
+        JOIN session_exercise se ON sl.sessionExerciseId = se.id AND se.isSkipped = 0
+        JOIN exercise e ON se.exerciseId = e.id
+        JOIN session s ON se.sessionId = s.id
+        WHERE sl.reps IS NOT NULL AND sl.isSkipped = 0
+          AND s.startedAt >= :startInclusive AND s.startedAt < :endExclusive
+        ORDER BY s.startedAt
+        """
+    )
+    fun observeLoggedSetsBetween(
+        startInclusive: Instant,
+        endExclusive: Instant,
+    ): Flow<List<StatSetRow>>
 }

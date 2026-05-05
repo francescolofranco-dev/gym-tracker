@@ -30,3 +30,19 @@ data class ExerciseWithRecency(
     @Embedded val exercise: ExerciseEntity,
     val lastUsedAt: Instant?,
 )
+
+/**
+ * Flat row used for stats aggregation: one entry per logged set, joined with the parent
+ * session and exercise so the volume math can be done in Kotlin without per-set queries.
+ */
+data class StatSetRow(
+    val sessionId: Long,
+    val sessionStartedAt: Instant,
+    val exerciseId: Long,
+    val exerciseName: String,
+    val primaryMuscle: dev.francescolofranco.gymtracker.domain.Muscle,
+    val secondaryMuscles: Set<dev.francescolofranco.gymtracker.domain.Muscle>,
+    val isBodyweight: Boolean,
+    val reps: Int,
+    val kg: Double?,
+)
