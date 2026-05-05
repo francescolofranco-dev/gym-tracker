@@ -40,7 +40,6 @@ import dev.francescolofranco.gymtracker.ui.theme.VolumeRed
 fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedMuscle by viewModel.selectedMuscle.collectAsStateWithLifecycle()
-    val colors = volumeColorFor(state.muscleVolumes)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -56,7 +55,7 @@ fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
         }
         item {
             BodyDiagram(
-                colors = colors,
+                volumes = state.muscleVolumes,
                 onMuscleTap = { viewModel.selectMuscle(it) },
             )
         }

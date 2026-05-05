@@ -1,9 +1,8 @@
 package dev.francescolofranco.gymtracker.ui.screens.stats
 
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.gestures.awaitEachGesture
-import androidx.compose.foundation.gestures.awaitFirstDown
-import androidx.compose.foundation.gestures.waitForUpOrCancellation
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -12,34 +11,35 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.francescolofranco.gymtracker.domain.Muscle
 
 private enum class BodyView { FRONT, BACK }
 
 /** Normalised rectangle in 0..1 coordinate space relative to the silhouette panel. */
-private data class NRect(val l: Float, val t: Float, val r: Float, val b: Float) {
-    fun toPx(size: Size, padX: Float, padY: Float): Rect = Rect(
-        left = padX + l * (size.width - 2 * padX),
-        top = padY + t * (size.height - 2 * padY),
-        right = padX + r * (size.width - 2 * padX),
-        bottom = padY + b * (size.height - 2 * padY),
-    )
-}
+private data class NRect(val l: Float, val t: Float, val r: Float, val b: Float)
 
 private data class MuscleBlock(val muscle: Muscle, val rects: List<NRect>)
 
@@ -49,7 +49,7 @@ private data class MuscleBlock(val muscle: Muscle, val rects: List<NRect>)
  * realistic anatomy. Two rects per muscle = mirrored left/right; both map to the same Muscle.
  */
 private val FRONT_BLOCKS = listOf(
-    MuscleBlock(Muscle.UPPER_BACK_TRAPS, listOf(NRect(0.40f, 0.10f, 0.60f, 0.16f))), // traps top hint
+    MuscleBlock(Muscle.UPPER_BACK_TRAPS, listOf(NRect(0.40f, 0.10f, 0.60f, 0.16f))),
     MuscleBlock(Muscle.FRONT_DELTS, listOf(NRect(0.30f, 0.18f, 0.42f, 0.26f), NRect(0.58f, 0.18f, 0.70f, 0.26f))),
     MuscleBlock(Muscle.SIDE_DELTS, listOf(NRect(0.22f, 0.18f, 0.30f, 0.28f), NRect(0.70f, 0.18f, 0.78f, 0.28f))),
     MuscleBlock(Muscle.CHEST, listOf(NRect(0.32f, 0.22f, 0.50f, 0.32f), NRect(0.50f, 0.22f, 0.68f, 0.32f))),
@@ -71,9 +71,17 @@ private val BACK_BLOCKS = listOf(
     MuscleBlock(Muscle.CALVES, listOf(NRect(0.34f, 0.84f, 0.46f, 0.96f), NRect(0.54f, 0.84f, 0.66f, 0.96f))),
 )
 
+/**
+ * Hand-built Compose body diagram. Each muscle is one or more absolutely-positioned tappable
+ * Boxes (the symmetric ones get mirrored L/R rects, both pointing at the same Muscle).
+ *
+ * Accessibility: the first rect of each muscle carries a self-contained semantic description
+ * ("Chest, 4 sets, in the 3-10 weekly range. Tap for details."). Mirror rects clear their
+ * semantics so Talkback doesn't double-announce the same muscle.
+ */
 @Composable
 fun BodyDiagram(
-    colors: Map<Muscle, Color>,
+    volumes: Map<Muscle, MuscleVolume>,
     onMuscleTap: (Muscle) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -91,23 +99,17 @@ fun BodyDiagram(
             BodyPanel(
                 view = BodyView.FRONT,
                 blocks = FRONT_BLOCKS,
-                colors = colors,
+                volumes = volumes,
                 onMuscleTap = onMuscleTap,
                 modifier = Modifier.weight(1f).aspectRatio(0.5f),
             )
             BodyPanel(
                 view = BodyView.BACK,
                 blocks = BACK_BLOCKS,
-                colors = colors,
+                volumes = volumes,
                 onMuscleTap = onMuscleTap,
                 modifier = Modifier.weight(1f).aspectRatio(0.5f),
             )
-        }
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Text("Front", style = MaterialTheme.typography.labelMedium)
-            Text("Back", style = MaterialTheme.typography.labelMedium)
         }
     }
 }
@@ -116,7 +118,7 @@ fun BodyDiagram(
 private fun BodyPanel(
     view: BodyView,
     blocks: List<MuscleBlock>,
-    colors: Map<Muscle, Color>,
+    volumes: Map<Muscle, MuscleVolume>,
     onMuscleTap: (Muscle) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -124,74 +126,107 @@ private fun BodyPanel(
     val viewLabel = if (view == BodyView.FRONT) "Front" else "Back"
 
     BoxWithConstraints(modifier = modifier) {
-        Box(
+        val panelW: Dp = maxWidth
+        val panelH: Dp = maxHeight
+
+        // Background silhouette outline (decorative).
+        Canvas(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(blocks, colors) {
-                    awaitEachTap { offset ->
-                        val size = Size(this.size.width.toFloat(), this.size.height.toFloat())
-                        val pad = 8f
-                        val muscle = blocks
-                            .asSequence()
-                            .flatMap { b -> b.rects.asSequence().map { b.muscle to it.toPx(size, pad, pad) } }
-                            .firstOrNull { (_, r) -> r.contains(offset) }?.first
-                        if (muscle != null) onMuscleTap(muscle)
-                    }
-                },
+                .semantics(mergeDescendants = false) { contentDescription = "" },
         ) {
-            Canvas(modifier = Modifier.fillMaxSize()) {
-                drawSilhouette(outline = outline, view = view, panelSize = size)
-                val padX = 8f
-                val padY = 8f
-                blocks.forEach { block ->
-                    val color = colors[block.muscle] ?: Color.Gray
-                    block.rects.forEach { nrect ->
-                        val r = nrect.toPx(size, padX, padY)
-                        drawRoundRect(
-                            color = color.copy(alpha = 0.85f),
-                            topLeft = Offset(r.left, r.top),
-                            size = Size(r.width, r.height),
-                            cornerRadius = androidx.compose.ui.geometry.CornerRadius(8f, 8f),
-                        )
-                    }
-                }
-            }
-            // Accessibility / readability: label the panel.
-            Box(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .padding(4.dp),
-            ) {
-                Text(
-                    text = viewLabel,
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+            drawSilhouette(outline, size)
+        }
+
+        // Per-muscle tappable boxes, positioned in dp via offset+size.
+        blocks.forEach { block ->
+            val volume = volumes[block.muscle]
+            val color = volumeColor(volume?.total ?: 0)
+            block.rects.forEachIndexed { index, nrect ->
+                val isPrimaryRect = index == 0
+                val description = if (isPrimaryRect && volume != null) muscleSemantic(volume) else null
+                MuscleRectBox(
+                    nrect = nrect,
+                    panelW = panelW,
+                    panelH = panelH,
+                    color = color,
+                    description = description,
+                    onClick = { onMuscleTap(block.muscle) },
                 )
             }
+        }
+
+        // Panel label, kept out of Talkback's flow.
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(4.dp)
+                .clearAndSetSemantics { },
+        ) {
+            Text(
+                text = viewLabel,
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
 }
 
-private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.awaitEachTap(
-    onTap: (Offset) -> Unit,
+@Composable
+private fun MuscleRectBox(
+    nrect: NRect,
+    panelW: Dp,
+    panelH: Dp,
+    color: Color,
+    description: String?,
+    onClick: () -> Unit,
 ) {
-    awaitEachGesture {
-        val down = awaitFirstDown()
-        val up = waitForUpOrCancellation()
-        if (up != null) onTap(down.position)
+    val left = panelW * nrect.l
+    val top = panelH * nrect.t
+    val width = panelW * (nrect.r - nrect.l)
+    val height = panelH * (nrect.b - nrect.t)
+
+    val base = Modifier
+        .offset(x = left, y = top)
+        .size(width = width, height = height)
+        .clip(RoundedCornerShape(6.dp))
+        .background(color.copy(alpha = 0.85f))
+        .clickable(onClick = onClick)
+
+    val withSemantics = if (description != null) {
+        base.semantics(mergeDescendants = true) {
+            contentDescription = description
+            role = Role.Button
+        }
+    } else {
+        // Mirror rect — keep tap target alive but hide from Talkback.
+        base.clearAndSetSemantics { }
     }
+
+    Box(modifier = withSemantics)
+}
+
+private fun muscleSemantic(volume: MuscleVolume): String {
+    val name = volume.muscle.displayName
+    val total = volume.total
+    val sets = if (total == 1) "1 set" else "$total sets"
+    val zone = when {
+        total <= 0 -> "no work this week"
+        total <= 2 -> "below the 3 to 10 weekly range"
+        total <= Muscle.WEEKLY_MAX -> "in the 3 to 10 weekly range"
+        else -> "above the 3 to 10 weekly range"
+    }
+    return "$name, $sets, $zone. Tap for details."
 }
 
 private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSilhouette(
     outline: Color,
-    view: BodyView,
     panelSize: Size,
 ) {
     val w = panelSize.width
     val h = panelSize.height
     val stroke = Stroke(width = 3f)
 
-    // Head
     drawCircle(
         color = outline,
         radius = w * 0.10f,
@@ -241,8 +276,4 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawSilhouette(
     }
     drawPath(leftLeg, outline, style = stroke)
     drawPath(rightLeg, outline, style = stroke)
-
-    // (We intentionally don't differentiate front vs back outline shape — only the muscle
-    // overlays differ. A future polish pass can swap in distinct silhouettes.)
-    @Suppress("UNUSED_EXPRESSION") view
 }

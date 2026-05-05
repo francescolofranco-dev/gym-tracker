@@ -114,7 +114,4 @@ fun volumeColor(total: Int): Color = when {
     else -> VolumeRed
 }
 
-fun volumeColorFor(volumes: Map<Muscle, MuscleVolume>): Map<Muscle, Color> =
-    volumes.mapValues { (_, v) -> volumeColor(v.total) }
-
 fun setVolumeKg(rows: List<StatSetRow>): Double = rows.sumOf { (it.kg ?: 0.0) * it.reps }
