@@ -1,5 +1,10 @@
 package dev.francescolofranco.gymtracker.ui.screens.settings
 
+import android.Manifest
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -17,6 +22,8 @@ import androidx.compose.material.icons.automirrored.filled.ListAlt
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Scale
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
@@ -39,8 +46,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.State
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.semantics.Role
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
@@ -98,6 +111,8 @@ fun SettingsScreen(
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
             }
+            item { NotificationRow() }
+            item { HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh) }
 
             item { SectionHeader("Backup") }
             item {
@@ -191,6 +206,55 @@ private fun UnitsRow(unit: WeightUnit, onChange: (WeightUnit) -> Unit) {
             ) { Text("lbs") }
         }
     }
+}
+
+@Composable
+private fun NotificationRow() {
+    val context = LocalContext.current
+    val granted by rememberNotificationGranted()
+    SettingsRow(
+        icon = if (granted) Icons.Filled.Notifications else Icons.Filled.NotificationsOff,
+        title = "Timer notification",
+        subtitle = if (granted) "Allowed — the workout timer notification is visible."
+        else "Disabled — Android won't show the timer's persistent notification. Tap to fix in system settings.",
+        onClick = {
+            val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
+                putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            // Older devices may not have this action — fall back to app-details settings.
+            val target = if (intent.resolveActivity(context.packageManager) != null) intent
+            else Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                data = Uri.fromParts("package", context.packageName, null)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(target)
+        },
+    )
+}
+
+@Composable
+private fun rememberNotificationGranted(): State<Boolean> {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val state = remember { androidx.compose.runtime.mutableStateOf(checkNotificationGranted(context)) }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                state.value = checkNotificationGranted(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    return state
+}
+
+private fun checkNotificationGranted(context: android.content.Context): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return true
+    return ContextCompat.checkSelfPermission(
+        context, Manifest.permission.POST_NOTIFICATIONS,
+    ) == android.content.pm.PackageManager.PERMISSION_GRANTED
 }
 
 @Composable

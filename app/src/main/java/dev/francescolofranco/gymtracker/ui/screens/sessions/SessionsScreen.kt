@@ -1,5 +1,9 @@
 package dev.francescolofranco.gymtracker.ui.screens.sessions
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -35,7 +39,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.SessionEntity
@@ -57,6 +63,31 @@ fun SessionsScreen(
     val past by viewModel.past.collectAsStateWithLifecycle()
     val unit by viewModel.unit.collectAsStateWithLifecycle()
     val suggestion by viewModel.suggestion.collectAsStateWithLifecycle()
+
+    val context = LocalContext.current
+    var pendingStart by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val notifLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { _ ->
+        // Whether granted or denied, run the deferred start. If denied, the timer service
+        // still runs but the persistent notification just won't be visible.
+        pendingStart?.invoke()
+        pendingStart = null
+    }
+    fun startWithPermission(start: () -> Unit) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+            start(); return
+        }
+        val granted = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.POST_NOTIFICATIONS,
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        if (granted) {
+            start()
+        } else {
+            pendingStart = start
+            notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }
 
     LaunchedEffect(Unit) {
         viewModel.events.collect { event ->
@@ -112,11 +143,13 @@ fun SessionsScreen(
                 if (active == null && suggestion != null) {
                     SuggestionBanner(
                         template = suggestion!!,
-                        onUseTemplate = { viewModel.startWithTemplate(suggestion!!.id) },
+                        onUseTemplate = {
+                            startWithPermission { viewModel.startWithTemplate(suggestion!!.id) }
+                        },
                     )
                 }
                 Button(
-                    onClick = { viewModel.startBlankSession() },
+                    onClick = { startWithPermission { viewModel.startBlankSession() } },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
