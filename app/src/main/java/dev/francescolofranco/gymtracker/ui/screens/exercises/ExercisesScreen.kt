@@ -46,6 +46,7 @@ fun ExercisesScreen(viewModel: ExercisesViewModel = hiltViewModel()) {
 
     var renameTarget by remember { mutableStateOf<ExerciseEntity?>(null) }
     var actionTarget by remember { mutableStateOf<ExerciseEntity?>(null) }
+    var deleteConfirmTarget by remember { mutableStateOf<ExerciseEntity?>(null) }
 
     fun deleteWithUndo(target: ExerciseEntity) {
         viewModel.softDelete(target.id)
@@ -138,7 +139,30 @@ fun ExercisesScreen(viewModel: ExercisesViewModel = hiltViewModel()) {
             },
             onDelete = {
                 actionTarget = null
-                deleteWithUndo(target)
+                deleteConfirmTarget = target
+            },
+        )
+    }
+
+    deleteConfirmTarget?.let { target ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { deleteConfirmTarget = null },
+            title = { Text("Delete \"${target.name}\"?") },
+            text = {
+                Text(
+                    "Past session history that references this exercise stays intact. You can " +
+                        "restore the exercise from the snackbar's Undo action immediately after.",
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    val t = target
+                    deleteConfirmTarget = null
+                    deleteWithUndo(t)
+                }) { Text("Delete") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = { deleteConfirmTarget = null }) { Text("Cancel") }
             },
         )
     }
