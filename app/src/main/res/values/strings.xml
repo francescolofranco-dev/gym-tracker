@@ -4,4 +4,14 @@
     <string name="tab_exercises">Exercises</string>
     <string name="tab_stats">Stats</string>
     <string name="tab_settings">Settings</string>
+
+    <!-- Timer service -->
+    <string name="timer_title">Gym timer</string>
+    <string name="timer_running">Running — open the app for the live counter.</string>
+    <string name="timer_stopped">Stopped — tap Reset to start.</string>
+    <string name="timer_reset">Reset</string>
+    <string name="timer_stop">Stop</string>
+    <string name="timer_channel_name">Workout timer</string>
+    <string name="timer_channel_desc">Persistent timer for workouts.</string>
+    <string name="tile_timer_label">Gym Timer</string>
 </resources>

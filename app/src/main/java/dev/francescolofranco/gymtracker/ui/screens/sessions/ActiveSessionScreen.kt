@@ -120,18 +120,23 @@ fun ActiveSessionScreen(
             )
         },
     ) { padding ->
-        if (details.isEmpty()) {
-            EmptyActiveSession(
-                onAdd = { showPicker = true },
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-            )
-        } else {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+        ) {
+            TimerPill()
+
+            if (details.isEmpty()) {
+                EmptyActiveSession(
+                    onAdd = { showPicker = true },
+                    modifier = Modifier.fillMaxSize(),
+                )
+                return@Column
+            }
+
             LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
+                modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {

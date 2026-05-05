@@ -9,6 +9,7 @@ import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetai
 import dev.francescolofranco.gymtracker.data.prefs.UserPrefs
 import dev.francescolofranco.gymtracker.data.repository.SessionRepository
 import dev.francescolofranco.gymtracker.domain.WeightUnit
+import dev.francescolofranco.gymtracker.service.TimerController
 import dev.francescolofranco.gymtracker.ui.nav.SessionRoutes
 import dev.francescolofranco.gymtracker.work.IdleSessionScheduler
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +34,7 @@ class ActiveSessionViewModel @Inject constructor(
     savedState: SavedStateHandle,
     private val repo: SessionRepository,
     private val idleScheduler: IdleSessionScheduler,
+    private val timer: TimerController,
     userPrefs: UserPrefs,
 ) : ViewModel() {
 
@@ -86,6 +88,7 @@ class ActiveSessionViewModel @Inject constructor(
     fun logSet(setLogId: Long, reps: Int, kg: Double) = viewModelScope.launch {
         repo.logSet(setLogId, reps = reps, kg = kg)
         idleScheduler.schedule(sessionId)
+        timer.reset()
     }
 
     fun unlogSet(setLogId: Long) = viewModelScope.launch {

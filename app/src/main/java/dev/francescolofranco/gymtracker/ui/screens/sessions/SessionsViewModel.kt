@@ -8,6 +8,7 @@ import dev.francescolofranco.gymtracker.data.db.projections.SessionSummary
 import dev.francescolofranco.gymtracker.data.prefs.UserPrefs
 import dev.francescolofranco.gymtracker.data.repository.SessionRepository
 import dev.francescolofranco.gymtracker.domain.WeightUnit
+import dev.francescolofranco.gymtracker.service.TimerController
 import dev.francescolofranco.gymtracker.work.IdleSessionScheduler
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -21,6 +22,7 @@ import javax.inject.Inject
 class SessionsViewModel @Inject constructor(
     private val repo: SessionRepository,
     private val idleScheduler: IdleSessionScheduler,
+    private val timer: TimerController,
     userPrefs: UserPrefs,
 ) : ViewModel() {
 
@@ -40,6 +42,7 @@ class SessionsViewModel @Inject constructor(
         val existing = repo.activeSession()
         val id = existing?.id ?: repo.startSession(templateId = null)
         idleScheduler.schedule(id)
+        timer.reset()
         _events.emit(Event.OpenActive(id))
     }
 
