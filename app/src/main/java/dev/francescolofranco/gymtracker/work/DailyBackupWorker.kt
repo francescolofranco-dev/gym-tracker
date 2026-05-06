@@ -14,7 +14,8 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import dev.francescolofranco.gymtracker.data.backup.BackupExporter
+import dev.francescolofranco.gymtracker.data.backup.drive.DriveBackupRepository
+import dev.francescolofranco.gymtracker.data.backup.drive.DriveBackupResult
 import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -38,10 +39,21 @@ class DailyBackupWorker(
     override suspend fun doWork(): Result {
         return try {
             val ep = EntryPointAccessors.fromApplication(applicationContext, DailyBackupEntryPoint::class.java)
-            val json = ep.exporter().exportToJson()
-            Log.i(TAG, "Daily backup snapshot built (${json.length} bytes).")
-            // TODO(Phase 7B): upload to Drive's appDataFolder, prune to last 7.
-            Result.success()
+            when (val outcome = ep.driveBackupRepository().runBackup()) {
+                is DriveBackupResult.Success -> {
+                    Log.i(TAG, "Daily Drive backup uploaded (${outcome.sizeBytes}B, pruned ${outcome.pruned}).")
+                    Result.success()
+                }
+                DriveBackupResult.NotSignedIn -> {
+                    // Not an error — the user simply hasn't connected Drive yet. Don't retry.
+                    Log.i(TAG, "Drive not connected; skipping daily backup.")
+                    Result.success()
+                }
+                is DriveBackupResult.Error -> {
+                    Log.w(TAG, "Daily Drive backup failed: ${outcome.message}")
+                    Result.retry()
+                }
+            }
         } catch (t: Throwable) {
             Log.w(TAG, "Daily backup failed: ${t.message}", t)
             Result.retry()
@@ -57,7 +69,7 @@ class DailyBackupWorker(
 @EntryPoint
 @InstallIn(SingletonComponent::class)
 interface DailyBackupEntryPoint {
-    fun exporter(): BackupExporter
+    fun driveBackupRepository(): DriveBackupRepository
 }
 
 @Singleton

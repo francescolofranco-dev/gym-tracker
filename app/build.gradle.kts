@@ -88,5 +88,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.work.runtime.ktx)
 
+    implementation(libs.play.services.auth)
+    implementation(libs.okhttp)
+
     debugImplementation(libs.androidx.ui.tooling)
 }

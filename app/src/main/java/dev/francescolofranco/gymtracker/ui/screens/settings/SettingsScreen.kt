@@ -16,14 +16,19 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.ListAlt
+import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.CloudOff
+import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsOff
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Scale
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
@@ -60,19 +65,27 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.francescolofranco.gymtracker.data.backup.drive.DriveSnapshot
 import dev.francescolofranco.gymtracker.domain.WeightUnit
+import java.time.Duration
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @Composable
 fun SettingsScreen(
     onOpenTemplates: () -> Unit,
     settingsViewModel: SettingsViewModel = hiltViewModel(),
     backupViewModel: BackupViewModel = hiltViewModel(),
+    driveViewModel: DriveBackupViewModel = hiltViewModel(),
 ) {
     val unit by settingsViewModel.unit.collectAsStateWithLifecycle()
     val backupState by backupViewModel.state.collectAsStateWithLifecycle()
+    val driveState by driveViewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
 
     var pendingRestoreUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var pendingDriveRestore by remember { mutableStateOf<DriveSnapshot?>(null) }
 
     val createDoc = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json"),
@@ -82,12 +95,26 @@ fun SettingsScreen(
         contract = ActivityResultContracts.OpenDocument(),
     ) { uri -> if (uri != null) pendingRestoreUri = uri }
 
+    val driveSignIn = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) { result -> driveViewModel.onSignInResult(result.data) }
+
     LaunchedEffect(backupState.message, backupState.error) {
         val text = backupState.error ?: backupState.message
         if (!text.isNullOrBlank()) {
             snackbar.showSnackbar(text)
             backupViewModel.consumeMessage()
         }
+    }
+    LaunchedEffect(driveState.message, driveState.error) {
+        val text = driveState.error ?: driveState.message
+        if (!text.isNullOrBlank()) {
+            snackbar.showSnackbar(text)
+            driveViewModel.consumeMessage()
+        }
+    }
+    LaunchedEffect(driveState.account) {
+        if (driveState.account != null) driveViewModel.refreshSnapshots()
     }
 
     Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
@@ -135,13 +162,53 @@ fun SettingsScreen(
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
             }
+            item { SectionHeader("Google Drive") }
             item {
-                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
-                    Text(
-                        text = "Daily 03:00 backups run locally for now. Google Drive sync arrives once OAuth is set up.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                DriveAccountRow(
+                    state = driveState,
+                    onSignIn = { driveSignIn.launch(driveViewModel.signInIntent()) },
+                    onSignOut = { driveViewModel.signOut() },
+                )
+                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
+            }
+            if (driveState.account != null) {
+                item {
+                    SettingsRow(
+                        icon = Icons.Filled.CloudSync,
+                        title = "Backup now",
+                        subtitle = "Upload a fresh JSON snapshot to your Drive's appDataFolder.",
+                        onClick = { driveViewModel.backupNow() },
+                        enabled = !driveState.running,
                     )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
+                }
+                if (driveState.snapshots.isEmpty()) {
+                    item {
+                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                            Text(
+                                text = "No Drive snapshots yet — daily 03:00 backups will populate them.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                } else {
+                    item {
+                        Text(
+                            text = "Recent snapshots",
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                        )
+                    }
+                    items(items = driveState.snapshots, key = { it.id }) { snap ->
+                        SnapshotRow(
+                            snapshot = snap,
+                            onClick = { pendingDriveRestore = snap },
+                            enabled = !driveState.running,
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
+                    }
                 }
             }
 
@@ -170,6 +237,112 @@ fun SettingsScreen(
                 TextButton(onClick = { pendingRestoreUri = null }) { Text("Cancel") }
             },
         )
+    }
+
+    pendingDriveRestore?.let { snap ->
+        AlertDialog(
+            onDismissRequest = { pendingDriveRestore = null },
+            title = { Text("Restore from Drive?") },
+            text = {
+                Text(
+                    "Replaces every workout, exercise, and template currently in the app with " +
+                        "${snap.name}. There's no undo.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    driveViewModel.restore(snap)
+                    pendingDriveRestore = null
+                }) { Text("Restore") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingDriveRestore = null }) { Text("Cancel") }
+            },
+        )
+    }
+}
+
+@Composable
+private fun DriveAccountRow(
+    state: DriveUiState,
+    onSignIn: () -> Unit,
+    onSignOut: () -> Unit,
+) {
+    val account = state.account
+    if (account == null) {
+        SettingsRow(
+            icon = Icons.Filled.CloudOff,
+            title = "Connect Google Drive",
+            subtitle = "Daily 03:00 backups upload to your Drive's appDataFolder; keeps the last 7 snapshots.",
+            onClick = onSignIn,
+            enabled = !state.running,
+        )
+    } else {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Filled.CloudDone,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = account.email ?: "Connected", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = state.lastBackupAt?.let { "Last backup: ${formatRelativeTime(it)}" }
+                        ?: "Connected — daily backup will run at 03:00.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            TextButton(onClick = onSignOut, enabled = !state.running) {
+                Text("Disconnect")
+            }
+        }
+    }
+}
+
+@Composable
+private fun SnapshotRow(snapshot: DriveSnapshot, onClick: () -> Unit, enabled: Boolean) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Icon(imageVector = Icons.Filled.Restore, contentDescription = null)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = snapshot.createdAt?.let { formatRelativeTime(it) } ?: snapshot.name,
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Text(
+                text = snapshot.sizeBytes?.let { "${it / 1024} KB · ${snapshot.name}" } ?: snapshot.name,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+}
+
+private fun formatRelativeTime(at: Instant): String {
+    val now = Instant.now()
+    val diff = Duration.between(at, now)
+    return when {
+        diff.toMinutes() < 1 -> "just now"
+        diff.toMinutes() < 60 -> "${diff.toMinutes()}m ago"
+        diff.toHours() < 24 -> "${diff.toHours()}h ago"
+        diff.toDays() < 7 -> "${diff.toDays()}d ago"
+        else -> {
+            val zone = ZoneId.systemDefault()
+            DateTimeFormatter.ofPattern("d MMM").withZone(zone).format(at)
+        }
     }
 }
 
