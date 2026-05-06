@@ -23,6 +23,7 @@ class UserPrefs(private val context: Context) {
         val WEEK_MODE = stringPreferencesKey("week_mode")
         val DRIVE_BACKUP_ENABLED = booleanPreferencesKey("drive_backup_enabled")
         val LAST_BACKUP_AT = longPreferencesKey("last_backup_at")
+        val HAS_OFFERED_DRIVE_RESTORE = booleanPreferencesKey("has_offered_drive_restore")
     }
 
     val unit: Flow<WeightUnit> = context.dataStore.data.map { p ->
@@ -41,6 +42,10 @@ class UserPrefs(private val context: Context) {
         p[Keys.LAST_BACKUP_AT]?.let(Instant::ofEpochMilli)
     }
 
+    val hasOfferedDriveRestore: Flow<Boolean> = context.dataStore.data.map { p ->
+        p[Keys.HAS_OFFERED_DRIVE_RESTORE] ?: false
+    }
+
     suspend fun setUnit(unit: WeightUnit) {
         context.dataStore.edit { it[Keys.UNIT] = unit.name }
     }
@@ -55,5 +60,9 @@ class UserPrefs(private val context: Context) {
 
     suspend fun setLastBackupAt(at: Instant) {
         context.dataStore.edit { it[Keys.LAST_BACKUP_AT] = at.toEpochMilli() }
+    }
+
+    suspend fun setHasOfferedDriveRestore(offered: Boolean) {
+        context.dataStore.edit { it[Keys.HAS_OFFERED_DRIVE_RESTORE] = offered }
     }
 }

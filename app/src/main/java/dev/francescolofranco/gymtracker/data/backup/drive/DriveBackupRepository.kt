@@ -3,8 +3,12 @@ package dev.francescolofranco.gymtracker.data.backup.drive
 import dev.francescolofranco.gymtracker.data.backup.BackupExporter
 import dev.francescolofranco.gymtracker.data.backup.BackupImporter
 import dev.francescolofranco.gymtracker.data.backup.BackupSummary
+import dev.francescolofranco.gymtracker.data.db.dao.ExerciseDao
+import dev.francescolofranco.gymtracker.data.db.dao.SessionDao
+import dev.francescolofranco.gymtracker.data.db.dao.TemplateDao
 import dev.francescolofranco.gymtracker.data.prefs.UserPrefs
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import javax.inject.Inject
@@ -35,6 +39,9 @@ class DriveBackupRepository @Inject constructor(
     private val exporter: BackupExporter,
     private val importer: BackupImporter,
     private val userPrefs: UserPrefs,
+    private val exerciseDao: ExerciseDao,
+    private val sessionDao: SessionDao,
+    private val templateDao: TemplateDao,
 ) {
 
     suspend fun runBackup(): DriveBackupResult = withContext(Dispatchers.IO) {
@@ -82,6 +89,34 @@ class DriveBackupRepository @Inject constructor(
         stale.forEach { runCatching { client.delete(token, it.id) } }
         return stale.size
     }
+
+    /**
+     * Returns the latest Drive snapshot if and only if all of these are true:
+     *   - the user hasn't dismissed/accepted this offer before,
+     *   - the local DB is empty (no exercises, no sessions, no templates), and
+     *   - Drive has at least one snapshot uploaded.
+     *
+     * Used to prompt restore-on-fresh-install: the offer is shown once, then suppressed via
+     * [markOfferConsumed]. The empty-DB precondition is what makes this safe to auto-prompt —
+     * we never overwrite real data without the user choosing it from the snapshots list in
+     * Settings.
+     */
+    suspend fun suggestRestoreIfFreshInstall(): DriveSnapshot? = withContext(Dispatchers.IO) {
+        if (userPrefs.hasOfferedDriveRestore.first()) return@withContext null
+        if (auth.account.value == null) return@withContext null
+        if (!isDbEmpty()) return@withContext null
+        val snapshots = runCatching { listSnapshots() }.getOrDefault(emptyList())
+        snapshots.firstOrNull()
+    }
+
+    suspend fun markOfferConsumed() {
+        userPrefs.setHasOfferedDriveRestore(true)
+    }
+
+    private suspend fun isDbEmpty(): Boolean =
+        exerciseDao.all().isEmpty() &&
+            sessionDao.allSessions().isEmpty() &&
+            templateDao.all().isEmpty()
 
     companion object {
         const val MAX_SNAPSHOTS = 7

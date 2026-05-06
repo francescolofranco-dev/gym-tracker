@@ -24,6 +24,7 @@ import dev.francescolofranco.gymtracker.ui.nav.TemplateRoutes
 import dev.francescolofranco.gymtracker.ui.nav.TopDestination
 import dev.francescolofranco.gymtracker.ui.screens.exercises.ExerciseDetailScreen
 import dev.francescolofranco.gymtracker.ui.screens.exercises.ExercisesScreen
+import dev.francescolofranco.gymtracker.ui.screens.restore.DriveRestorePrompt
 import dev.francescolofranco.gymtracker.ui.screens.sessions.ActiveSessionScreen
 import dev.francescolofranco.gymtracker.ui.screens.sessions.SessionDetailScreen
 import dev.francescolofranco.gymtracker.ui.screens.sessions.SessionsScreen
@@ -128,4 +129,8 @@ fun GymApp() {
             }
         }
     }
+
+    // One-shot fresh-install restore offer; checks DB emptiness + Drive sign-in once and
+    // marks the offer consumed afterwards.
+    DriveRestorePrompt()
 }
