@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -36,8 +38,6 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
-    kotlinOptions { jvmTarget = "17" }
-
     buildFeatures { compose = true }
 
     packaging {
@@ -48,6 +48,16 @@ android {
 
     ksp {
         arg("room.schemaLocation", "$projectDir/schemas")
+    }
+}
+
+kotlin {
+    compilerOptions {
+        jvmTarget = JvmTarget.JVM_17
+        // Opt into Kotlin 2.2's upcoming annotation-default-target behavior so @ApplicationContext
+        // (and similar Hilt qualifier annotations) propagate to the backing field, not just the
+        // value parameter. Silences KT-73255 across our @Inject constructors.
+        freeCompilerArgs.add("-Xannotation-default-target=param-property")
     }
 }
 
