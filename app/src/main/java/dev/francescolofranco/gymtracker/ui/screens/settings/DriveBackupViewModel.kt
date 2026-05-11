@@ -56,7 +56,13 @@ class DriveBackupViewModel @Inject constructor(
 
     fun onSignInResult(data: Intent?) {
         auth.handleSignInResult(data)
-        if (auth.account.value != null) refreshSnapshots()
+        val err = auth.lastError.value
+        if (err != null) {
+            _ui.value = _ui.value.copy(error = err)
+            auth.consumeError()
+        } else if (auth.account.value != null) {
+            refreshSnapshots()
+        }
     }
 
     fun signOut() = viewModelScope.launch {

@@ -3,11 +3,14 @@ package dev.francescolofranco.gymtracker.data.backup.drive
 import android.accounts.Account
 import android.content.Context
 import android.content.Intent
+import android.util.Log
 import com.google.android.gms.auth.GoogleAuthUtil
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
+import com.google.android.gms.common.api.CommonStatusCodes
 import com.google.android.gms.common.api.Scope
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -37,6 +40,9 @@ class DriveAuth @Inject constructor(
     private val _account = MutableStateFlow(GoogleSignIn.getLastSignedInAccount(context))
     val account: StateFlow<GoogleSignInAccount?> = _account.asStateFlow()
 
+    private val _lastError = MutableStateFlow<String?>(null)
+    val lastError: StateFlow<String?> = _lastError.asStateFlow()
+
     private val signInClient: GoogleSignInClient by lazy {
         val options = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
             .requestEmail()
@@ -50,8 +56,36 @@ class DriveAuth @Inject constructor(
     /** Call from your ActivityResult callback with the launcher's result data. */
     fun handleSignInResult(data: Intent?) {
         val task = GoogleSignIn.getSignedInAccountFromIntent(data)
-        _account.value = runCatching { task.getResult(com.google.android.gms.common.api.ApiException::class.java) }
-            .getOrNull()
+        try {
+            _account.value = task.getResult(ApiException::class.java)
+            _lastError.value = null
+        } catch (e: ApiException) {
+            val human = humanReadableError(e.statusCode)
+            Log.w(TAG, "Sign-in failed: status=${e.statusCode} ($human) raw=${e.message}")
+            _lastError.value = human
+            _account.value = null
+        }
+    }
+
+    fun consumeError() {
+        _lastError.value = null
+    }
+
+    private fun humanReadableError(statusCode: Int): String = when (statusCode) {
+        CommonStatusCodes.DEVELOPER_ERROR -> // 10
+            "Sign-in rejected by Google (DEVELOPER_ERROR / 10). Usually means the OAuth client " +
+                "in Google Cloud Console doesn't match this app's package + signing SHA-1. Verify " +
+                "the OAuth client is type Android, package = ${context.packageName}, and the SHA-1 " +
+                "of the keystore you're running matches what's registered."
+        CommonStatusCodes.NETWORK_ERROR -> // 7
+            "Network error reaching Google. Check connectivity and retry."
+        CommonStatusCodes.SIGN_IN_REQUIRED -> // 4
+            "Sign-in required. Try again."
+        CommonStatusCodes.API_NOT_CONNECTED -> // 17
+            "Google Play services not available on this device."
+        CommonStatusCodes.CANCELED, 12501 -> // 16 / 12501
+            "Sign-in cancelled."
+        else -> "Sign-in failed (status $statusCode)."
     }
 
     suspend fun signOut() {
@@ -75,6 +109,7 @@ class DriveAuth @Inject constructor(
     companion object {
         const val DRIVE_APPDATA_SCOPE = "https://www.googleapis.com/auth/drive.appdata"
         const val SIGN_IN_REQUEST_CODE = 9001
+        private const val TAG = "DriveAuth"
     }
 }
 
