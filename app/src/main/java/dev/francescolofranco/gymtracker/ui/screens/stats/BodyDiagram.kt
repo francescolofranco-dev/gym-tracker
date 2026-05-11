@@ -49,25 +49,24 @@ private data class MuscleBlock(val muscle: Muscle, val rects: List<NRect>)
  * realistic anatomy. Two rects per muscle = mirrored left/right; both map to the same Muscle.
  */
 private val FRONT_BLOCKS = listOf(
-    MuscleBlock(Muscle.UPPER_BACK_TRAPS, listOf(NRect(0.40f, 0.10f, 0.60f, 0.16f))),
-    MuscleBlock(Muscle.FRONT_DELTS, listOf(NRect(0.30f, 0.18f, 0.42f, 0.26f), NRect(0.58f, 0.18f, 0.70f, 0.26f))),
-    MuscleBlock(Muscle.SIDE_DELTS, listOf(NRect(0.22f, 0.18f, 0.30f, 0.28f), NRect(0.70f, 0.18f, 0.78f, 0.28f))),
-    MuscleBlock(Muscle.CHEST, listOf(NRect(0.32f, 0.22f, 0.50f, 0.32f), NRect(0.50f, 0.22f, 0.68f, 0.32f))),
-    MuscleBlock(Muscle.BICEPS, listOf(NRect(0.18f, 0.28f, 0.28f, 0.42f), NRect(0.72f, 0.28f, 0.82f, 0.42f))),
-    MuscleBlock(Muscle.CORE, listOf(NRect(0.36f, 0.32f, 0.64f, 0.50f))),
-    MuscleBlock(Muscle.FOREARMS, listOf(NRect(0.14f, 0.42f, 0.24f, 0.58f), NRect(0.76f, 0.42f, 0.86f, 0.58f))),
-    MuscleBlock(Muscle.QUADS, listOf(NRect(0.32f, 0.58f, 0.48f, 0.82f), NRect(0.52f, 0.58f, 0.68f, 0.82f))),
+    MuscleBlock(Muscle.FRONT_DELTS, listOf(NRect(0.28f, 0.18f, 0.42f, 0.24f), NRect(0.58f, 0.18f, 0.72f, 0.24f))),
+    MuscleBlock(Muscle.SIDE_DELTS, listOf(NRect(0.18f, 0.18f, 0.26f, 0.28f), NRect(0.74f, 0.18f, 0.82f, 0.28f))),
+    MuscleBlock(Muscle.CHEST, listOf(NRect(0.32f, 0.26f, 0.50f, 0.36f), NRect(0.50f, 0.26f, 0.68f, 0.36f))),
+    MuscleBlock(Muscle.BICEPS, listOf(NRect(0.18f, 0.30f, 0.28f, 0.44f), NRect(0.72f, 0.30f, 0.82f, 0.44f))),
+    MuscleBlock(Muscle.CORE, listOf(NRect(0.36f, 0.38f, 0.64f, 0.54f))),
+    MuscleBlock(Muscle.FOREARMS, listOf(NRect(0.14f, 0.46f, 0.24f, 0.60f), NRect(0.76f, 0.46f, 0.86f, 0.60f))),
+    MuscleBlock(Muscle.QUADS, listOf(NRect(0.32f, 0.60f, 0.48f, 0.82f), NRect(0.52f, 0.60f, 0.68f, 0.82f))),
     MuscleBlock(Muscle.CALVES, listOf(NRect(0.34f, 0.84f, 0.46f, 0.96f), NRect(0.54f, 0.84f, 0.66f, 0.96f))),
 )
 
 private val BACK_BLOCKS = listOf(
-    MuscleBlock(Muscle.UPPER_BACK_TRAPS, listOf(NRect(0.36f, 0.16f, 0.64f, 0.30f))),
-    MuscleBlock(Muscle.REAR_DELTS, listOf(NRect(0.22f, 0.18f, 0.32f, 0.26f), NRect(0.68f, 0.18f, 0.78f, 0.26f))),
-    MuscleBlock(Muscle.LATS, listOf(NRect(0.30f, 0.30f, 0.42f, 0.48f), NRect(0.58f, 0.30f, 0.70f, 0.48f))),
-    MuscleBlock(Muscle.TRICEPS, listOf(NRect(0.18f, 0.28f, 0.28f, 0.42f), NRect(0.72f, 0.28f, 0.82f, 0.42f))),
-    MuscleBlock(Muscle.FOREARMS, listOf(NRect(0.14f, 0.42f, 0.24f, 0.58f), NRect(0.76f, 0.42f, 0.86f, 0.58f))),
-    MuscleBlock(Muscle.GLUTES, listOf(NRect(0.34f, 0.50f, 0.50f, 0.62f), NRect(0.50f, 0.50f, 0.66f, 0.62f))),
-    MuscleBlock(Muscle.HAMSTRINGS, listOf(NRect(0.32f, 0.62f, 0.48f, 0.82f), NRect(0.52f, 0.62f, 0.68f, 0.82f))),
+    MuscleBlock(Muscle.UPPER_BACK_TRAPS, listOf(NRect(0.36f, 0.14f, 0.64f, 0.28f))),
+    MuscleBlock(Muscle.REAR_DELTS, listOf(NRect(0.22f, 0.18f, 0.34f, 0.26f), NRect(0.66f, 0.18f, 0.78f, 0.26f))),
+    MuscleBlock(Muscle.LATS, listOf(NRect(0.28f, 0.30f, 0.42f, 0.50f), NRect(0.58f, 0.30f, 0.72f, 0.50f))),
+    MuscleBlock(Muscle.TRICEPS, listOf(NRect(0.16f, 0.30f, 0.26f, 0.44f), NRect(0.74f, 0.30f, 0.84f, 0.44f))),
+    MuscleBlock(Muscle.FOREARMS, listOf(NRect(0.12f, 0.46f, 0.22f, 0.60f), NRect(0.78f, 0.46f, 0.88f, 0.60f))),
+    MuscleBlock(Muscle.GLUTES, listOf(NRect(0.34f, 0.54f, 0.50f, 0.66f), NRect(0.50f, 0.54f, 0.66f, 0.66f))),
+    MuscleBlock(Muscle.HAMSTRINGS, listOf(NRect(0.32f, 0.68f, 0.48f, 0.82f), NRect(0.52f, 0.68f, 0.68f, 0.82f))),
     MuscleBlock(Muscle.CALVES, listOf(NRect(0.34f, 0.84f, 0.46f, 0.96f), NRect(0.54f, 0.84f, 0.66f, 0.96f))),
 )
 
@@ -88,27 +87,27 @@ fun BodyDiagram(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp),
+            .padding(horizontal = 8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             BodyPanel(
                 view = BodyView.FRONT,
                 blocks = FRONT_BLOCKS,
                 volumes = volumes,
                 onMuscleTap = onMuscleTap,
-                modifier = Modifier.weight(1f).aspectRatio(0.5f),
+                modifier = Modifier.weight(1f).aspectRatio(0.55f),
             )
             BodyPanel(
                 view = BodyView.BACK,
                 blocks = BACK_BLOCKS,
                 volumes = volumes,
                 onMuscleTap = onMuscleTap,
-                modifier = Modifier.weight(1f).aspectRatio(0.5f),
+                modifier = Modifier.weight(1f).aspectRatio(0.55f),
             )
         }
     }
