@@ -18,11 +18,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.EditNote
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NotInterested
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
@@ -47,16 +48,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetail
 import dev.francescolofranco.gymtracker.domain.WeightUnit
-import kotlinx.coroutines.delay
-import java.time.Duration
-import java.time.Instant
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,26 +80,10 @@ fun ActiveSessionScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    val current = session
-                    if (current != null) {
-                        Column {
-                            Text(
-                                text = "Session",
-                                style = MaterialTheme.typography.labelMedium,
-                            )
-                            Text(
-                                text = formatDuration(rememberElapsed(current.startedAt)),
-                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                            )
-                        }
-                    } else {
-                        Text("Session")
-                    }
-                },
+                title = { Text("Session") },
                 actions = {
                     IconButton(onClick = { sessionNotesEditor = true }) {
-                        Icon(Icons.Filled.Edit, contentDescription = "Session notes")
+                        Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = "Session notes")
                     }
                     TextButton(onClick = { confirmEnd = true }) {
                         Icon(Icons.Filled.Stop, contentDescription = null)
@@ -116,7 +97,7 @@ fun ActiveSessionScreen(
             ExtendedFloatingActionButton(
                 onClick = { showPicker = true },
                 icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                text = { Text("Add exercise") },
+                text = { Text("Select exercise") },
             )
         },
     ) { padding ->
@@ -128,10 +109,7 @@ fun ActiveSessionScreen(
             TimerPill()
 
             if (details.isEmpty()) {
-                EmptyActiveSession(
-                    onAdd = { showPicker = true },
-                    modifier = Modifier.fillMaxSize(),
-                )
+                EmptyActiveSession(modifier = Modifier.fillMaxSize())
                 return@Column
             }
 
@@ -217,24 +195,23 @@ fun ActiveSessionScreen(
 }
 
 @Composable
-private fun EmptyActiveSession(onAdd: () -> Unit, modifier: Modifier = Modifier) {
+private fun EmptyActiveSession(modifier: Modifier = Modifier) {
     Column(
         modifier = modifier.padding(32.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Icon(
-            imageVector = Icons.Filled.PlayArrow,
+            imageVector = Icons.Filled.FitnessCenter,
             contentDescription = null,
             tint = MaterialTheme.colorScheme.primary,
         )
         Text(text = "Empty session", style = MaterialTheme.typography.titleLarge)
         Text(
-            text = "Tap Add exercise to get started.",
+            text = "Tap Select exercise to add the first one.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
-        TextButton(onClick = onAdd) { Text("Add exercise") }
     }
 }
 
@@ -321,7 +298,7 @@ fun ExerciseCard(
                     )
                     DropdownMenuItem(
                         text = { Text(if (detail.sessionExercise.notes.isNullOrBlank()) "Add note" else "Edit note") },
-                        leadingIcon = { Icon(Icons.Filled.Edit, contentDescription = null) },
+                        leadingIcon = { Icon(Icons.Filled.EditNote, contentDescription = null) },
                         onClick = {
                             menuExpanded = false
                             onEditExerciseNotes()
@@ -397,14 +374,3 @@ private fun NotesDialog(
     )
 }
 
-@Composable
-private fun rememberElapsed(start: Instant): Duration {
-    var now by remember { mutableStateOf(Instant.now()) }
-    LaunchedEffect(start) {
-        while (true) {
-            now = Instant.now()
-            delay(1_000)
-        }
-    }
-    return remember(now, start) { Duration.between(start, now) }
-}

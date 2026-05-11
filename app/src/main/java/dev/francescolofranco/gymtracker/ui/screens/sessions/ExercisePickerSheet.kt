@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -19,19 +18,14 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
-import dev.francescolofranco.gymtracker.domain.Muscle
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExercisePickerSheet(
     excludeIds: Set<Long> = emptySet(),
@@ -41,18 +35,9 @@ fun ExercisePickerSheet(
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val rows by viewModel.rows.collectAsStateWithLifecycle()
-    var muscleFilter by remember { mutableStateOf<Muscle?>(null) }
 
-    val filtered = remember(rows, muscleFilter, excludeIds) {
-        rows
-            .asSequence()
-            .filter { it.exercise.id !in excludeIds }
-            .filter { row ->
-                val m = muscleFilter ?: return@filter true
-                row.exercise.primaryMuscle == m || m in row.exercise.secondaryMuscles
-            }
-            .map { it.exercise }
-            .toList()
+    val filtered = remember(rows, excludeIds) {
+        rows.asSequence().filter { it.exercise.id !in excludeIds }.map { it.exercise }.toList()
     }
 
     ModalBottomSheet(
@@ -66,32 +51,14 @@ fun ExercisePickerSheet(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(text = "Add exercise", style = MaterialTheme.typography.titleLarge)
-
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                FilterChip(
-                    selected = muscleFilter == null,
-                    onClick = { muscleFilter = null },
-                    label = { Text("All") },
-                )
-                Muscle.entries.forEach { m ->
-                    FilterChip(
-                        selected = muscleFilter == m,
-                        onClick = { muscleFilter = if (muscleFilter == m) null else m },
-                        label = { Text(m.displayName) },
-                    )
-                }
-            }
+            Text(text = "Select exercise", style = MaterialTheme.typography.titleLarge)
 
             HorizontalDivider()
 
             if (filtered.isEmpty()) {
                 Text(
                     text = if (rows.isEmpty()) "Create exercises in the Exercises tab first."
-                    else "No matching exercises.",
+                    else "Nothing else to add.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 24.dp),

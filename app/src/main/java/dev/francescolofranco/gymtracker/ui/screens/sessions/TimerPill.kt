@@ -3,6 +3,7 @@ package dev.francescolofranco.gymtracker.ui.screens.sessions
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -25,12 +26,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.service.TimerState
 import kotlinx.coroutines.delay
 import java.util.Locale
 
+/**
+ * Prominent timer header for the active session screen. Tap to reset, mirrors the foreground
+ * service's state, big enough to read across the room while you're mid-set.
+ */
 @Composable
 fun TimerPill(viewModel: TimerPillViewModel = hiltViewModel()) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -38,7 +44,7 @@ fun TimerPill(viewModel: TimerPillViewModel = hiltViewModel()) {
     val elapsedMs = rememberElapsed(state)
 
     val (bg, fg) = if (running) {
-        MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+        MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
     } else {
         MaterialTheme.colorScheme.surfaceContainerHigh to MaterialTheme.colorScheme.onSurface
     }
@@ -46,36 +52,40 @@ fun TimerPill(viewModel: TimerPillViewModel = hiltViewModel()) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
             .clip(RoundedCornerShape(20.dp))
             .background(bg)
             .clickable { viewModel.tap() }
-            .padding(horizontal = 14.dp, vertical = 8.dp),
+            .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         Icon(
             imageVector = Icons.Filled.Timer,
             contentDescription = null,
             tint = fg,
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier.size(32.dp),
         )
-        Text(
-            text = formatElapsed(elapsedMs),
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = fg,
-            modifier = Modifier.weight(1f),
-        )
-        Text(
-            text = if (running) "Tap to reset" else "Tap to start",
-            style = MaterialTheme.typography.labelSmall,
-            color = fg.copy(alpha = 0.75f),
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = formatElapsed(elapsedMs),
+                style = MaterialTheme.typography.displaySmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 40.sp,
+                ),
+                color = fg,
+            )
+            Text(
+                text = if (running) "Running · tap to reset" else "Stopped · tap to start",
+                style = MaterialTheme.typography.labelMedium,
+                color = fg.copy(alpha = 0.75f),
+            )
+        }
         Icon(
             imageVector = Icons.Filled.Refresh,
             contentDescription = "Reset timer",
             tint = fg,
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier.size(28.dp),
         )
     }
 }
