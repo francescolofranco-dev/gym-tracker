@@ -57,6 +57,19 @@ class SessionsViewModel @Inject constructor(
         _events.emit(Event.OpenActive(id))
     }
 
+    /**
+     * End the active session immediately — used by the in-list banner when the user wants to
+     * clear a phantom session that's lingering with `endedAt = null`. End-time falls back to
+     * last logged activity, or now if there was none.
+     */
+    fun endActiveSession() = viewModelScope.launch {
+        val current = repo.activeSession() ?: return@launch
+        val endAt = repo.lastActivityAt(current.id) ?: java.time.Instant.now()
+        repo.endSession(current.id, endAt)
+        idleScheduler.cancel(current.id)
+        timer.stop()
+    }
+
     sealed interface Event {
         data class OpenActive(val sessionId: Long) : Event
     }

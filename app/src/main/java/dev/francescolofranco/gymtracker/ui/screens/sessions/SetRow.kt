@@ -30,6 +30,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -318,11 +319,19 @@ private fun StepperKey(
     val haptic = LocalHapticFeedback.current
     var pressed by remember { mutableStateOf(false) }
 
+    // The pointerInput / LaunchedEffect coroutines are long-lived — they capture onTap and
+    // onHoldStep at first launch. Without these "latest" references, the second tap would
+    // call the original closure that still sees the original `value`, producing the same
+    // result as the first tap (and looking like the buttons stopped working). Routing every
+    // call through the current refs makes each invocation observe the live state.
+    val currentOnTap by rememberUpdatedState(onTap)
+    val currentOnHoldStep by rememberUpdatedState(onHoldStep)
+
     LaunchedEffect(pressed) {
         if (pressed) {
             delay(400)
             while (isActive && pressed) {
-                onHoldStep()
+                currentOnHoldStep()
                 delay(80)
             }
         }
@@ -346,7 +355,7 @@ private fun StepperKey(
                     val up = waitForUpOrCancellation()
                     pressed = false
                     if (up != null && (up.uptimeMillis - downTime) < 400) {
-                        scope.launch { onTap() }
+                        scope.launch { currentOnTap() }
                     }
                 }
             }

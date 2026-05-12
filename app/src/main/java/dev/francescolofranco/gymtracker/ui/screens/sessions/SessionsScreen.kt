@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -30,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,6 +53,9 @@ import dev.francescolofranco.gymtracker.domain.WeightUnit
 import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.Instant
+import java.time.YearMonth
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,6 +68,8 @@ fun SessionsScreen(
     val past by viewModel.past.collectAsStateWithLifecycle()
     val unit by viewModel.unit.collectAsStateWithLifecycle()
     val suggestion by viewModel.suggestion.collectAsStateWithLifecycle()
+
+    var confirmEnd by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     var pendingStart by remember { mutableStateOf<(() -> Unit)?>(null) }
@@ -97,6 +104,28 @@ fun SessionsScreen(
         }
     }
 
+    if (confirmEnd) {
+        AlertDialog(
+            onDismissRequest = { confirmEnd = false },
+            title = { Text("End this session?") },
+            text = {
+                Text(
+                    "It will move to the past sessions list with whatever's been logged. " +
+                        "You can delete it from there if it's a phantom from earlier testing.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmEnd = false
+                    viewModel.endActiveSession()
+                }) { Text("End") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmEnd = false }) { Text("Cancel") }
+            },
+        )
+    }
+
     Scaffold { padding ->
         Column(
             modifier = Modifier
@@ -107,6 +136,7 @@ fun SessionsScreen(
                 ActiveSessionBanner(
                     session = session,
                     onResume = { onOpenActive(session.id) },
+                    onEnd = { confirmEnd = true },
                 )
             }
 
@@ -117,19 +147,23 @@ fun SessionsScreen(
                         .fillMaxWidth(),
                 )
             } else {
+                val grouped = remember(past) { groupPastSessionsByMonth(past) }
                 LazyColumn(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth(),
                     contentPadding = PaddingValues(bottom = 16.dp),
                 ) {
-                    items(items = past, key = { it.session.id }) { summary ->
-                        PastSessionRow(
-                            summary = summary,
-                            unit = unit,
-                            onClick = { onOpenDetail(summary.session.id) },
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
+                    grouped.forEach { (label, group) ->
+                        item(key = "h-$label") { MonthHeader(label = label) }
+                        items(items = group, key = { it.session.id }) { summary ->
+                            PastSessionRow(
+                                summary = summary,
+                                unit = unit,
+                                onClick = { onOpenDetail(summary.session.id) },
+                            )
+                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
+                        }
                     }
                 }
             }
@@ -202,7 +236,11 @@ private fun SuggestionBanner(template: TemplateEntity, onUseTemplate: () -> Unit
 }
 
 @Composable
-private fun ActiveSessionBanner(session: SessionEntity, onResume: () -> Unit) {
+private fun ActiveSessionBanner(
+    session: SessionEntity,
+    onResume: () -> Unit,
+    onEnd: () -> Unit,
+) {
     val elapsed = rememberElapsed(session.startedAt)
     Box(
         modifier = Modifier
@@ -210,14 +248,17 @@ private fun ActiveSessionBanner(session: SessionEntity, onResume: () -> Unit) {
             .padding(horizontal = 16.dp, vertical = 12.dp)
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.primaryContainer)
-            .clickable(onClick = onResume)
             .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth(),
         ) {
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable(onClick = onResume),
+            ) {
                 Text(
                     text = "Session in progress",
                     style = MaterialTheme.typography.labelLarge,
@@ -229,10 +270,19 @@ private fun ActiveSessionBanner(session: SessionEntity, onResume: () -> Unit) {
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
                 )
             }
+            TextButton(
+                onClick = onEnd,
+                colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                ),
+            ) {
+                Text("End")
+            }
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                contentDescription = null,
+                contentDescription = "Resume",
                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                modifier = Modifier.clickable(onClick = onResume).padding(8.dp),
             )
         }
     }
@@ -287,6 +337,33 @@ private fun EmptyState(modifier: Modifier = Modifier) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+    }
+}
+
+@Composable
+private fun MonthHeader(label: String) {
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+    )
+}
+
+private val monthFormatter = DateTimeFormatter.ofPattern("LLLL yyyy")
+
+private fun groupPastSessionsByMonth(items: List<SessionSummary>): List<Pair<String, List<SessionSummary>>> {
+    if (items.isEmpty()) return emptyList()
+    val zone = ZoneId.systemDefault()
+    val byMonth = LinkedHashMap<YearMonth, MutableList<SessionSummary>>()
+    items.forEach { s ->
+        val ym = YearMonth.from(s.session.startedAt.atZone(zone))
+        byMonth.getOrPut(ym) { mutableListOf() }.add(s)
+    }
+    return byMonth.entries.map { (ym, group) ->
+        ym.format(monthFormatter).replaceFirstChar { it.titlecase() } to group
     }
 }
 
