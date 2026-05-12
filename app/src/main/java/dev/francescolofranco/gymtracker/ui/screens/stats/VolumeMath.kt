@@ -9,6 +9,7 @@ import dev.francescolofranco.gymtracker.ui.theme.VolumeGreen
 import dev.francescolofranco.gymtracker.ui.theme.VolumeGrey
 import dev.francescolofranco.gymtracker.ui.theme.VolumeRed
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
@@ -21,9 +22,19 @@ data class MuscleVolume(
     val muscle: Muscle,
     val directSets: Int,
     val indirectSets: Int,
+    val directVolumeKg: Double,
+    val indirectVolumeKg: Double,
     val contributingExercises: List<ContributingExercise>,
 ) {
     val total: Int get() = directSets + indirectSets
+
+    /**
+     * Per-muscle kg tonnage attributed to this muscle this period. Direct sets contribute
+     * fully; indirect sets count too (same weighting we use for set counts) so a bench-press
+     * set adds its volume to chest AND triceps AND front delts. This matches the hypertrophy
+     * "all contributing work counts" convention.
+     */
+    val totalVolumeKg: Double get() = directVolumeKg + indirectVolumeKg
 }
 
 data class ContributingExercise(
@@ -66,22 +77,53 @@ fun yearRange(now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault(
     return DateRange(first, nextFirst)
 }
 
+/**
+ * The period immediately preceding [current], same length. For rolling 7d this is the prior
+ * 7-day window; for Mon-Sun it's the previous Mon-Sun. Used for week-over-week deltas.
+ */
+fun previousOf(current: DateRange): DateRange {
+    val span = Duration.between(current.startInclusive, current.endExclusive)
+    return DateRange(
+        startInclusive = current.startInclusive.minus(span),
+        endExclusive = current.startInclusive,
+    )
+}
+
+fun previousMonthRange(now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): DateRange {
+    val today = LocalDate.now(zone)
+    val ym = YearMonth.from(today).minusMonths(1)
+    val first = ym.atDay(1).atStartOfDay(zone).toInstant()
+    val nextFirst = ym.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant()
+    return DateRange(first, nextFirst)
+}
+
+fun previousYearRange(now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): DateRange {
+    val today = LocalDate.now(zone)
+    val first = LocalDate.of(today.year - 1, 1, 1).atStartOfDay(zone).toInstant()
+    val nextFirst = LocalDate.of(today.year, 1, 1).atStartOfDay(zone).toInstant()
+    return DateRange(first, nextFirst)
+}
+
 fun computeMuscleVolumes(rows: List<StatSetRow>): Map<Muscle, MuscleVolume> {
-    val direct = HashMap<Muscle, Int>()
-    val indirect = HashMap<Muscle, Int>()
+    val directSets = HashMap<Muscle, Int>()
+    val indirectSets = HashMap<Muscle, Int>()
+    val directVol = HashMap<Muscle, Double>()
+    val indirectVol = HashMap<Muscle, Double>()
     val byMuscleByExercise = HashMap<Muscle, HashMap<Long, ExerciseAccumulator>>()
 
     rows.forEach { r ->
-        // Direct contribution (primary)
-        direct.merge(r.primaryMuscle, 1, Int::plus)
+        val setVol = (r.kg ?: 0.0) * r.reps
+
+        directSets.merge(r.primaryMuscle, 1, Int::plus)
+        directVol.merge(r.primaryMuscle, setVol, Double::plus)
         byMuscleByExercise.getOrPut(r.primaryMuscle) { HashMap() }
             .getOrPut(r.exerciseId) { ExerciseAccumulator(r.exerciseId, r.exerciseName, isPrimary = true) }
             .also { it.sets += 1 }
 
-        // Indirect contributions (secondaries — exclude duplicate of primary)
         r.secondaryMuscles.forEach { m ->
             if (m == r.primaryMuscle) return@forEach
-            indirect.merge(m, 1, Int::plus)
+            indirectSets.merge(m, 1, Int::plus)
+            indirectVol.merge(m, setVol, Double::plus)
             byMuscleByExercise.getOrPut(m) { HashMap() }
                 .getOrPut(r.exerciseId) { ExerciseAccumulator(r.exerciseId, r.exerciseName, isPrimary = false) }
                 .also { it.sets += 1 }
@@ -95,8 +137,10 @@ fun computeMuscleVolumes(rows: List<StatSetRow>): Map<Muscle, MuscleVolume> {
             .sortedWith(compareByDescending<ContributingExercise> { it.isPrimary }.thenByDescending { it.sets })
         MuscleVolume(
             muscle = m,
-            directSets = direct[m] ?: 0,
-            indirectSets = indirect[m] ?: 0,
+            directSets = directSets[m] ?: 0,
+            indirectSets = indirectSets[m] ?: 0,
+            directVolumeKg = directVol[m] ?: 0.0,
+            indirectVolumeKg = indirectVol[m] ?: 0.0,
             contributingExercises = contrib,
         )
     }

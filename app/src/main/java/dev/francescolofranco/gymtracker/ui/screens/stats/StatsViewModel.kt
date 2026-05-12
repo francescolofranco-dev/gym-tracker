@@ -34,9 +34,14 @@ data class StatsUiState(
     val weekMode: WeekMode,
     val unit: WeightUnit,
     val muscleVolumes: Map<Muscle, MuscleVolume>,
+    /** Same shape as [muscleVolumes] but for the period immediately before [week]. Drives deltas. */
+    val previousMuscleVolumes: Map<Muscle, MuscleVolume>,
     val week: RangeAggregate,
+    val previousWeek: RangeAggregate,
     val month: RangeAggregate,
+    val previousMonth: RangeAggregate,
     val year: RangeAggregate,
+    val previousYear: RangeAggregate,
 )
 
 @HiltViewModel
@@ -51,30 +56,53 @@ class StatsViewModel @Inject constructor(
 
     @OptIn(ExperimentalCoroutinesApi::class)
     private val weekRows: StateFlow<List<StatSetRow>> = prefs.weekMode
-        .flatMapLatest { mode -> sessionDao.observeLoggedSetsBetween(weekRange(mode).startInclusive, weekRange(mode).endExclusive) }
+        .flatMapLatest { mode ->
+            val r = weekRange(mode)
+            sessionDao.observeLoggedSetsBetween(r.startInclusive, r.endExclusive)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private val previousWeekRows: StateFlow<List<StatSetRow>> = prefs.weekMode
+        .flatMapLatest { mode ->
+            val prev = previousOf(weekRange(mode))
+            sessionDao.observeLoggedSetsBetween(prev.startInclusive, prev.endExclusive)
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val muscleVolumes: StateFlow<Map<Muscle, MuscleVolume>> = weekRows
-        .map { rows -> computeMuscleVolumes(rows) }
+        .map { computeMuscleVolumes(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+
+    private val previousMuscleVolumes: StateFlow<Map<Muscle, MuscleVolume>> = previousWeekRows
+        .map { computeMuscleVolumes(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     val uiState: StateFlow<StatsUiState> = combine(
-        prefs.weekMode,
-        prefs.unit,
-        muscleVolumes,
+        combine(prefs.weekMode, prefs.unit, muscleVolumes, previousMuscleVolumes) { mode, unit, volumes, prevVolumes ->
+            Quad(mode, unit, volumes, prevVolumes)
+        },
         repo.observeAllSummaries(),
-    ) { mode, unit, volumes, summaries ->
+    ) { quad, summaries ->
+        val (mode, unit, volumes, prevVolumes) = quad
         val now = Instant.now()
         val w = weekRange(mode, now)
+        val pw = previousOf(w)
         val m = monthRange(now)
+        val pm = previousMonthRange(now)
         val y = yearRange(now)
+        val py = previousYearRange(now)
         StatsUiState(
             weekMode = mode,
             unit = unit,
             muscleVolumes = volumes,
+            previousMuscleVolumes = prevVolumes,
             week = aggregate(summaries, w),
+            previousWeek = aggregate(summaries, pw),
             month = aggregate(summaries, m),
+            previousMonth = aggregate(summaries, pm),
             year = aggregate(summaries, y),
+            previousYear = aggregate(summaries, py),
         )
     }.stateIn(
         viewModelScope,
@@ -82,10 +110,14 @@ class StatsViewModel @Inject constructor(
         StatsUiState(
             weekMode = WeekMode.ROLLING_7,
             unit = WeightUnit.KG,
-            muscleVolumes = Muscle.entries.associateWith { MuscleVolume(it, 0, 0, emptyList()) },
+            muscleVolumes = Muscle.entries.associateWith { MuscleVolume(it, 0, 0, 0.0, 0.0, emptyList()) },
+            previousMuscleVolumes = Muscle.entries.associateWith { MuscleVolume(it, 0, 0, 0.0, 0.0, emptyList()) },
             week = RangeAggregate(0, 0.0, null),
+            previousWeek = RangeAggregate(0, 0.0, null),
             month = RangeAggregate(0, 0.0, null),
+            previousMonth = RangeAggregate(0, 0.0, null),
             year = RangeAggregate(0, 0.0, null),
+            previousYear = RangeAggregate(0, 0.0, null),
         ),
     )
 
@@ -110,4 +142,11 @@ class StatsViewModel @Inject constructor(
         else Duration.ofSeconds(durations.sumOf { it.seconds } / durations.size)
         return RangeAggregate(sessions = inRange.size, volumeKg = volume, avgDuration = avg)
     }
+
+    private data class Quad(
+        val mode: WeekMode,
+        val unit: WeightUnit,
+        val volumes: Map<Muscle, MuscleVolume>,
+        val previousVolumes: Map<Muscle, MuscleVolume>,
+    )
 }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
@@ -23,11 +24,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import dev.francescolofranco.gymtracker.domain.WeightUnit
+import dev.francescolofranco.gymtracker.ui.screens.sessions.formatTotalVolume
+import kotlin.math.abs
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MuscleDrillSheet(
     volume: MuscleVolume,
+    previous: MuscleVolume?,
+    unit: WeightUnit,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -54,12 +61,45 @@ fun MuscleDrillSheet(
                 )
             }
 
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                CountBlock(label = "Direct", count = volume.directSets)
-                CountBlock(label = "Indirect", count = volume.indirectSets)
-                CountBlock(label = "Total", count = volume.total)
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                CountBlock(
+                    label = "Direct",
+                    count = volume.directSets,
+                    delta = (volume.directSets - (previous?.directSets ?: volume.directSets)).intDeltaIfPresent(previous != null),
+                )
+                CountBlock(
+                    label = "Indirect",
+                    count = volume.indirectSets,
+                    delta = (volume.indirectSets - (previous?.indirectSets ?: volume.indirectSets)).intDeltaIfPresent(previous != null),
+                )
+                CountBlock(
+                    label = "Total",
+                    count = volume.total,
+                    delta = (volume.total - (previous?.total ?: volume.total)).intDeltaIfPresent(previous != null),
+                )
+            }
+
+            if (volume.totalVolumeKg > 0) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Volume this week",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(
+                        text = formatTotalVolume(volume.totalVolumeKg, unit),
+                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                    )
+                    val deltaKg = volume.totalVolumeKg - (previous?.totalVolumeKg ?: 0.0)
+                    if (previous != null && deltaKg.roundToInt() != 0) {
+                        SmallDeltaChip(
+                            text = formatKgDelta(deltaKg, unit),
+                            direction = directionOf(deltaKg),
+                            modifier = Modifier.padding(start = 8.dp),
+                        )
+                    }
+                }
             }
 
             HorizontalDivider()
@@ -107,7 +147,7 @@ fun MuscleDrillSheet(
 }
 
 @Composable
-private fun CountBlock(label: String, count: Int) {
+private fun CountBlock(label: String, count: Int, delta: SmallDelta?) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
             text = "$count",
@@ -118,5 +158,60 @@ private fun CountBlock(label: String, count: Int) {
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (delta != null) {
+            SmallDeltaChip(text = delta.text, direction = delta.direction, modifier = Modifier.padding(top = 2.dp))
+        }
     }
+}
+
+@Composable
+private fun SmallDeltaChip(text: String, direction: Direction, modifier: Modifier = Modifier) {
+    val (bg, fg) = when (direction) {
+        Direction.Up -> MaterialTheme.colorScheme.tertiaryContainer to MaterialTheme.colorScheme.onTertiaryContainer
+        Direction.Down -> MaterialTheme.colorScheme.errorContainer to MaterialTheme.colorScheme.onErrorContainer
+        Direction.Flat -> MaterialTheme.colorScheme.surfaceContainerHigh to MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val arrow = when (direction) {
+        Direction.Up -> "▲"
+        Direction.Down -> "▼"
+        Direction.Flat -> "→"
+    }
+    Box(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(bg)
+            .padding(horizontal = 6.dp, vertical = 1.dp),
+    ) {
+        Text(
+            text = "$arrow $text",
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+            color = fg,
+        )
+    }
+}
+
+private data class SmallDelta(val text: String, val direction: Direction)
+
+private fun Int.intDeltaIfPresent(hasPrevious: Boolean): SmallDelta? {
+    if (!hasPrevious) return null
+    if (this == 0) return SmallDelta("0", Direction.Flat)
+    val sign = if (this > 0) "+$this" else "$this"
+    return SmallDelta(sign, directionOf(this))
+}
+
+private fun directionOf(delta: Int): Direction = when {
+    delta > 0 -> Direction.Up
+    delta < 0 -> Direction.Down
+    else -> Direction.Flat
+}
+
+private fun directionOf(delta: Double): Direction = when {
+    delta > 0 -> Direction.Up
+    delta < 0 -> Direction.Down
+    else -> Direction.Flat
+}
+
+private fun formatKgDelta(delta: Double, unit: WeightUnit): String {
+    val abs = formatTotalVolume(abs(delta), unit)
+    return if (delta > 0) "+$abs" else if (delta < 0) "-$abs" else "0"
 }
