@@ -4,6 +4,12 @@
   by itself once the system displays the notification, so we don't need to repost the
   notification every second to keep the time live. When the timer is stopped we hide the
   chronometer and reveal a static "00:00" so the visual size stays consistent.
+
+  Text colours are pinned to explicit values rather than ?android:attr/textColorPrimary
+  because that attribute resolves against the system *notification* theme, which on most
+  devices renders custom RemoteViews at ~70-90% opacity and reads as washed-out. Pinning to
+  full-strength white in the primary timer and ~70% white in secondary labels matches the
+  contrast of the system-rendered action buttons.
 -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
@@ -21,7 +27,7 @@
         android:text="@string/timer_title"
         android:textSize="13sp"
         android:textStyle="bold"
-        android:textColor="?android:attr/textColorSecondary" />
+        android:textColor="#B3FFFFFF" />
 
     <FrameLayout
         android:layout_width="match_parent"
@@ -32,9 +38,9 @@
             android:id="@+id/timerChronometer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:textSize="32sp"
+            android:textSize="36sp"
             android:textStyle="bold"
-            android:textColor="?android:attr/textColorPrimary"
+            android:textColor="#FFFFFFFF"
             android:fontFamily="monospace" />
 
         <TextView
@@ -42,9 +48,9 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="00:00"
-            android:textSize="32sp"
+            android:textSize="36sp"
             android:textStyle="bold"
-            android:textColor="?android:attr/textColorPrimary"
+            android:textColor="#FFFFFFFF"
             android:fontFamily="monospace"
             android:visibility="gone" />
     </FrameLayout>
@@ -55,5 +61,5 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="2dp"
         android:textSize="12sp"
-        android:textColor="?android:attr/textColorSecondary" />
+        android:textColor="#B3FFFFFF" />
 </LinearLayout>
