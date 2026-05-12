@@ -5,7 +5,7 @@ import dev.francescolofranco.gymtracker.domain.Muscle
 
 data class ExerciseFormState(
     val name: String = "",
-    val primaryMuscle: Muscle? = null,
+    val primaryMuscles: Set<Muscle> = emptySet(),
     val secondaryMuscles: Set<Muscle> = emptySet(),
     val targetSets: Int = 4,
     val repRangeMin: Int = 8,
@@ -14,7 +14,8 @@ data class ExerciseFormState(
 ) {
     val isValid: Boolean
         get() = name.isNotBlank() &&
-                primaryMuscle != null &&
+                primaryMuscles.isNotEmpty() &&
+                primaryMuscles.size <= MAX_PRIMARY_MUSCLES &&
                 targetSets in 1..MAX_SETS &&
                 repRangeMin in 1..MAX_REPS &&
                 repRangeMax in repRangeMin..MAX_REPS
@@ -22,12 +23,13 @@ data class ExerciseFormState(
     companion object {
         const val MAX_SETS = 10
         const val MAX_REPS = 50
+        const val MAX_PRIMARY_MUSCLES = 3
     }
 }
 
 fun ExerciseEntity.toFormState(): ExerciseFormState = ExerciseFormState(
     name = name,
-    primaryMuscle = primaryMuscle,
+    primaryMuscles = primaryMuscles,
     secondaryMuscles = secondaryMuscles,
     targetSets = targetSets,
     repRangeMin = repRangeMin,

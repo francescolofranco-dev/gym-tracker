@@ -41,7 +41,7 @@ class BackupExporter @Inject constructor(
 private fun ExerciseEntity.toJson(): JSONObject = JSONObject().apply {
     put("id", id)
     put("name", name)
-    put("primaryMuscle", primaryMuscle.name)
+    put("primaryMuscles", JSONArray(primaryMuscles.map { it.name }))
     put("secondaryMuscles", JSONArray(secondaryMuscles.map { it.name }))
     put("targetSets", targetSets)
     put("repRangeMin", repRangeMin)

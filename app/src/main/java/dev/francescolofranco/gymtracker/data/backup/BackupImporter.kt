@@ -39,10 +39,10 @@ class BackupImporter @Inject constructor(
     suspend fun importFromJson(json: String): BackupSummary {
         val root = parseRoot(json)
         val schemaVersion = root.optInt(BackupSchema.K_SCHEMA_VERSION, -1)
-        if (schemaVersion != BackupSchema.CURRENT_SCHEMA_VERSION) {
+        if (schemaVersion < BackupSchema.MIN_SUPPORTED_VERSION || schemaVersion > BackupSchema.CURRENT_SCHEMA_VERSION) {
             throw BackupParseException(
                 "Unsupported backup schema $schemaVersion " +
-                    "(expected ${BackupSchema.CURRENT_SCHEMA_VERSION}).",
+                    "(supported: ${BackupSchema.MIN_SUPPORTED_VERSION}..${BackupSchema.CURRENT_SCHEMA_VERSION}).",
             )
         }
         val exportedAt = root.optStringOrNull(BackupSchema.K_EXPORTED_AT)?.let { runCatching { Instant.parse(it) }.getOrNull() }
@@ -103,18 +103,25 @@ class BackupImporter @Inject constructor(
     }
 }
 
-private fun JSONObject.parseExercise(): ExerciseEntity = ExerciseEntity(
-    id = getLong("id"),
-    name = getString("name"),
-    primaryMuscle = Muscle.valueOf(getString("primaryMuscle")),
-    secondaryMuscles = parseMuscleSet(optJSONArray("secondaryMuscles")),
-    targetSets = getInt("targetSets"),
-    repRangeMin = getInt("repRangeMin"),
-    repRangeMax = getInt("repRangeMax"),
-    isBodyweight = getBoolean("isBodyweight"),
-    createdAt = Instant.parse(getString("createdAt")),
-    deletedAt = optStringOrNull("deletedAt")?.let { Instant.parse(it) },
-)
+private fun JSONObject.parseExercise(): ExerciseEntity {
+    // v2 stores `primaryMuscles` as an array; v1 used a single `primaryMuscle` string.
+    // Accept either so backups from earlier releases still import cleanly.
+    val primaries: Set<Muscle> = optJSONArray("primaryMuscles")
+        ?.let { parseMuscleSet(it) }
+        ?: setOf(Muscle.valueOf(getString("primaryMuscle")))
+    return ExerciseEntity(
+        id = getLong("id"),
+        name = getString("name"),
+        primaryMuscles = primaries,
+        secondaryMuscles = parseMuscleSet(optJSONArray("secondaryMuscles")),
+        targetSets = getInt("targetSets"),
+        repRangeMin = getInt("repRangeMin"),
+        repRangeMax = getInt("repRangeMax"),
+        isBodyweight = getBoolean("isBodyweight"),
+        createdAt = Instant.parse(getString("createdAt")),
+        deletedAt = optStringOrNull("deletedAt")?.let { Instant.parse(it) },
+    )
+}
 
 private fun JSONObject.parseTemplate(): TemplateEntity = TemplateEntity(
     id = getLong("id"),

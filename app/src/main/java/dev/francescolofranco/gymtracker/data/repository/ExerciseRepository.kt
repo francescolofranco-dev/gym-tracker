@@ -23,7 +23,7 @@ class ExerciseRepository @Inject constructor(
 
     suspend fun create(
         name: String,
-        primaryMuscle: Muscle,
+        primaryMuscles: Set<Muscle>,
         secondaryMuscles: Set<Muscle>,
         targetSets: Int,
         repRangeMin: Int,
@@ -32,8 +32,8 @@ class ExerciseRepository @Inject constructor(
     ): Long = dao.insert(
         ExerciseEntity(
             name = name.trim(),
-            primaryMuscle = primaryMuscle,
-            secondaryMuscles = secondaryMuscles - primaryMuscle,
+            primaryMuscles = primaryMuscles,
+            secondaryMuscles = secondaryMuscles - primaryMuscles,
             targetSets = targetSets,
             repRangeMin = repRangeMin,
             repRangeMax = repRangeMax,

@@ -21,7 +21,9 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext ctx: Context): AppDatabase =
-        Room.databaseBuilder(ctx, AppDatabase::class.java, AppDatabase.NAME).build()
+        Room.databaseBuilder(ctx, AppDatabase::class.java, AppDatabase.NAME)
+            .addMigrations(AppDatabase.MIGRATION_1_2)
+            .build()
 
     @Provides fun provideExerciseDao(db: AppDatabase): ExerciseDao = db.exerciseDao()
     @Provides fun provideSessionDao(db: AppDatabase): SessionDao = db.sessionDao()

@@ -73,14 +73,25 @@ fun ExerciseFormSheet(
                 Text("Bodyweight exercise")
             }
 
-            SectionLabel("Primary muscle")
+            SectionLabel("Primary muscles (up to ${ExerciseFormState.MAX_PRIMARY_MUSCLES})")
             MuscleChips(
-                selected = { it == state.primaryMuscle },
+                selected = { it in state.primaryMuscles },
+                enabled = { m ->
+                    // Allow toggling off any selected one; allow toggling on while under the cap.
+                    m in state.primaryMuscles || state.primaryMuscles.size < ExerciseFormState.MAX_PRIMARY_MUSCLES
+                },
                 onTap = { m ->
-                    val newPrimary = if (state.primaryMuscle == m) null else m
+                    val newPrimaries = if (m in state.primaryMuscles) {
+                        state.primaryMuscles - m
+                    } else if (state.primaryMuscles.size < ExerciseFormState.MAX_PRIMARY_MUSCLES) {
+                        state.primaryMuscles + m
+                    } else {
+                        state.primaryMuscles
+                    }
                     state = state.copy(
-                        primaryMuscle = newPrimary,
-                        secondaryMuscles = state.secondaryMuscles - m,
+                        primaryMuscles = newPrimaries,
+                        // A muscle can't simultaneously be primary and secondary.
+                        secondaryMuscles = state.secondaryMuscles - newPrimaries,
                     )
                 },
             )
@@ -88,7 +99,7 @@ fun ExerciseFormSheet(
             SectionLabel("Secondary muscles (optional)")
             MuscleChips(
                 selected = { it in state.secondaryMuscles },
-                enabled = { it != state.primaryMuscle },
+                enabled = { it !in state.primaryMuscles },
                 onTap = { m ->
                     val newSecondaries = if (m in state.secondaryMuscles) {
                         state.secondaryMuscles - m

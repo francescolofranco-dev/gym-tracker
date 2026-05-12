@@ -96,7 +96,7 @@ private fun PickerRow(exercise: ExerciseEntity, onClick: () -> Unit) {
             Text(text = exercise.name, style = MaterialTheme.typography.titleMedium)
             Text(
                 text = buildList {
-                    add(exercise.primaryMuscle.displayName)
+                    add(exercise.primaryMuscles.sortedBy { it.ordinal }.joinToString(" + ") { it.displayName })
                     if (exercise.isBodyweight) add("BW")
                     add("${exercise.targetSets}×${exercise.repRangeMin}–${exercise.repRangeMax}")
                 }.joinToString(" · "),

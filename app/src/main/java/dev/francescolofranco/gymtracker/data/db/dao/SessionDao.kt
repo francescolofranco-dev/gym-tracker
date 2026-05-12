@@ -124,7 +124,7 @@ interface SessionDao {
         """
         SELECT s.id AS sessionId, s.startedAt AS sessionStartedAt,
                e.id AS exerciseId, e.name AS exerciseName,
-               e.primaryMuscle AS primaryMuscle, e.secondaryMuscles AS secondaryMuscles,
+               e.primaryMuscles AS primaryMuscles, e.secondaryMuscles AS secondaryMuscles,
                e.isBodyweight AS isBodyweight,
                sl.reps AS reps, sl.kg AS kg
         FROM set_log sl

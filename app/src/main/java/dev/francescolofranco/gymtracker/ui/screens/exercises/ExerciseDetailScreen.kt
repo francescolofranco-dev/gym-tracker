@@ -150,9 +150,9 @@ private fun Header(exercise: ExerciseEntity) {
         Text(text = exercise.name, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold))
         Text(
             text = buildList {
-                add(exercise.primaryMuscle.displayName)
+                add(exercise.primaryMuscles.sortedBy { it.ordinal }.joinToString(" + ") { it.displayName })
                 if (exercise.secondaryMuscles.isNotEmpty()) {
-                    add(exercise.secondaryMuscles.joinToString(", ") { it.displayName })
+                    add(exercise.secondaryMuscles.sortedBy { it.ordinal }.joinToString(", ") { it.displayName })
                 }
             }.joinToString(" · "),
             style = MaterialTheme.typography.bodyMedium,

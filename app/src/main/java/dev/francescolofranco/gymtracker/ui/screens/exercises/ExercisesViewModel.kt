@@ -20,10 +20,15 @@ class ExercisesViewModel @Inject constructor(
     private val repo: ExerciseRepository,
 ) : ViewModel() {
 
+    /**
+     * Groups exercises under their "lead" primary muscle — the first primary in [Muscle] enum
+     * order. Multi-primary exercises only appear once (under their lead) rather than being
+     * duplicated across every group they touch, which would clutter the list.
+     */
     val grouped: StateFlow<Map<Muscle, List<ExerciseEntity>>> =
         repo.observeActive()
             .map { list ->
-                list.groupBy { it.primaryMuscle }
+                list.groupBy { ex -> ex.primaryMuscles.minByOrNull { it.ordinal } ?: Muscle.CORE }
                     .toSortedMap(compareBy { it.ordinal })
                     .mapValues { (_, items) -> items.sortedBy { it.name.lowercase() } }
             }
@@ -48,11 +53,11 @@ class ExercisesViewModel @Inject constructor(
     }
 
     fun save(state: ExerciseFormState) {
-        val primary = state.primaryMuscle ?: return
+        if (state.primaryMuscles.isEmpty()) return
         viewModelScope.launch {
             repo.create(
                 name = state.name,
-                primaryMuscle = primary,
+                primaryMuscles = state.primaryMuscles,
                 secondaryMuscles = state.secondaryMuscles,
                 targetSets = state.targetSets,
                 repRangeMin = state.repRangeMin,

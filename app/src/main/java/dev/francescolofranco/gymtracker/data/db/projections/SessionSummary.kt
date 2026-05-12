@@ -40,7 +40,7 @@ data class StatSetRow(
     val sessionStartedAt: Instant,
     val exerciseId: Long,
     val exerciseName: String,
-    val primaryMuscle: dev.francescolofranco.gymtracker.domain.Muscle,
+    val primaryMuscles: Set<dev.francescolofranco.gymtracker.domain.Muscle>,
     val secondaryMuscles: Set<dev.francescolofranco.gymtracker.domain.Muscle>,
     val isBodyweight: Boolean,
     val reps: Int,

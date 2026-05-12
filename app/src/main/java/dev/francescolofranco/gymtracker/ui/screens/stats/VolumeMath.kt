@@ -114,14 +114,19 @@ fun computeMuscleVolumes(rows: List<StatSetRow>): Map<Muscle, MuscleVolume> {
     rows.forEach { r ->
         val setVol = (r.kg ?: 0.0) * r.reps
 
-        directSets.merge(r.primaryMuscle, 1, Int::plus)
-        directVol.merge(r.primaryMuscle, setVol, Double::plus)
-        byMuscleByExercise.getOrPut(r.primaryMuscle) { HashMap() }
-            .getOrPut(r.exerciseId) { ExerciseAccumulator(r.exerciseId, r.exerciseName, isPrimary = true) }
-            .also { it.sets += 1 }
+        // Each primary mover gets full credit for the set. A Bulgarian split squat with
+        // {Quads, Glutes, Hamstrings} as primaries contributes +1 direct set to each of the
+        // three muscles for a single working set.
+        r.primaryMuscles.forEach { m ->
+            directSets.merge(m, 1, Int::plus)
+            directVol.merge(m, setVol, Double::plus)
+            byMuscleByExercise.getOrPut(m) { HashMap() }
+                .getOrPut(r.exerciseId) { ExerciseAccumulator(r.exerciseId, r.exerciseName, isPrimary = true) }
+                .also { it.sets += 1 }
+        }
 
         r.secondaryMuscles.forEach { m ->
-            if (m == r.primaryMuscle) return@forEach
+            if (m in r.primaryMuscles) return@forEach
             indirectSets.merge(m, 1, Int::plus)
             indirectVol.merge(m, setVol, Double::plus)
             byMuscleByExercise.getOrPut(m) { HashMap() }
