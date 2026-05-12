@@ -24,6 +24,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -125,12 +126,20 @@ private fun StepperButton(
     val haptic = LocalHapticFeedback.current
     var pressed by remember { mutableStateOf(false) }
 
+    // pointerInput / LaunchedEffect coroutines outlive recompositions, so they capture the
+    // first onTap / onHoldStep lambdas — which close over the original `value` parameter.
+    // Without rememberUpdatedState the second tap would compute the same `next` as the first
+    // and the `if (next != value)` guard would swallow it (mirrors the SetRow CompactStepper
+    // fix in commit dd7d579).
+    val currentOnTap by rememberUpdatedState(onTap)
+    val currentOnHoldStep by rememberUpdatedState(onHoldStep)
+
     LaunchedEffect(pressed) {
         if (pressed) {
             // Initial delay before scrubbing kicks in
             delay(400)
             while (isActive && pressed) {
-                onHoldStep()
+                currentOnHoldStep()
                 delay(80)
             }
         }
@@ -156,7 +165,7 @@ private fun StepperButton(
                     if (up != null) {
                         val elapsed = up.uptimeMillis - downTime
                         if (elapsed < 400) {
-                            scope.launch { onTap() }
+                            scope.launch { currentOnTap() }
                         }
                     }
                 }
