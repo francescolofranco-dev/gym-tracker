@@ -14,5 +14,6 @@ class TimerPillViewModel @Inject constructor(
 
     val state: StateFlow<TimerState> = controller.state
 
-    fun tap() = controller.reset()
+    /** Only reachable while the timer is running — the composable gates clicks accordingly. */
+    fun reset() = controller.reset()
 }

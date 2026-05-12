@@ -56,6 +56,13 @@ interface SessionDao {
     @Query("UPDATE session SET endedAt = :at WHERE id = :id")
     suspend fun end(id: Long, at: Instant = Instant.now())
 
+    /**
+     * Hard-deletes a session. Foreign keys on session_exercise and set_log are CASCADE so
+     * all child rows go too.
+     */
+    @Query("DELETE FROM session WHERE id = :id")
+    suspend fun deleteById(id: Long)
+
     @Query("UPDATE session SET notes = :notes WHERE id = :id")
     suspend fun updateNotes(id: Long, notes: String?)
 

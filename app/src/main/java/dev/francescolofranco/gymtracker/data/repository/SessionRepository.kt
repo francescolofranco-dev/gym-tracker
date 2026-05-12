@@ -55,6 +55,9 @@ class SessionRepository @Inject constructor(
 
     suspend fun endSession(id: Long, at: Instant = Instant.now()) = sessionDao.end(id, at)
 
+    /** Hard-delete a session and cascade-remove its exercises + set logs. */
+    suspend fun deleteSession(id: Long) = sessionDao.deleteById(id)
+
     suspend fun updateSessionNotes(id: Long, notes: String?) = sessionDao.updateNotes(id, notes)
 
     suspend fun lastActivityAt(sessionId: Long): Instant? = sessionDao.lastActivityAt(sessionId)

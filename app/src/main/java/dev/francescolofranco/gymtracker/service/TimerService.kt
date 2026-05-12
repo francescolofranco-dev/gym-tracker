@@ -10,6 +10,8 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.IBinder
 import android.os.SystemClock
+import android.view.View
+import android.widget.RemoteViews
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
@@ -65,6 +67,8 @@ class TimerService : Service() {
         val resetPi = pendingIntent(this, ACTION_RESET, REQ_RESET)
         val stopPi = pendingIntent(this, ACTION_STOP, REQ_STOP)
 
+        val customView = buildTimerView(state)
+
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle(getString(R.string.timer_title))
@@ -72,25 +76,41 @@ class TimerService : Service() {
             .setOngoing(true)
             .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
             .setOnlyAlertOnce(true)
-            .setShowWhen(true)
+            .setShowWhen(false)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+            .setSilent(true)
+            .setCustomContentView(customView)
+            .setCustomBigContentView(customView)
+            .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .addAction(0, getString(R.string.timer_reset), resetPi)
             .addAction(0, getString(R.string.timer_stop), stopPi)
+        return builder.build()
+    }
 
+    /**
+     * Builds the custom RemoteViews layout that renders the timer prominently inside the
+     * notification body. The Chronometer ticks autonomously once shown, so we don't have to
+     * re-post the notification every second.
+     */
+    private fun buildTimerView(state: TimerState): RemoteViews {
+        val rv = RemoteViews(packageName, R.layout.notification_timer)
         when (state) {
             is TimerState.Running -> {
-                val nowWall = System.currentTimeMillis()
-                val elapsed = SystemClock.elapsedRealtime() - state.baseElapsedRealtime
-                builder.setUsesChronometer(true)
-                builder.setWhen(nowWall - elapsed)
-                builder.setContentText(getString(R.string.timer_running))
+                rv.setChronometer(R.id.timerChronometer, state.baseElapsedRealtime, null, true)
+                rv.setViewVisibility(R.id.timerChronometer, View.VISIBLE)
+                rv.setViewVisibility(R.id.timerStopped, View.GONE)
+                rv.setTextViewText(R.id.timerStateText, getString(R.string.timer_running))
             }
             TimerState.Stopped -> {
-                builder.setUsesChronometer(false)
-                builder.setContentText(getString(R.string.timer_stopped))
+                // Freeze the chronometer at 00:00 by setting started=false and hiding it.
+                rv.setChronometer(R.id.timerChronometer, SystemClock.elapsedRealtime(), null, false)
+                rv.setViewVisibility(R.id.timerChronometer, View.GONE)
+                rv.setViewVisibility(R.id.timerStopped, View.VISIBLE)
+                rv.setTextViewText(R.id.timerStateText, getString(R.string.timer_stopped))
             }
         }
-        return builder.build()
+        return rv
     }
 
     companion object {

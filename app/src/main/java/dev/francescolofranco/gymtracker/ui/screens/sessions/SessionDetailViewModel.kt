@@ -71,4 +71,8 @@ class SessionDetailViewModel @Inject constructor(
     fun setSessionNotes(notes: String?) = viewModelScope.launch {
         repo.updateSessionNotes(sessionId, notes?.ifBlank { null })
     }
+
+    suspend fun deleteSession() {
+        repo.deleteSession(sessionId)
+    }
 }

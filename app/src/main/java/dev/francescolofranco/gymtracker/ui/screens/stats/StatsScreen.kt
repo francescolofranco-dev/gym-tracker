@@ -169,30 +169,36 @@ private fun SummaryCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer)
-            .padding(16.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                modifier = Modifier.padding(bottom = 4.dp),
             )
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                StatBlock(label = "Week", value = week)
-                StatBlock(label = "Month", value = month)
-                StatBlock(label = "Year", value = year)
-            }
+            StatLine(label = "This week", value = week)
+            StatLine(label = "This month", value = month)
+            StatLine(label = "This year", value = year)
         }
     }
 }
 
 @Composable
-private fun StatBlock(label: String, value: String) {
-    Column(horizontalAlignment = Alignment.Start) {
-        Text(text = value, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold))
+private fun StatLine(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.labelSmall,
+            style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
         )
     }
 }

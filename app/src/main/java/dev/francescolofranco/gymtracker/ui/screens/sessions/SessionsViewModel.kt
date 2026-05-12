@@ -10,6 +10,7 @@ import dev.francescolofranco.gymtracker.data.prefs.UserPrefs
 import dev.francescolofranco.gymtracker.data.repository.SessionRepository
 import dev.francescolofranco.gymtracker.data.repository.TemplateRepository
 import dev.francescolofranco.gymtracker.domain.WeightUnit
+import dev.francescolofranco.gymtracker.service.TimerController
 import dev.francescolofranco.gymtracker.work.IdleSessionScheduler
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -24,6 +25,7 @@ class SessionsViewModel @Inject constructor(
     private val repo: SessionRepository,
     private val templates: TemplateRepository,
     private val idleScheduler: IdleSessionScheduler,
+    private val timer: TimerController,
     userPrefs: UserPrefs,
 ) : ViewModel() {
 
@@ -48,8 +50,10 @@ class SessionsViewModel @Inject constructor(
         val existing = repo.activeSession()
         val id = existing?.id ?: repo.startSession(templateId = templateId)
         idleScheduler.schedule(id)
-        // Timer is no longer kicked off here — it auto-resets on the first set check-off, so
-        // the user can browse the empty session / pick exercises without the clock running.
+        // Stop (not reset) the timer so the active screen shows a clean 00:00 from the moment
+        // the user lands. The first set check-off later flips state to Running. Resuming an
+        // existing session keeps whatever timer state was previously running.
+        if (existing == null) timer.stop()
         _events.emit(Event.OpenActive(id))
     }
 

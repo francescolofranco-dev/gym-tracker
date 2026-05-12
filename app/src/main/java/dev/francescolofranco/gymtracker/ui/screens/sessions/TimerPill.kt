@@ -49,13 +49,15 @@ fun TimerPill(viewModel: TimerPillViewModel = hiltViewModel()) {
         MaterialTheme.colorScheme.surfaceContainerHigh to MaterialTheme.colorScheme.onSurface
     }
 
+    val clickModifier = if (running) Modifier.clickable { viewModel.reset() } else Modifier
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
             .clip(RoundedCornerShape(20.dp))
             .background(bg)
-            .clickable { viewModel.tap() }
+            .then(clickModifier)
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -76,17 +78,20 @@ fun TimerPill(viewModel: TimerPillViewModel = hiltViewModel()) {
                 color = fg,
             )
             Text(
-                text = if (running) "Running · tap to reset" else "Stopped · tap to start",
+                text = if (running) "Running · tap to reset"
+                else "Starts on your first ✓",
                 style = MaterialTheme.typography.labelMedium,
                 color = fg.copy(alpha = 0.75f),
             )
         }
-        Icon(
-            imageVector = Icons.Filled.Refresh,
-            contentDescription = "Reset timer",
-            tint = fg,
-            modifier = Modifier.size(28.dp),
-        )
+        if (running) {
+            Icon(
+                imageVector = Icons.Filled.Refresh,
+                contentDescription = "Reset timer",
+                tint = fg,
+                modifier = Modifier.size(28.dp),
+            )
+        }
     }
 }
 

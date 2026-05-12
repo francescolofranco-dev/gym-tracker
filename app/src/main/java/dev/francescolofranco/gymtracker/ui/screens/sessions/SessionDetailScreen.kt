@@ -12,7 +12,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -24,9 +25,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -35,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetail
+import kotlinx.coroutines.launch
 import java.time.Duration
 
 @Suppress("UNUSED_PARAMETER")
@@ -52,6 +56,8 @@ fun SessionDetailScreen(
 
     var sessionNotesEditor by remember { mutableStateOf(false) }
     var exerciseNotesTarget by remember { mutableStateOf<SessionExerciseDetail?>(null) }
+    var deleteStage by remember { mutableStateOf(DeleteStage.None) }
+    val scope = rememberCoroutineScope()
 
     Scaffold(
         topBar = {
@@ -80,7 +86,14 @@ fun SessionDetailScreen(
                 },
                 actions = {
                     IconButton(onClick = { sessionNotesEditor = true }) {
-                        Icon(Icons.Filled.Edit, contentDescription = "Session notes")
+                        Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = "Session notes")
+                    }
+                    IconButton(onClick = { deleteStage = DeleteStage.First }) {
+                        Icon(
+                            imageVector = Icons.Filled.DeleteForever,
+                            contentDescription = "Delete session",
+                            tint = MaterialTheme.colorScheme.error,
+                        )
                     }
                 },
             )
@@ -166,7 +179,55 @@ fun SessionDetailScreen(
             },
         )
     }
+
+    when (deleteStage) {
+        DeleteStage.None -> Unit
+
+        DeleteStage.First -> AlertDialog(
+            onDismissRequest = { deleteStage = DeleteStage.None },
+            title = { Text("Delete this session?") },
+            text = {
+                Text(
+                    "Every set you logged in this session will be permanently removed. " +
+                        "Your exercise library is unaffected.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = { deleteStage = DeleteStage.Final }) { Text("Continue") }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteStage = DeleteStage.None }) { Text("Cancel") }
+            },
+        )
+
+        DeleteStage.Final -> AlertDialog(
+            onDismissRequest = { deleteStage = DeleteStage.None },
+            title = { Text("Are you sure?") },
+            text = {
+                Text(
+                    "This is the last chance. The session and every set logged in it will be " +
+                        "deleted forever — there's no undo.",
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    deleteStage = DeleteStage.None
+                    scope.launch {
+                        viewModel.deleteSession()
+                        onBack()
+                    }
+                }) {
+                    Text("Delete forever", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { deleteStage = DeleteStage.None }) { Text("Cancel") }
+            },
+        )
+    }
 }
+
+private enum class DeleteStage { None, First, Final }
 
 @Composable
 private fun NotesDialog(

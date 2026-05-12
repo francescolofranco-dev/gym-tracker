@@ -98,7 +98,7 @@ fun SetRow(
 
         CompactStepper(
             value = reps.toDouble(),
-            label = "$reps reps",
+            label = "$reps",
             onValueChange = {
                 reps = it.toInt().coerceAtLeast(0)
                 if (isLogged) onCommit(reps, kgInternal)
@@ -111,18 +111,11 @@ fun SetRow(
             modifier = Modifier.weight(1f),
         )
 
-        CompactStepper(
-            value = displayKg,
+        // Kg: tap-to-numpad chip only (no +/-). Manual digit entry is much faster than
+        // stepping 2.5 kg at a time for typical lifting changes.
+        WeightChip(
             label = formatWeightChip(displayKg, state.unit, state.isBodyweight),
-            onValueChange = { v ->
-                kgInternal = convertToKg(v, state.unit).coerceAtLeast(0.0)
-                if (isLogged) onCommit(reps, kgInternal)
-            },
-            step = 2.5,
-            fastStep = 5.0,
-            min = 0.0,
-            max = 999.0,
-            onChipClick = if (editable) ({ numpadFor = NumpadField.KG }) else null,
+            onClick = if (editable) ({ numpadFor = NumpadField.KG }) else null,
             enabled = editable && !isSkipped,
             modifier = Modifier.weight(1.2f),
         )
@@ -226,7 +219,6 @@ private fun CompactStepper(
             .clip(RoundedCornerShape(14.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHighest),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
         StepperKey(
             icon = Icons.Filled.Remove,
@@ -240,7 +232,6 @@ private fun CompactStepper(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxHeight()
-                .defaultMinSize(minWidth = 56.dp)
                 .pointerInput(onChipClick, enabled) {
                     if (onChipClick == null || !enabled) return@pointerInput
                     awaitEachGesture {
@@ -259,6 +250,7 @@ private fun CompactStepper(
                 text = label,
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = MaterialTheme.colorScheme.onSurface,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                 maxLines = 1,
             )
         }
@@ -269,6 +261,47 @@ private fun CompactStepper(
             enabled = enabled && value < max,
             onTap = { update(step) },
             onHoldStep = { update(fastStep) },
+        )
+    }
+}
+
+/**
+ * Read-and-tap chip for kg / lbs — no +/- buttons, just shows the value and opens the numpad
+ * on tap. Matches CompactStepper's height/styling so the row stays aligned.
+ */
+@Composable
+private fun WeightChip(
+    label: String,
+    onClick: (() -> Unit)?,
+    enabled: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    val haptic = LocalHapticFeedback.current
+    Box(
+        modifier = modifier
+            .fillMaxHeight()
+            .clip(RoundedCornerShape(14.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+            .pointerInput(onClick, enabled) {
+                if (onClick == null || !enabled) return@pointerInput
+                awaitEachGesture {
+                    awaitFirstDown()
+                    val up = waitForUpOrCancellation()
+                    if (up != null) {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        onClick()
+                    }
+                }
+            }
+            .semantics { contentDescription = "Weight $label, tap to edit" },
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            maxLines = 1,
         )
     }
 }
