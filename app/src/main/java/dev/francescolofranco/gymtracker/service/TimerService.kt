@@ -122,7 +122,11 @@ class TimerService : Service() {
         const val ACTION_STOP = "dev.francescolofranco.gymtracker.timer.STOP"
         const val ACTION_ENSURE = "dev.francescolofranco.gymtracker.timer.ENSURE"
 
-        const val CHANNEL_ID = "gym-timer"
+        // Bumped from "gym-timer" to "gym-timer-v2" because Android won't let the app raise an
+        // existing channel's importance after creation — the old channel landed in the Silent
+        // shade group with dimmed content. A new ID gets a fresh channel at IMPORTANCE_DEFAULT
+        // without needing to delete the running service's active notification.
+        const val CHANNEL_ID = "gym-timer-v2"
         const val NOTIFICATION_ID = 1001
         private const val REQ_RESET = 11
         private const val REQ_STOP = 12
@@ -147,27 +151,23 @@ class TimerService : Service() {
 
         fun ensureChannel(ctx: Context) {
             val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
-            val existing = nm.getNotificationChannel(CHANNEL_ID)
-            // Recreate the channel if it doesn't exist yet, or if it was previously created at
-            // a lower importance (the original IMPORTANCE_LOW landed in the dimmed "Silent"
-            // group). Channel importance can't be raised by the app after creation, so we
-            // delete-and-recreate. Sound + vibration are explicitly suppressed so the
-            // notification stays out of the alerting flow while displaying with full contrast.
-            if (existing == null || existing.importance < NotificationManager.IMPORTANCE_DEFAULT) {
-                if (existing != null) nm.deleteNotificationChannel(CHANNEL_ID)
-                val channel = NotificationChannel(
-                    CHANNEL_ID,
-                    ctx.getString(R.string.timer_channel_name),
-                    NotificationManager.IMPORTANCE_DEFAULT,
-                ).apply {
-                    description = ctx.getString(R.string.timer_channel_desc)
-                    setShowBadge(false)
-                    setSound(null, null)
-                    enableVibration(false)
-                    enableLights(false)
-                }
-                nm.createNotificationChannel(channel)
+            if (nm.getNotificationChannel(CHANNEL_ID) != null) return
+            // Importance DEFAULT so the notification sits in the regular shade with full
+            // contrast (not the dimmed Silent group). Sound + vibration + lights are
+            // explicitly suppressed via the channel so it never alerts — DEFAULT importance
+            // only changes visual prominence, not the alerting behaviour.
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                ctx.getString(R.string.timer_channel_name),
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = ctx.getString(R.string.timer_channel_desc)
+                setShowBadge(false)
+                setSound(null, null)
+                enableVibration(false)
+                enableLights(false)
             }
+            nm.createNotificationChannel(channel)
         }
     }
 }
