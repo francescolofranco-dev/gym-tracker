@@ -8,6 +8,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import dev.francescolofranco.gymtracker.data.repository.SessionRepository
+import dev.francescolofranco.gymtracker.service.TimerController
 import java.time.Duration
 import java.time.Instant
 
@@ -38,6 +39,8 @@ class IdleSessionWorker(
         val idleFor = Duration.between(lastActivity, now)
         return if (idleFor >= IDLE_THRESHOLD) {
             repo.endSession(sessionId, lastActivity)
+            // Auto-end means no one's holding the timer — tear the notification down too.
+            ep.timerController().stop()
             Result.success()
         } else {
             // Activity happened recently — defer by rescheduling for the remaining idle time.
@@ -58,4 +61,5 @@ class IdleSessionWorker(
 interface IdleSessionEntryPoint {
     fun sessionRepository(): SessionRepository
     fun idleSessionScheduler(): IdleSessionScheduler
+    fun timerController(): TimerController
 }

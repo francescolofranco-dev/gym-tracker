@@ -103,6 +103,8 @@ class ActiveSessionViewModel @Inject constructor(
         val ended = withContext(Dispatchers.Default) { repo.lastActivityAt(sessionId) ?: java.time.Instant.now() }
         repo.endSession(sessionId, ended)
         idleScheduler.cancel(sessionId)
+        // Tear the timer notification down — no session means nothing to display.
+        timer.stop()
         _exitRequested.value = true
     }
 }

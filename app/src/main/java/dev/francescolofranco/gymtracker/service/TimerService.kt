@@ -33,13 +33,32 @@ class TimerService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // Spec evolution: STOP now tears the foreground notification down rather than
+        // keeping a 00:00 ghost. We must call startForeground (or stopSelf) within ~5s of
+        // being launched via startForegroundService, so each branch handles that explicitly.
         when (intent?.action) {
-            ACTION_RESET -> _state.value = TimerState.runningNow()
-            ACTION_STOP -> _state.value = TimerState.Stopped
-            // Any other action (or null) just ensures we are running with current state.
+            ACTION_RESET -> {
+                _state.value = TimerState.runningNow()
+                startInForeground(_state.value)
+            }
+            ACTION_STOP -> {
+                _state.value = TimerState.Stopped
+                ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+                stopSelf()
+            }
+            else -> {
+                // Null/unknown action — happens after a system-triggered service restart.
+                // Only re-attach the notification when the timer was actually running;
+                // otherwise this is a stale wake-up and we shut down immediately.
+                if (_state.value is TimerState.Running) {
+                    startInForeground(_state.value)
+                } else {
+                    ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+                    stopSelf()
+                }
+            }
         }
-        startInForeground(_state.value)
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     private fun startInForeground(state: TimerState) {

@@ -55,8 +55,16 @@ class SessionRepository @Inject constructor(
 
     suspend fun endSession(id: Long, at: Instant = Instant.now()) = sessionDao.end(id, at)
 
-    /** Hard-delete a session and cascade-remove its exercises + set logs. */
-    suspend fun deleteSession(id: Long) = sessionDao.deleteById(id)
+    /**
+     * Hard-delete a session and cascade-remove its exercises + set logs. Returns `true` if
+     * the deleted row was the active session (endedAt = null) so callers can tear down the
+     * timer notification accordingly.
+     */
+    suspend fun deleteSession(id: Long): Boolean {
+        val wasActive = sessionDao.byId(id)?.endedAt == null
+        sessionDao.deleteById(id)
+        return wasActive
+    }
 
     suspend fun updateSessionNotes(id: Long, notes: String?) = sessionDao.updateNotes(id, notes)
 

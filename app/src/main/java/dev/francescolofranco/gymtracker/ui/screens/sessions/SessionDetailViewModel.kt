@@ -9,7 +9,9 @@ import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetai
 import dev.francescolofranco.gymtracker.data.prefs.UserPrefs
 import dev.francescolofranco.gymtracker.data.repository.SessionRepository
 import dev.francescolofranco.gymtracker.domain.WeightUnit
+import dev.francescolofranco.gymtracker.service.TimerController
 import dev.francescolofranco.gymtracker.ui.nav.SessionRoutes
+import dev.francescolofranco.gymtracker.work.IdleSessionScheduler
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -21,6 +23,8 @@ import javax.inject.Inject
 class SessionDetailViewModel @Inject constructor(
     savedState: SavedStateHandle,
     private val repo: SessionRepository,
+    private val timer: TimerController,
+    private val idleScheduler: IdleSessionScheduler,
     userPrefs: UserPrefs,
 ) : ViewModel() {
 
@@ -73,6 +77,12 @@ class SessionDetailViewModel @Inject constructor(
     }
 
     suspend fun deleteSession() {
-        repo.deleteSession(sessionId)
+        val wasActive = repo.deleteSession(sessionId)
+        if (wasActive) {
+            // Deleting the still-active session tears down both the idle worker and the
+            // timer notification — they have nothing left to tick against.
+            idleScheduler.cancel(sessionId)
+            timer.stop()
+        }
     }
 }
