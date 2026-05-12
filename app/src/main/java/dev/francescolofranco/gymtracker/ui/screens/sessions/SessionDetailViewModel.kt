@@ -53,7 +53,7 @@ class SessionDetailViewModel @Inject constructor(
     }
 
     fun unlogSet(setLogId: Long) = viewModelScope.launch {
-        repo.logSet(setLogId, reps = null, kg = null, at = null)
+        repo.unlogSet(setLogId)
     }
 
     fun toggleSetSkipped(setLogId: Long, currentlySkipped: Boolean) = viewModelScope.launch {

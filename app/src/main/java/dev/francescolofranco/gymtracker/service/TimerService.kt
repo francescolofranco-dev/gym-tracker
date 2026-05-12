@@ -75,11 +75,15 @@ class TimerService : Service() {
             .setContentIntent(openAppPi)
             .setOngoing(true)
             .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
-            .setOnlyAlertOnce(true)
+            .setOnlyAlertOnce(true) // updates each tick shouldn't re-alert
             .setShowWhen(false)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            .setSilent(true)
+            // Note: previously called setSilent(true) which forced the notification into the
+            // "Silent" shade group — that's where Android dims the content text. Sound is now
+            // suppressed at the channel level (setSound(null) + enableVibration(false)) while
+            // the channel importance stays DEFAULT so the notification reads with full
+            // contrast.
             .setCustomContentView(customView)
             .setCustomBigContentView(customView)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
@@ -143,14 +147,24 @@ class TimerService : Service() {
 
         fun ensureChannel(ctx: Context) {
             val nm = ctx.getSystemService(NotificationManager::class.java) ?: return
-            if (nm.getNotificationChannel(CHANNEL_ID) == null) {
+            val existing = nm.getNotificationChannel(CHANNEL_ID)
+            // Recreate the channel if it doesn't exist yet, or if it was previously created at
+            // a lower importance (the original IMPORTANCE_LOW landed in the dimmed "Silent"
+            // group). Channel importance can't be raised by the app after creation, so we
+            // delete-and-recreate. Sound + vibration are explicitly suppressed so the
+            // notification stays out of the alerting flow while displaying with full contrast.
+            if (existing == null || existing.importance < NotificationManager.IMPORTANCE_DEFAULT) {
+                if (existing != null) nm.deleteNotificationChannel(CHANNEL_ID)
                 val channel = NotificationChannel(
                     CHANNEL_ID,
                     ctx.getString(R.string.timer_channel_name),
-                    NotificationManager.IMPORTANCE_LOW,
+                    NotificationManager.IMPORTANCE_DEFAULT,
                 ).apply {
                     description = ctx.getString(R.string.timer_channel_desc)
                     setShowBadge(false)
+                    setSound(null, null)
+                    enableVibration(false)
+                    enableLights(false)
                 }
                 nm.createNotificationChannel(channel)
             }

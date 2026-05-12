@@ -103,6 +103,17 @@ class SessionRepository @Inject constructor(
     suspend fun updateSessionExerciseNotes(sessionExerciseId: Long, notes: String?) =
         sessionDao.updateExerciseNotes(sessionExerciseId, notes)
 
+    /**
+     * Revert a logged set back to "planned" while keeping the reps/kg the user had entered.
+     * Just clears [SetLogEntity.loggedAt] (and isSkipped). The previous values stay so the UI
+     * shows them as the pending stepper state — the user can re-commit with one tap or
+     * tweak them without losing what they typed.
+     */
+    suspend fun unlogSet(setLogId: Long) {
+        val current = setLogDao.byId(setLogId) ?: return
+        setLogDao.update(current.copy(loggedAt = null, isSkipped = false))
+    }
+
     /** Commit a logged set (✓). Pass null reps/kg to revert a logged set to "planned". */
     suspend fun logSet(setLogId: Long, reps: Int?, kg: Double?, at: Instant? = Instant.now()) {
         val current = setLogDao.byId(setLogId) ?: return
