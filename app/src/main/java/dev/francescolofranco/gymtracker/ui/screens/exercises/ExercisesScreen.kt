@@ -100,7 +100,7 @@ fun ExercisesScreen(
                             exercise = exercise,
                             onTap = { onOpenDetail(exercise.id) },
                             onLongPress = { actionTarget = exercise },
-                            onSwipeDelete = { deleteWithUndo(exercise) },
+                            onDeleteRequest = { deleteConfirmTarget = exercise },
                         )
                     }
                 }
