@@ -18,6 +18,15 @@ import java.time.temporal.TemporalAdjusters
 
 data class DateRange(val startInclusive: Instant, val endExclusive: Instant)
 
+/**
+ * Indirect (secondary-mover) contributions weight at this factor. Industry convention
+ * (RP Strength, Renaissance Periodization) treats a secondary set as ~half a working set
+ * for hypertrophy purposes — and the same scaling applies to attributed tonnage. So a
+ * bench-press set worth 80 kg × 10 contributes 800 kg to chest, 400 kg to triceps, and
+ * 400 kg to front delts, rather than 800/800/800 (which over-counted indirect work).
+ */
+const val INDIRECT_WEIGHT = 0.5
+
 data class MuscleVolume(
     val muscle: Muscle,
     val directSets: Int,
@@ -26,15 +35,22 @@ data class MuscleVolume(
     val indirectVolumeKg: Double,
     val contributingExercises: List<ContributingExercise>,
 ) {
-    val total: Int get() = directSets + indirectSets
+    /**
+     * Effective working sets for this muscle = direct + INDIRECT_WEIGHT × indirect. Used
+     * by the body-diagram traffic-light colouring and the drill-down "Total" block. Direct
+     * and indirect are kept as the raw integers so the drill sheet can show both alongside.
+     */
+    val effectiveSets: Double get() = directSets + INDIRECT_WEIGHT * indirectSets
+
+    /** Rounded effective sets — for thresholds / displayed totals. */
+    val total: Int get() = kotlin.math.round(effectiveSets).toInt()
 
     /**
-     * Per-muscle kg tonnage attributed to this muscle this period. Direct sets contribute
-     * fully; indirect sets count too (same weighting we use for set counts) so a bench-press
-     * set adds its volume to chest AND triceps AND front delts. This matches the hypertrophy
-     * "all contributing work counts" convention.
+     * Per-muscle kg tonnage attributed to this muscle this period, weighting indirect at
+     * [INDIRECT_WEIGHT]. The "Volume by muscle" card and the drill-down sheet's volume
+     * row both read this.
      */
-    val totalVolumeKg: Double get() = directVolumeKg + indirectVolumeKg
+    val totalVolumeKg: Double get() = directVolumeKg + INDIRECT_WEIGHT * indirectVolumeKg
 }
 
 data class ContributingExercise(

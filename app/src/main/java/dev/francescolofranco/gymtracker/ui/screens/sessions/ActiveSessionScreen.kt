@@ -115,7 +115,9 @@ fun ActiveSessionScreen(
 
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                // Extra bottom space so the last set's ✓ scrolls clear of the FAB instead of
+                // being permanently obscured by it.
+                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 96.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 session?.notes?.takeIf { it.isNotBlank() }?.let { notes ->

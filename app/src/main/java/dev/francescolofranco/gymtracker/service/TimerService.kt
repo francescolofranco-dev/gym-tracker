@@ -43,6 +43,12 @@ class TimerService : Service() {
             }
             ACTION_STOP -> {
                 _state.value = TimerState.Stopped
+                // Satisfy the startForegroundService 5s contract by briefly attaching before
+                // removing — covers the case where STOP arrives at a service that hadn't yet
+                // called startForeground (e.g. a stray dispatch when the timer was already
+                // Stopped). The notification is removed in the same call so there's no
+                // visible flicker.
+                startInForeground(_state.value)
                 ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
                 stopSelf()
             }

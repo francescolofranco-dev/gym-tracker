@@ -16,6 +16,17 @@ class TimerController @Inject constructor(
     val state: StateFlow<TimerState> get() = TimerService.state
 
     fun reset() = TimerService.send(context, TimerService.ACTION_RESET)
-    fun stop() = TimerService.send(context, TimerService.ACTION_STOP)
+
+    /**
+     * Skip the intent dispatch when the timer is already stopped. Otherwise we'd hand the
+     * OS a startForegroundService request that the service has nothing to attach a
+     * foreground notification to within 5s, tripping ForegroundServiceDidNotStartInTimeException.
+     */
+    fun stop() {
+        if (TimerService.state.value !is TimerState.Stopped) {
+            TimerService.send(context, TimerService.ACTION_STOP)
+        }
+    }
+
     fun ensureStarted() = TimerService.send(context, TimerService.ACTION_ENSURE)
 }

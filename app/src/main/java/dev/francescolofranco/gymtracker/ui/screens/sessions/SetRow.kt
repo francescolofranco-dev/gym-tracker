@@ -113,9 +113,16 @@ fun SetRow(
         )
 
         // Kg: tap-to-numpad chip only (no +/-). Manual digit entry is much faster than
-        // stepping 2.5 kg at a time for typical lifting changes.
+        // stepping 2.5 kg at a time for typical lifting changes. A small percentage sub-label
+        // shows progress vs the last session's matching set when there's a hint to compare to.
+        val pctDelta = computePercentDelta(kgInternal, state.hintKg)
         WeightChip(
             label = formatWeightChip(displayKg, state.unit, state.isBodyweight),
+            subLabel = pctDelta?.text,
+            subLabelColor = pctDelta?.let {
+                if (it.positive) MaterialTheme.colorScheme.primary
+                else MaterialTheme.colorScheme.error
+            },
             onClick = if (editable) ({ numpadFor = NumpadField.KG }) else null,
             enabled = editable && !isSkipped,
             modifier = Modifier.weight(1.2f),
@@ -273,6 +280,8 @@ private fun CompactStepper(
 @Composable
 private fun WeightChip(
     label: String,
+    subLabel: String?,
+    subLabelColor: androidx.compose.ui.graphics.Color?,
     onClick: (() -> Unit)?,
     enabled: Boolean,
     modifier: Modifier = Modifier,
@@ -297,13 +306,25 @@ private fun WeightChip(
             .semantics { contentDescription = "Weight $label, tap to edit" },
         contentAlignment = Alignment.Center,
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-            maxLines = 1,
-        )
+        androidx.compose.foundation.layout.Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                maxLines = 1,
+            )
+            if (subLabel != null) {
+                Text(
+                    text = subLabel,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = subLabelColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                )
+            }
+        }
     }
 }
 
@@ -417,6 +438,22 @@ private fun formatWeightChip(value: Double, unit: WeightUnit, isBodyweight: Bool
     else String.format(Locale.US, "%.1f", rounded)
     val prefix = if (isBodyweight) "+" else ""
     return "$prefix$number ${unit.label()}"
+}
+
+private data class PercentDelta(val text: String, val positive: Boolean)
+
+/**
+ * Percentage change vs the matching set from the last session. Returned only when there's a
+ * non-trivial hint (>0) and the rounded change is at least 1% — otherwise the sub-label adds
+ * noise without signal.
+ */
+private fun computePercentDelta(currentKg: Double, hintKg: Double?): PercentDelta? {
+    if (hintKg == null || hintKg <= 0.0) return null
+    val pct = ((currentKg - hintKg) / hintKg) * 100.0
+    val rounded = pct.toInt()
+    if (rounded == 0) return null
+    val sign = if (rounded > 0) "+" else ""
+    return PercentDelta(text = "$sign$rounded%", positive = rounded > 0)
 }
 
 private enum class NumpadField { REPS, KG }
