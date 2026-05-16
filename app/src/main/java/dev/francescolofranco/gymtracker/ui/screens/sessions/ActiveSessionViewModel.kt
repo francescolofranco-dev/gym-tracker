@@ -49,6 +49,9 @@ class ActiveSessionViewModel @Inject constructor(
     val unit: StateFlow<WeightUnit> = userPrefs.unit
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WeightUnit.KG)
 
+    val keepScreenOn: StateFlow<Boolean> = userPrefs.keepScreenOnDuringSession
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     val hints: StateFlow<SetHints> = details
         .map { items ->
             val byId = HashMap<Long, List<HintRow>>()

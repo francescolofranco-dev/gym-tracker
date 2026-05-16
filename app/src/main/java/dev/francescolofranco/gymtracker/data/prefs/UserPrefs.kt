@@ -24,6 +24,7 @@ class UserPrefs(private val context: Context) {
         val DRIVE_BACKUP_ENABLED = booleanPreferencesKey("drive_backup_enabled")
         val LAST_BACKUP_AT = longPreferencesKey("last_backup_at")
         val HAS_OFFERED_DRIVE_RESTORE = booleanPreferencesKey("has_offered_drive_restore")
+        val KEEP_SCREEN_ON_DURING_SESSION = booleanPreferencesKey("keep_screen_on_during_session")
     }
 
     val unit: Flow<WeightUnit> = context.dataStore.data.map { p ->
@@ -46,6 +47,10 @@ class UserPrefs(private val context: Context) {
         p[Keys.HAS_OFFERED_DRIVE_RESTORE] ?: false
     }
 
+    val keepScreenOnDuringSession: Flow<Boolean> = context.dataStore.data.map { p ->
+        p[Keys.KEEP_SCREEN_ON_DURING_SESSION] ?: false
+    }
+
     suspend fun setUnit(unit: WeightUnit) {
         context.dataStore.edit { it[Keys.UNIT] = unit.name }
     }
@@ -64,5 +69,9 @@ class UserPrefs(private val context: Context) {
 
     suspend fun setHasOfferedDriveRestore(offered: Boolean) {
         context.dataStore.edit { it[Keys.HAS_OFFERED_DRIVE_RESTORE] = offered }
+    }
+
+    suspend fun setKeepScreenOnDuringSession(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.KEEP_SCREEN_ON_DURING_SESSION] = enabled }
     }
 }

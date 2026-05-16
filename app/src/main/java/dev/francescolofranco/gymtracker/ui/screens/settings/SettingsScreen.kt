@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Scale
+import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -126,6 +127,13 @@ fun SettingsScreen(
         ) {
             item { SectionHeader("Display") }
             item { UnitsRow(unit = unit, onChange = settingsViewModel::setUnit) }
+            item {
+                val keepOn by settingsViewModel.keepScreenOnDuringSession.collectAsStateWithLifecycle()
+                KeepScreenOnRow(
+                    enabled = keepOn,
+                    onChange = settingsViewModel::setKeepScreenOnDuringSession,
+                )
+            }
             item { HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh) }
 
             item { SectionHeader("Workout") }
@@ -343,6 +351,31 @@ private fun formatRelativeTime(at: Instant): String {
             val zone = ZoneId.systemDefault()
             DateTimeFormatter.ofPattern("d MMM").withZone(zone).format(at)
         }
+    }
+}
+
+@Composable
+private fun KeepScreenOnRow(enabled: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+        Icon(imageVector = Icons.Filled.Visibility, contentDescription = null)
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = "Keep screen on during session", style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = "Prevents the screen from sleeping while the active session screen is open.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        androidx.compose.material3.Switch(
+            checked = enabled,
+            onCheckedChange = onChange,
+        )
     }
 }
 

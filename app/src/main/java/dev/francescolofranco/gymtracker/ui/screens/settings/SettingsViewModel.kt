@@ -19,5 +19,12 @@ class SettingsViewModel @Inject constructor(
     val unit: StateFlow<WeightUnit> = prefs.unit
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WeightUnit.KG)
 
+    val keepScreenOnDuringSession: StateFlow<Boolean> = prefs.keepScreenOnDuringSession
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
     fun setUnit(u: WeightUnit) = viewModelScope.launch { prefs.setUnit(u) }
+
+    fun setKeepScreenOnDuringSession(enabled: Boolean) = viewModelScope.launch {
+        prefs.setKeepScreenOnDuringSession(enabled)
+    }
 }

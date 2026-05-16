@@ -173,14 +173,18 @@ fun SetRow(
 
 @Composable
 private fun SetIndex(number: Int, belowRange: Boolean, isLogged: Boolean) {
+    // Green = logged is consistent with the body diagram's "in-range" colour and matches the
+    // CheckButton below, so a glance down the index column tells the user how many sets are
+    // in the bank. Below-range still wins the colour slot since it's the more actionable
+    // state ("you fell short of the rep target on that one").
     val bg = when {
         belowRange -> VolumeBlue
-        isLogged -> MaterialTheme.colorScheme.tertiaryContainer
+        isLogged -> dev.francescolofranco.gymtracker.ui.theme.VolumeGreen
         else -> MaterialTheme.colorScheme.surfaceContainerHighest
     }
     val fg = when {
-        belowRange -> MaterialTheme.colorScheme.onPrimary
-        isLogged -> MaterialTheme.colorScheme.onTertiaryContainer
+        belowRange -> androidx.compose.ui.graphics.Color.White
+        isLogged -> androidx.compose.ui.graphics.Color.White
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     Box(
@@ -403,12 +407,13 @@ private fun CheckButton(
 ) {
     val bg = when {
         isSkipped -> MaterialTheme.colorScheme.surfaceContainerHighest
-        isLogged -> MaterialTheme.colorScheme.primary
+        // Match the SetIndex circle so "logged" reads as the same green affordance across the row.
+        isLogged -> dev.francescolofranco.gymtracker.ui.theme.VolumeGreen
         else -> MaterialTheme.colorScheme.surfaceVariant
     }
     val tint = when {
         isSkipped -> MaterialTheme.colorScheme.onSurfaceVariant
-        isLogged -> MaterialTheme.colorScheme.onPrimary
+        isLogged -> androidx.compose.ui.graphics.Color.White
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     val clickModifier = if (editable) {

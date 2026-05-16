@@ -55,7 +55,11 @@ private val FRONT_BLOCKS = listOf(
     MuscleBlock(Muscle.BICEPS, listOf(NRect(0.18f, 0.30f, 0.28f, 0.44f), NRect(0.72f, 0.30f, 0.82f, 0.44f))),
     MuscleBlock(Muscle.CORE, listOf(NRect(0.36f, 0.38f, 0.64f, 0.54f))),
     MuscleBlock(Muscle.FOREARMS, listOf(NRect(0.14f, 0.46f, 0.24f, 0.60f), NRect(0.76f, 0.46f, 0.86f, 0.60f))),
-    MuscleBlock(Muscle.QUADS, listOf(NRect(0.32f, 0.60f, 0.48f, 0.82f), NRect(0.52f, 0.60f, 0.68f, 0.82f))),
+    MuscleBlock(Muscle.QUADS, listOf(NRect(0.30f, 0.60f, 0.45f, 0.82f), NRect(0.55f, 0.60f, 0.70f, 0.82f))),
+    // Adductors sit on the inner thigh, anatomically distinct from quads / hamstrings. Single
+    // central block between the two quad rects — narrower and a touch shorter so it doesn't
+    // dominate the layout.
+    MuscleBlock(Muscle.ADDUCTORS, listOf(NRect(0.46f, 0.62f, 0.54f, 0.78f))),
     MuscleBlock(Muscle.CALVES, listOf(NRect(0.34f, 0.84f, 0.46f, 0.96f), NRect(0.54f, 0.84f, 0.66f, 0.96f))),
 )
 

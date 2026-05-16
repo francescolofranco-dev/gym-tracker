@@ -48,6 +48,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -67,6 +68,7 @@ fun ActiveSessionScreen(
     val unit by viewModel.unit.collectAsStateWithLifecycle()
     val hints by viewModel.hints.collectAsStateWithLifecycle()
     val exitRequested by viewModel.exitRequested.collectAsStateWithLifecycle()
+    val keepScreenOn by viewModel.keepScreenOn.collectAsStateWithLifecycle()
 
     var showPicker by remember { mutableStateOf(false) }
     var confirmEnd by remember { mutableStateOf(false) }
@@ -77,10 +79,48 @@ fun ActiveSessionScreen(
         if (exitRequested) onExit()
     }
 
+    // Honour the "keep screen on during session" pref. Adds the FLAG_KEEP_SCREEN_ON window
+    // flag while this screen is mounted AND the toggle is on; cleared on dispose so leaving
+    // the screen lets the device sleep normally.
+    val view = androidx.compose.ui.platform.LocalView.current
+    androidx.compose.runtime.DisposableEffect(keepScreenOn) {
+        val window = (view.context as? android.app.Activity)?.window
+        if (keepScreenOn && window != null) {
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+        onDispose {
+            window?.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
     Scaffold(
         topBar = {
+            // Per-session progress = logged non-skipped sets / sum of planned sets across all
+            // non-skipped exercises. Skipped exercises drop out of both numerator and
+            // denominator so they don't drag the headline down.
+            val progressPct = remember(details) {
+                val plannedTotal = details
+                    .filter { !it.sessionExercise.isSkipped }
+                    .sumOf { it.exercise.targetSets }
+                val loggedTotal = details
+                    .filter { !it.sessionExercise.isSkipped }
+                    .sumOf { d -> d.setLogs.count { it.loggedAt != null && it.reps != null && !it.isSkipped } }
+                if (plannedTotal == 0) 0 else (loggedTotal * 100 / plannedTotal).coerceIn(0, 100)
+            }
             TopAppBar(
-                title = { Text("Session") },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("Session")
+                        if (details.isNotEmpty()) {
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "$progressPct%",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                },
                 actions = {
                     IconButton(onClick = { sessionNotesEditor = true }) {
                         Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = "Session notes")
@@ -149,6 +189,7 @@ fun ActiveSessionScreen(
 
     if (showPicker) {
         ExercisePickerSheet(
+            excludeIds = details.map { it.exercise.id }.toSet(),
             onDismiss = { showPicker = false },
             onPick = { e -> viewModel.addExercise(e.id) },
         )
@@ -256,6 +297,14 @@ fun ExerciseCard(
     val sets = detail.setLogs.sortedBy { it.setNumber }
     val loggedSets = sets.count { it.loggedAt != null && it.reps != null && !it.isSkipped }
     val incomplete = !detail.sessionExercise.isSkipped && loggedSets < exercise.targetSets
+    // Completed = every planned set is logged. A subtle green tint on the card body confirms
+    // the exercise is done without shouting — matches the SetIndex / CheckButton green.
+    val isComplete = !detail.sessionExercise.isSkipped &&
+        exercise.targetSets > 0 && loggedSets >= exercise.targetSets
+    val cardBg = if (isComplete) {
+        dev.francescolofranco.gymtracker.ui.theme.VolumeGreen.copy(alpha = 0.18f)
+            .compositeOver(MaterialTheme.colorScheme.surfaceContainer)
+    } else MaterialTheme.colorScheme.surfaceContainer
 
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -263,7 +312,7 @@ fun ExerciseCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .background(cardBg)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {

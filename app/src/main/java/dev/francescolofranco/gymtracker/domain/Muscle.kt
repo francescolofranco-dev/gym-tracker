@@ -12,6 +12,7 @@ enum class Muscle(val displayName: String) {
     FOREARMS("Forearms"),
     QUADS("Quads"),
     HAMSTRINGS("Hamstrings"),
+    ADDUCTORS("Adductors"),
     GLUTES("Glutes"),
     CALVES("Calves"),
     CORE("Core / Abs");
