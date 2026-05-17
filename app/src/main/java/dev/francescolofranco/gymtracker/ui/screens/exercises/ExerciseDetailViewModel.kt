@@ -34,7 +34,22 @@ class ExerciseDetailViewModel @Inject constructor(
     val unit: StateFlow<WeightUnit> = userPrefs.unit
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WeightUnit.KG)
 
-    fun rename(newName: String) = viewModelScope.launch {
-        if (newName.isNotBlank()) repo.rename(exerciseId, newName)
+    /**
+     * Save the edited form back into the exercise. Stats queries join through the exercise
+     * table at read time so muscle reassignments retroactively re-attribute every historical
+     * set — no DB migration needed for the "I mis-categorised this exercise" case.
+     */
+    fun save(state: ExerciseFormState) = viewModelScope.launch {
+        if (state.primaryMuscles.isEmpty() || state.name.isBlank()) return@launch
+        repo.update(
+            id = exerciseId,
+            name = state.name,
+            primaryMuscles = state.primaryMuscles,
+            secondaryMuscles = state.secondaryMuscles,
+            targetSets = state.targetSets,
+            repRangeMin = state.repRangeMin,
+            repRangeMax = state.repRangeMax,
+            isBodyweight = state.isBodyweight,
+        )
     }
 }

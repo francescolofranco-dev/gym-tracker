@@ -53,7 +53,7 @@ fun ExerciseDetailScreen(
     val exercise by viewModel.exercise.collectAsStateWithLifecycle()
     val history by viewModel.history.collectAsStateWithLifecycle()
     val unit by viewModel.unit.collectAsStateWithLifecycle()
-    var showRename by remember { mutableStateOf(false) }
+    var showEdit by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -65,8 +65,8 @@ fun ExerciseDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showRename = true }, enabled = exercise != null) {
-                        Icon(Icons.Filled.Edit, contentDescription = "Rename exercise")
+                    IconButton(onClick = { showEdit = true }, enabled = exercise != null) {
+                        Icon(Icons.Filled.Edit, contentDescription = "Edit exercise")
                     }
                 },
             )
@@ -122,15 +122,16 @@ fun ExerciseDetailScreen(
         }
     }
 
-    if (showRename) {
+    if (showEdit) {
         val current = exercise
         if (current != null) {
-            RenameDialog(
-                initial = current.name,
-                onCancel = { showRename = false },
-                onConfirm = { newName ->
-                    viewModel.rename(newName)
-                    showRename = false
+            ExerciseFormSheet(
+                initial = current.toFormState(),
+                title = "Edit exercise",
+                onDismiss = { showEdit = false },
+                onSave = { state ->
+                    viewModel.save(state)
+                    showEdit = false
                 },
             )
         }

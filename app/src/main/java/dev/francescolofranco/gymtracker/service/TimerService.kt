@@ -103,7 +103,6 @@ class TimerService : Service() {
             .setCategory(NotificationCompat.CATEGORY_STOPWATCH)
             .setOnlyAlertOnce(true) // updates each tick shouldn't re-alert
             .setShowWhen(false)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             // Compact layout for the always-visible collapsed view (Spotify-style — timer
             // visible without expanding the shade). Big layout for the expanded view, where
@@ -191,10 +190,6 @@ class TimerService : Service() {
                 setSound(null, null)
                 enableVibration(false)
                 enableLights(false)
-                // Lock-screen visibility is set on the *channel*, not the notification, on
-                // Android 8+. Without this the timer pill is hidden from the lock screen
-                // even when the notification itself uses VISIBILITY_PUBLIC.
-                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
             }
             nm.createNotificationChannel(channel)
         }

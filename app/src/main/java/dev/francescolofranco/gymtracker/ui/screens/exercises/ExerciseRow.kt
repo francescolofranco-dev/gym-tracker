@@ -1,7 +1,7 @@
 package dev.francescolofranco.gymtracker.ui.screens.exercises
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -19,12 +19,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 fun ExerciseRow(
     exercise: ExerciseEntity,
     onTap: () -> Unit,
-    onLongPress: () -> Unit,
     onDeleteRequest: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -32,7 +30,7 @@ fun ExerciseRow(
         modifier = modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.surface)
-            .combinedClickable(onClick = onTap, onLongClick = onLongPress)
+            .clickable(onClick = onTap)
             .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -47,7 +47,6 @@ fun ExercisesScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    var actionTarget by remember { mutableStateOf<ExerciseEntity?>(null) }
     var deleteConfirmTarget by remember { mutableStateOf<ExerciseEntity?>(null) }
 
     fun deleteWithUndo(target: ExerciseEntity) {
@@ -99,7 +98,6 @@ fun ExercisesScreen(
                         ExerciseRow(
                             exercise = exercise,
                             onTap = { onOpenDetail(exercise.id) },
-                            onLongPress = { actionTarget = exercise },
                             onDeleteRequest = { deleteConfirmTarget = exercise },
                         )
                     }
@@ -113,38 +111,11 @@ fun ExercisesScreen(
         is EditMode.Create -> {
             ExerciseFormSheet(
                 initial = mode.initial,
-                title = if (mode.isDuplicate) "Duplicate exercise" else "New exercise",
+                title = "New exercise",
                 onDismiss = { viewModel.closeForm() },
                 onSave = { viewModel.save(it) },
             )
         }
-        is EditMode.Edit -> {
-            ExerciseFormSheet(
-                initial = mode.initial,
-                title = "Edit exercise",
-                onDismiss = { viewModel.closeForm() },
-                onSave = { viewModel.save(it) },
-            )
-        }
-    }
-
-    actionTarget?.let { target ->
-        ExerciseActionsSheet(
-            exercise = target,
-            onDismiss = { actionTarget = null },
-            onEdit = {
-                viewModel.openEdit(target)
-                actionTarget = null
-            },
-            onDuplicate = {
-                viewModel.openDuplicate(target)
-                actionTarget = null
-            },
-            onDelete = {
-                actionTarget = null
-                deleteConfirmTarget = target
-            },
-        )
     }
 
     deleteConfirmTarget?.let { target ->
