@@ -29,17 +29,24 @@ interface SessionDao {
         FROM session s
         LEFT JOIN session_exercise se ON se.sessionId = s.id AND se.isSkipped = 0
         LEFT JOIN set_log sl ON sl.sessionExerciseId = se.id
+        WHERE s.acceptedAt IS NOT NULL
         GROUP BY s.id
         ORDER BY s.startedAt DESC
         """
     )
     fun observeAllSummaries(): Flow<List<SessionSummary>>
 
+    // The "active" session can be a draft (acceptedAt = null) or accepted-but-not-ended; both
+    // need the same row when the user re-enters from the Start button. The banner / past list
+    // filter on acceptedAt separately.
     @Query("SELECT * FROM session WHERE endedAt IS NULL ORDER BY startedAt DESC LIMIT 1")
     fun observeActive(): Flow<SessionEntity?>
 
     @Query("SELECT * FROM session WHERE endedAt IS NULL ORDER BY startedAt DESC LIMIT 1")
     suspend fun activeSession(): SessionEntity?
+
+    @Query("UPDATE session SET acceptedAt = :at WHERE id = :id")
+    suspend fun accept(id: Long, at: Instant = Instant.now())
 
     @Query("SELECT * FROM session WHERE id = :id LIMIT 1")
     suspend fun byId(id: Long): SessionEntity?

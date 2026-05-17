@@ -22,6 +22,8 @@ import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NotInterested
 import androidx.compose.material.icons.filled.Stop
@@ -141,12 +143,23 @@ fun ActiveSessionScreen(
             )
         },
     ) { padding ->
+        val isDraft = session?.acceptedAt == null
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            TimerPill()
+            // Draft state shows a prominent "Start workout" CTA in place of the timer pill —
+            // the timer can't start until the session is accepted. Disabled until at least one
+            // exercise has been picked, otherwise there's nothing to start.
+            if (isDraft) {
+                StartWorkoutBanner(
+                    enabled = details.isNotEmpty(),
+                    onStart = { viewModel.acceptSession() },
+                )
+            } else {
+                TimerPill()
+            }
 
             if (details.isEmpty()) {
                 EmptyActiveSession(modifier = Modifier.fillMaxSize())
@@ -234,6 +247,41 @@ fun ActiveSessionScreen(
                 exerciseNotesTarget = null
             },
         )
+    }
+}
+
+/**
+ * Replaces the timer pill while the session is still a draft. Until the user taps Start
+ * workout the session is invisible from the home screen banner and the past list, so this
+ * banner is the only place that acknowledges work is in progress.
+ */
+@Composable
+private fun StartWorkoutBanner(enabled: Boolean, onStart: () -> Unit) {
+    androidx.compose.material3.Button(
+        onClick = onStart,
+        enabled = enabled,
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+            .height(72.dp),
+    ) {
+        Icon(
+            imageVector = Icons.Filled.PlayArrow,
+            contentDescription = null,
+            modifier = Modifier.size(28.dp),
+        )
+        Spacer(Modifier.width(12.dp))
+        Column(horizontalAlignment = Alignment.Start) {
+            Text(
+                text = "Start workout",
+                style = MaterialTheme.typography.titleMedium,
+            )
+            Text(
+                text = if (enabled) "Begins the timer and counts this in your history."
+                else "Pick an exercise first.",
+                style = MaterialTheme.typography.labelSmall,
+            )
+        }
     }
 }
 
@@ -380,7 +428,12 @@ fun ExerciseCard(
         HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
 
         sets.forEach { log ->
+            // Prefer the matching set-number hint, but fall back to *any* prior hint so a new
+            // session's set 1 still pre-fills when the previous session only logged sets 3+4.
+            // Without this fallback the first sets defaulted to 0 kg and reported a misleading
+            // -100% delta.
             val hint = hints.firstOrNull { it.setNumber == log.setNumber }
+                ?: hints.firstOrNull()
             SetRow(
                 state = SetRowState(
                     log = log,

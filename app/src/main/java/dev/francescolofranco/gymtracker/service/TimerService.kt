@@ -191,6 +191,10 @@ class TimerService : Service() {
                 setSound(null, null)
                 enableVibration(false)
                 enableLights(false)
+                // Lock-screen visibility is set on the *channel*, not the notification, on
+                // Android 8+. Without this the timer pill is hidden from the lock screen
+                // even when the notification itself uses VISIBILITY_PUBLIC.
+                lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
             }
             nm.createNotificationChannel(channel)
         }

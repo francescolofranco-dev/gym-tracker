@@ -69,6 +69,7 @@ private fun SessionEntity.toJson(): JSONObject = JSONObject().apply {
     put("endedAt", endedAt?.toString() ?: JSONObject.NULL)
     put("notes", notes ?: JSONObject.NULL)
     put("templateId", templateId ?: JSONObject.NULL)
+    put("acceptedAt", acceptedAt?.toString() ?: JSONObject.NULL)
 }
 
 private fun SessionExerciseEntity.toJson(): JSONObject = JSONObject().apply {

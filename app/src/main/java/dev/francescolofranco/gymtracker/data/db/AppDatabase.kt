@@ -25,7 +25,7 @@ import dev.francescolofranco.gymtracker.data.db.entities.TemplateExerciseEntity
         TemplateEntity::class,
         TemplateExerciseEntity::class,
     ],
-    version = 2,
+    version = 3,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -77,6 +77,19 @@ abstract class AppDatabase : RoomDatabase() {
                 db.execSQL("DROP TABLE exercise")
                 db.execSQL("ALTER TABLE exercise_new RENAME TO exercise")
                 db.execSQL("CREATE INDEX index_exercise_deletedAt ON exercise(deletedAt)")
+            }
+        }
+
+        /**
+         * v2 → v3: session gains an `acceptedAt` timestamp. Null = draft (created on tap-Start
+         * but not yet promoted via the "Start workout" button), non-null = a real session.
+         * Backfills every existing session as already-accepted (acceptedAt = startedAt) so the
+         * user doesn't suddenly lose any history.
+         */
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE session ADD COLUMN acceptedAt INTEGER")
+                db.execSQL("UPDATE session SET acceptedAt = startedAt")
             }
         }
     }

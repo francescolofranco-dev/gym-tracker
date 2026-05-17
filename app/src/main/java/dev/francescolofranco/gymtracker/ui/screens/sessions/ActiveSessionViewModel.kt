@@ -90,8 +90,16 @@ class ActiveSessionViewModel @Inject constructor(
 
     fun logSet(setLogId: Long, reps: Int, kg: Double) = viewModelScope.launch {
         repo.logSet(setLogId, reps = reps, kg = kg)
+        // First ✓ implies the user has actually started; auto-promote a draft so it stops
+        // being hidden from the home screen.
+        repo.acceptSession(sessionId)
         idleScheduler.schedule(sessionId)
         timer.reset()
+    }
+
+    /** Explicit "Start workout" button — promotes a draft session to a real in-progress one. */
+    fun acceptSession() = viewModelScope.launch {
+        repo.acceptSession(sessionId)
     }
 
     fun unlogSet(setLogId: Long) = viewModelScope.launch {

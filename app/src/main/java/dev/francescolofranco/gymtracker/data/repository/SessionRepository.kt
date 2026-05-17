@@ -56,6 +56,16 @@ class SessionRepository @Inject constructor(
     suspend fun endSession(id: Long, at: Instant = Instant.now()) = sessionDao.end(id, at)
 
     /**
+     * Promote a draft session to an accepted (real) one. Until the session has [acceptedAt],
+     * it's invisible from the home screen banner and the past sessions list — it's just a
+     * setup workspace. Idempotent: re-accepting an already-accepted session is a no-op.
+     */
+    suspend fun acceptSession(id: Long, at: Instant = Instant.now()) {
+        val current = sessionDao.byId(id) ?: return
+        if (current.acceptedAt == null) sessionDao.accept(id, at)
+    }
+
+    /**
      * Hard-delete a session and cascade-remove its exercises + set logs. Returns `true` if
      * the deleted row was the active session (endedAt = null) so callers can tear down the
      * timer notification accordingly.

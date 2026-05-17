@@ -132,7 +132,10 @@ fun SessionsScreen(
                 .fillMaxSize()
                 .padding(padding),
         ) {
-            active?.let { session ->
+            // Only surface a "Session in progress" banner once the user has actually started
+            // (acceptedAt set via the explicit "Start workout" button or by logging the first
+            // ✓). Drafts stay invisible from this screen — the user re-enters via Start.
+            active?.takeIf { it.acceptedAt != null }?.let { session ->
                 ActiveSessionBanner(
                     session = session,
                     onResume = { onOpenActive(session.id) },

@@ -23,5 +23,12 @@ data class SessionEntity(
     val startedAt: Instant,
     val endedAt: Instant? = null,
     val notes: String? = null,
-    val templateId: Long? = null
+    val templateId: Long? = null,
+    /**
+     * When non-null, the user has explicitly hit "Start workout" — the session is real and
+     * shows in the in-progress banner / past-session history. Null = a draft created on
+     * tap-Start that's still in the exercise-selection phase; drafts are invisible everywhere
+     * outside the live setup screen.
+     */
+    val acceptedAt: Instant? = null,
 )

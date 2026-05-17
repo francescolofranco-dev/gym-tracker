@@ -120,8 +120,11 @@ fun SetRow(
             label = formatWeightChip(displayKg, state.unit, state.isBodyweight),
             subLabel = pctDelta?.text,
             subLabelColor = pctDelta?.let {
-                if (it.positive) MaterialTheme.colorScheme.primary
-                else MaterialTheme.colorScheme.error
+                when (it.tone) {
+                    PercentTone.Up -> MaterialTheme.colorScheme.primary
+                    PercentTone.Down -> MaterialTheme.colorScheme.error
+                    PercentTone.Same -> MaterialTheme.colorScheme.onSurfaceVariant
+                }
             },
             onClick = if (editable) ({ numpadFor = NumpadField.KG }) else null,
             enabled = editable && !isSkipped,
@@ -445,20 +448,26 @@ private fun formatWeightChip(value: Double, unit: WeightUnit, isBodyweight: Bool
     return "$prefix$number ${unit.label()}"
 }
 
-private data class PercentDelta(val text: String, val positive: Boolean)
+private enum class PercentTone { Up, Down, Same }
+
+private data class PercentDelta(val text: String, val tone: PercentTone)
 
 /**
- * Percentage change vs the matching set from the last session. Returned only when there's a
- * non-trivial hint (>0) and the rounded change is at least 1% — otherwise the sub-label adds
- * noise without signal.
+ * Percentage change vs the matching set from the last session. Returns:
+ *  - "+N%" / "-N%" when the rounded change is non-zero,
+ *  - "0%" (neutral tone) when the new weight matches the previous one — the explicit
+ *    "you're at the same weight" signal that the user asked for instead of no chip at all.
+ * Returns null only when there's no prior data to compare against (hintKg null or ≤ 0).
  */
 private fun computePercentDelta(currentKg: Double, hintKg: Double?): PercentDelta? {
     if (hintKg == null || hintKg <= 0.0) return null
     val pct = ((currentKg - hintKg) / hintKg) * 100.0
     val rounded = pct.toInt()
-    if (rounded == 0) return null
-    val sign = if (rounded > 0) "+" else ""
-    return PercentDelta(text = "$sign$rounded%", positive = rounded > 0)
+    return when {
+        rounded > 0 -> PercentDelta("+$rounded%", PercentTone.Up)
+        rounded < 0 -> PercentDelta("$rounded%", PercentTone.Down)
+        else -> PercentDelta("0%", PercentTone.Same)
+    }
 }
 
 private enum class NumpadField { REPS, KG }

@@ -135,13 +135,24 @@ private fun JSONObject.parseTemplateExercise(): TemplateExerciseEntity = Templat
     orderInTemplate = getInt("orderInTemplate"),
 )
 
-private fun JSONObject.parseSession(): SessionEntity = SessionEntity(
-    id = getLong("id"),
-    startedAt = Instant.parse(getString("startedAt")),
-    endedAt = optStringOrNull("endedAt")?.let { Instant.parse(it) },
-    notes = optStringOrNull("notes"),
-    templateId = if (isNull("templateId")) null else optLong("templateId").takeIf { it != 0L },
-)
+private fun JSONObject.parseSession(): SessionEntity {
+    val startedAt = Instant.parse(getString("startedAt"))
+    // Old backups (schema v1/v2) had no acceptedAt — treat those sessions as already
+    // accepted at their start time so they keep showing in history after restore.
+    val acceptedAt = if (has("acceptedAt") && !isNull("acceptedAt")) {
+        optStringOrNull("acceptedAt")?.let { Instant.parse(it) }
+    } else {
+        startedAt
+    }
+    return SessionEntity(
+        id = getLong("id"),
+        startedAt = startedAt,
+        endedAt = optStringOrNull("endedAt")?.let { Instant.parse(it) },
+        notes = optStringOrNull("notes"),
+        templateId = if (isNull("templateId")) null else optLong("templateId").takeIf { it != 0L },
+        acceptedAt = acceptedAt,
+    )
+}
 
 private fun JSONObject.parseSessionExercise(): SessionExerciseEntity = SessionExerciseEntity(
     id = getLong("id"),
