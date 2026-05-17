@@ -48,22 +48,42 @@ class ExercisesViewModel @Inject constructor(
         )
     }
 
+    fun openEdit(source: ExerciseEntity) {
+        _editing.value = EditMode.Edit(
+            exerciseId = source.id,
+            initial = source.toFormState(),
+        )
+    }
+
     fun closeForm() {
         _editing.value = EditMode.None
     }
 
     fun save(state: ExerciseFormState) {
         if (state.primaryMuscles.isEmpty()) return
+        val mode = _editing.value
         viewModelScope.launch {
-            repo.create(
-                name = state.name,
-                primaryMuscles = state.primaryMuscles,
-                secondaryMuscles = state.secondaryMuscles,
-                targetSets = state.targetSets,
-                repRangeMin = state.repRangeMin,
-                repRangeMax = state.repRangeMax,
-                isBodyweight = state.isBodyweight,
-            )
+            when (mode) {
+                is EditMode.Edit -> repo.update(
+                    id = mode.exerciseId,
+                    name = state.name,
+                    primaryMuscles = state.primaryMuscles,
+                    secondaryMuscles = state.secondaryMuscles,
+                    targetSets = state.targetSets,
+                    repRangeMin = state.repRangeMin,
+                    repRangeMax = state.repRangeMax,
+                    isBodyweight = state.isBodyweight,
+                )
+                else -> repo.create(
+                    name = state.name,
+                    primaryMuscles = state.primaryMuscles,
+                    secondaryMuscles = state.secondaryMuscles,
+                    targetSets = state.targetSets,
+                    repRangeMin = state.repRangeMin,
+                    repRangeMax = state.repRangeMax,
+                    isBodyweight = state.isBodyweight,
+                )
+            }
             _editing.value = EditMode.None
         }
     }
@@ -82,5 +102,9 @@ sealed interface EditMode {
     data class Create(
         val initial: ExerciseFormState,
         val isDuplicate: Boolean = false,
+    ) : EditMode
+    data class Edit(
+        val exerciseId: Long,
+        val initial: ExerciseFormState,
     ) : EditMode
 }

@@ -92,7 +92,8 @@ class TimerService : Service() {
         val resetPi = pendingIntent(this, ACTION_RESET, REQ_RESET)
         val stopPi = pendingIntent(this, ACTION_STOP, REQ_STOP)
 
-        val customView = buildTimerView(state)
+        val compactView = buildTimerView(state, R.layout.notification_timer_compact, expanded = false)
+        val expandedView = buildTimerView(state, R.layout.notification_timer, expanded = true)
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
@@ -104,13 +105,11 @@ class TimerService : Service() {
             .setShowWhen(false)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            // Note: previously called setSilent(true) which forced the notification into the
-            // "Silent" shade group — that's where Android dims the content text. Sound is now
-            // suppressed at the channel level (setSound(null) + enableVibration(false)) while
-            // the channel importance stays DEFAULT so the notification reads with full
-            // contrast.
-            .setCustomContentView(customView)
-            .setCustomBigContentView(customView)
+            // Compact layout for the always-visible collapsed view (Spotify-style — timer
+            // visible without expanding the shade). Big layout for the expanded view, where
+            // the prominent chronometer + state subtitle have room to breathe.
+            .setCustomContentView(compactView)
+            .setCustomBigContentView(expandedView)
             .setStyle(NotificationCompat.DecoratedCustomViewStyle())
             .addAction(0, getString(R.string.timer_reset), resetPi)
             .addAction(0, getString(R.string.timer_stop), stopPi)
@@ -120,23 +119,24 @@ class TimerService : Service() {
     /**
      * Builds the custom RemoteViews layout that renders the timer prominently inside the
      * notification body. The Chronometer ticks autonomously once shown, so we don't have to
-     * re-post the notification every second.
+     * re-post the notification every second. Same layout-binding logic for compact + big,
+     * differing only on whether the secondary "state" text view is present.
      */
-    private fun buildTimerView(state: TimerState): RemoteViews {
-        val rv = RemoteViews(packageName, R.layout.notification_timer)
+    private fun buildTimerView(state: TimerState, layoutRes: Int, expanded: Boolean): RemoteViews {
+        val rv = RemoteViews(packageName, layoutRes)
         when (state) {
             is TimerState.Running -> {
                 rv.setChronometer(R.id.timerChronometer, state.baseElapsedRealtime, null, true)
                 rv.setViewVisibility(R.id.timerChronometer, View.VISIBLE)
                 rv.setViewVisibility(R.id.timerStopped, View.GONE)
-                rv.setTextViewText(R.id.timerStateText, getString(R.string.timer_running))
+                if (expanded) rv.setTextViewText(R.id.timerStateText, getString(R.string.timer_running))
             }
             TimerState.Stopped -> {
                 // Freeze the chronometer at 00:00 by setting started=false and hiding it.
                 rv.setChronometer(R.id.timerChronometer, SystemClock.elapsedRealtime(), null, false)
                 rv.setViewVisibility(R.id.timerChronometer, View.GONE)
                 rv.setViewVisibility(R.id.timerStopped, View.VISIBLE)
-                rv.setTextViewText(R.id.timerStateText, getString(R.string.timer_stopped))
+                if (expanded) rv.setTextViewText(R.id.timerStateText, getString(R.string.timer_stopped))
             }
         }
         return rv

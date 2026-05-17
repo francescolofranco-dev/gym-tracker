@@ -118,12 +118,24 @@ fun ExercisesScreen(
                 onSave = { viewModel.save(it) },
             )
         }
+        is EditMode.Edit -> {
+            ExerciseFormSheet(
+                initial = mode.initial,
+                title = "Edit exercise",
+                onDismiss = { viewModel.closeForm() },
+                onSave = { viewModel.save(it) },
+            )
+        }
     }
 
     actionTarget?.let { target ->
         ExerciseActionsSheet(
             exercise = target,
             onDismiss = { actionTarget = null },
+            onEdit = {
+                viewModel.openEdit(target)
+                actionTarget = null
+            },
             onDuplicate = {
                 viewModel.openDuplicate(target)
                 actionTarget = null

@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Collapsed-state notification layout: a single horizontal row with the timer prominently
+  on the right, mirroring Spotify's collapsed media notification. The full layout
+  (notification_timer.xml) is used for the expanded state.
+
+  Explicit text colours (full / 70% white) keep contrast high regardless of how the system
+  notification theme tints custom RemoteViews — same reasoning as the expanded layout.
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp">
+
+    <TextView
+        android:id="@+id/timerLabel"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:text="@string/timer_title"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:textColor="#B3FFFFFF"
+        android:maxLines="1"
+        android:ellipsize="end" />
+
+    <Chronometer
+        android:id="@+id/timerChronometer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFFFF"
+        android:fontFamily="monospace" />
+
+    <TextView
+        android:id="@+id/timerStopped"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="00:00"
+        android:textSize="20sp"
+        android:textStyle="bold"
+        android:textColor="#FFFFFFFF"
+        android:fontFamily="monospace"
+        android:visibility="gone" />
+</LinearLayout>

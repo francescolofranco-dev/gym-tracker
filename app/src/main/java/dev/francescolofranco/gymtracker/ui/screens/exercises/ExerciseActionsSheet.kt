@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -30,6 +31,7 @@ import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 fun ExerciseActionsSheet(
     exercise: ExerciseEntity,
     onDismiss: () -> Unit,
+    onEdit: () -> Unit,
     onDuplicate: () -> Unit,
     onDelete: () -> Unit,
 ) {
@@ -49,6 +51,11 @@ fun ExerciseActionsSheet(
                 text = exercise.name,
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            )
+            ActionRow(
+                icon = Icons.Filled.Edit,
+                label = "Edit",
+                onClick = onEdit,
             )
             ActionRow(
                 icon = Icons.Filled.ContentCopy,
