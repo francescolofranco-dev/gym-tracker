@@ -14,12 +14,14 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.PlayArrow
@@ -178,12 +180,14 @@ fun ActiveSessionScreen(
                         SessionNotesPreview(notes = notes, onEdit = { sessionNotesEditor = true })
                     }
                 }
-                items(items = details, key = { it.sessionExercise.id }) { detail ->
+                itemsIndexed(items = details, key = { _, d -> d.sessionExercise.id }) { index, detail ->
                     ExerciseCard(
                         detail = detail,
                         unit = unit,
                         hints = hints.byExerciseId[detail.exercise.id] ?: emptyList(),
                         editable = true,
+                        canMoveUp = index > 0,
+                        canMoveDown = index < details.lastIndex,
                         onCommitSet = { setLogId, reps, kg -> viewModel.logSet(setLogId, reps, kg) },
                         onUncommitSet = { setLogId -> viewModel.unlogSet(setLogId) },
                         onDraftSet = { setLogId, reps, kg ->
@@ -195,6 +199,8 @@ fun ActiveSessionScreen(
                         onSkipExercise = { skipped ->
                             viewModel.setExerciseSkipped(detail.sessionExercise.id, skipped)
                         },
+                        onMoveUp = { viewModel.moveSessionExercise(detail.sessionExercise.id, -1) },
+                        onMoveDown = { viewModel.moveSessionExercise(detail.sessionExercise.id, +1) },
                         onEditExerciseNotes = { exerciseNotesTarget = detail },
                         onRemoveExercise = { viewModel.removeSessionExercise(detail.sessionExercise.id) },
                     )
@@ -337,11 +343,15 @@ fun ExerciseCard(
     unit: WeightUnit,
     hints: List<HintRow>,
     editable: Boolean,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
     onCommitSet: (setLogId: Long, reps: Int, kg: Double) -> Unit,
     onUncommitSet: (setLogId: Long) -> Unit,
     onDraftSet: (setLogId: Long, reps: Int?, kg: Double?) -> Unit,
     onToggleSetSkipped: (setLogId: Long, currentlySkipped: Boolean) -> Unit,
     onSkipExercise: (skipped: Boolean) -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
     onEditExerciseNotes: () -> Unit,
     onRemoveExercise: () -> Unit,
 ) {
@@ -402,6 +412,26 @@ fun ExerciseCard(
                     Icon(Icons.Filled.MoreVert, contentDescription = "Exercise options")
                 }
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    // Move up / down: greyed out at the edges instead of hidden so the menu
+                    // stays a predictable shape across rows.
+                    DropdownMenuItem(
+                        text = { Text("Move up") },
+                        leadingIcon = { Icon(Icons.Filled.ArrowUpward, contentDescription = null) },
+                        enabled = canMoveUp,
+                        onClick = {
+                            menuExpanded = false
+                            onMoveUp()
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("Move down") },
+                        leadingIcon = { Icon(Icons.Filled.ArrowDownward, contentDescription = null) },
+                        enabled = canMoveDown,
+                        onClick = {
+                            menuExpanded = false
+                            onMoveDown()
+                        },
+                    )
                     DropdownMenuItem(
                         text = { Text(if (detail.sessionExercise.isSkipped) "Unskip" else "Skip exercise") },
                         leadingIcon = { Icon(Icons.Filled.NotInterested, contentDescription = null) },

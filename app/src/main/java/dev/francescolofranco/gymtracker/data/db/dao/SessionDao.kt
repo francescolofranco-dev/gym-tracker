@@ -95,6 +95,26 @@ interface SessionDao {
     @Query("DELETE FROM session_exercise WHERE id = :id")
     suspend fun removeExercise(id: Long)
 
+    @Query("SELECT * FROM session_exercise WHERE id = :id LIMIT 1")
+    suspend fun sessionExerciseById(id: Long): SessionExerciseEntity?
+
+    @Query("UPDATE session_exercise SET orderInSession = :order WHERE id = :id")
+    suspend fun setExerciseOrder(id: Long, order: Int)
+
+    /**
+     * Swap orderInSession between two session_exercise rows. Wrapped in a transaction so a
+     * crash mid-swap can't leave the list with two rows at the same order (which would make
+     * sorting unstable). Caller is responsible for picking the right pair (an exercise + its
+     * neighbour) — this is a generic "exchange these two orders" primitive.
+     */
+    @Transaction
+    suspend fun swapExerciseOrder(idA: Long, idB: Long) {
+        val a = sessionExerciseById(idA) ?: return
+        val b = sessionExerciseById(idB) ?: return
+        setExerciseOrder(idA, b.orderInSession)
+        setExerciseOrder(idB, a.orderInSession)
+    }
+
     @Query("SELECT * FROM session ORDER BY id")
     suspend fun allSessions(): List<SessionEntity>
 

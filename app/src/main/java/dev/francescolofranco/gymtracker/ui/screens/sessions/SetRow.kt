@@ -103,10 +103,16 @@ fun SetRow(
     ) {
         SetIndex(number = log.setNumber, belowRange = belowRange, isLogged = isLogged)
 
-        // Reps delta only after the set is logged ("show a % increase once a set is marked
-        // as done"). Before that, comparing the in-progress stepper value to last session's
-        // reps would just nag the user as they're scrubbing the wheel.
-        val repsDelta = if (isLogged) percentDeltaOrDash(reps.toDouble(), state.hintReps?.toDouble()) else null
+        // Reps delta:
+        //  - First-time exercise (no hintReps) → always show "-" so the row reads as
+        //    "no reference yet" rather than "no chip at all", matching the kg behaviour.
+        //  - Has hint → only show the % after the set is committed; while the user is still
+        //    scrubbing the stepper the live delta would just nag.
+        val repsDelta = when {
+            state.hintReps == null -> percentDeltaOrDash(reps.toDouble(), null)
+            isLogged -> percentDeltaOrDash(reps.toDouble(), state.hintReps.toDouble())
+            else -> null
+        }
         CompactStepper(
             value = reps.toDouble(),
             label = "$reps",

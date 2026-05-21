@@ -43,8 +43,16 @@ class SessionDetailViewModel @Inject constructor(
      * Past-session deltas compare against the session immediately BEFORE the one being viewed,
      * not the globally-latest. Anchor the hint query to this session's [startedAt] so the
      * percentage on a 3-month-old workout reflects the user's progress at that time.
+     *
+     * observeAllSummaries() is folded in as a coarse trigger so deleting another past session
+     * (which could have been THIS view's anchor) refreshes the deltas to point at the
+     * next-most-recent one.
      */
-    val hints: StateFlow<SetHints> = combine(session, details) { s, items ->
+    val hints: StateFlow<SetHints> = combine(
+        session,
+        details,
+        repo.observeAllSummaries(),
+    ) { s, items, _ ->
         val anchor = s?.startedAt ?: return@combine SetHints()
         val byId = HashMap<Long, List<HintRow>>()
         items.forEach { d ->
@@ -82,6 +90,15 @@ class SessionDetailViewModel @Inject constructor(
 
     fun setExerciseSkipped(sessionExerciseId: Long, skipped: Boolean) = viewModelScope.launch {
         repo.setSessionExerciseSkipped(sessionExerciseId, skipped)
+    }
+
+    fun moveSessionExercise(targetId: Long, delta: Int) = viewModelScope.launch {
+        if (delta == 0) return@launch
+        val ordered = details.value.map { it.sessionExercise.id }
+        val idx = ordered.indexOf(targetId)
+        val neighborIdx = idx + delta
+        if (idx < 0 || neighborIdx !in ordered.indices) return@launch
+        repo.swapSessionExerciseOrder(targetId, ordered[neighborIdx])
     }
 
     fun setExerciseNotes(sessionExerciseId: Long, notes: String?) = viewModelScope.launch {

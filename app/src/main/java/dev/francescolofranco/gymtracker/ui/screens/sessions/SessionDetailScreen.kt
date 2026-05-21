@@ -8,7 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -134,12 +134,14 @@ fun SessionDetailScreen(
                         }
                     }
                 }
-                items(items = details, key = { it.sessionExercise.id }) { detail ->
+                itemsIndexed(items = details, key = { _, d -> d.sessionExercise.id }) { index, detail ->
                     ExerciseCard(
                         detail = detail,
                         unit = unit,
                         hints = hints.byExerciseId[detail.exercise.id] ?: emptyList(),
                         editable = true,
+                        canMoveUp = index > 0,
+                        canMoveDown = index < details.lastIndex,
                         onCommitSet = { setLogId, reps, kg -> viewModel.logSet(setLogId, reps, kg) },
                         onUncommitSet = { setLogId -> viewModel.unlogSet(setLogId) },
                         onDraftSet = { setLogId, reps, kg ->
@@ -151,6 +153,8 @@ fun SessionDetailScreen(
                         onSkipExercise = { skipped ->
                             viewModel.setExerciseSkipped(detail.sessionExercise.id, skipped)
                         },
+                        onMoveUp = { viewModel.moveSessionExercise(detail.sessionExercise.id, -1) },
+                        onMoveDown = { viewModel.moveSessionExercise(detail.sessionExercise.id, +1) },
                         onEditExerciseNotes = { exerciseNotesTarget = detail },
                         onRemoveExercise = { /* read-mostly: no removal from past sessions */ },
                     )

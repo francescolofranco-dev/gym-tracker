@@ -66,10 +66,13 @@ interface SetLogDao {
     suspend fun lastSessionSets(exerciseId: Long, limit: Int): List<SetLogEntity>
 
     /**
-     * Same as [lastSessionSets] but anchored to a specific session's [startedAt]: returns sets
-     * from the most-recent prior session that started strictly before the anchor. Used by the
-     * past-session detail screen so a session's % delta compares against the workout immediately
-     * before it (not the globally-latest, which is what [lastSessionSets] would return).
+     * Sets from the most-recent COMPLETED session that started strictly before the anchor.
+     * Two filters do the heavy lifting:
+     *  - `s.endedAt IS NOT NULL` excludes the currently-active session (whose anchor we'd
+     *    otherwise reflect onto itself, producing the "0% always" bug the user hit).
+     *  - `s.startedAt < :beforeStartedAtEpochMs` lets the past-session detail screen anchor
+     *    to the session immediately before the one being viewed.
+     * For active sessions, callers pass the active session's startedAt as the anchor.
      */
     @Query(
         """
@@ -86,6 +89,7 @@ interface SetLogDao {
                 AND sl2.reps IS NOT NULL
                 AND sl2.isSkipped = 0
                 AND s.startedAt < :beforeStartedAtEpochMs
+                AND s.endedAt IS NOT NULL
               ORDER BY s.startedAt DESC
               LIMIT 1
           )

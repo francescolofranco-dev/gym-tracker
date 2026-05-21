@@ -131,6 +131,14 @@ class SessionRepository @Inject constructor(
     suspend fun removeSessionExercise(sessionExerciseId: Long) =
         sessionDao.removeExercise(sessionExerciseId)
 
+    /**
+     * Swap the position of two session-exercise rows. Used by the move up / move down menu
+     * items; the caller (a ViewModel) is responsible for finding the adjacent neighbour and
+     * passing both IDs.
+     */
+    suspend fun swapSessionExerciseOrder(idA: Long, idB: Long) =
+        sessionDao.swapExerciseOrder(idA, idB)
+
     suspend fun setSessionExerciseSkipped(sessionExerciseId: Long, skipped: Boolean) =
         sessionDao.setExerciseSkipped(sessionExerciseId, skipped)
 

@@ -17,7 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -52,18 +52,31 @@ class ActiveSessionViewModel @Inject constructor(
     val keepScreenOn: StateFlow<Boolean> = userPrefs.keepScreenOnDuringSession
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
 
-    val hints: StateFlow<SetHints> = details
-        .map { items ->
-            val byId = HashMap<Long, List<HintRow>>()
-            items.forEach { d ->
-                if (byId[d.exercise.id] == null) {
-                    val sets = repo.lastSessionSets(d.exercise.id, d.exercise.targetSets)
-                    byId[d.exercise.id] = sets.map { HintRow(it.setNumber, it.reps, it.kg) }
-                }
+    /**
+     * Anchor hints to the LAST COMPLETED session preceding this one (not the global latest,
+     * which was the source of the "% always resets to 0" bug — once we logged a set in the
+     * active session, the previous-session lookup picked us as our own anchor).
+     *
+     * Combining in [observeAllSummaries] (as a coarse trigger) makes the flow re-emit when
+     * any session is added, completed, or deleted. That's how the spec's "if I delete the most
+     * recent session, hints should fall back to the next one" requirement is met without
+     * plumbing a dedicated invalidation channel.
+     */
+    val hints: StateFlow<SetHints> = combine(
+        session,
+        details,
+        repo.observeAllSummaries(),
+    ) { s, items, _ ->
+        val anchor = s?.startedAt ?: return@combine SetHints()
+        val byId = HashMap<Long, List<HintRow>>()
+        items.forEach { d ->
+            if (byId[d.exercise.id] == null) {
+                val sets = repo.lastSessionSetsBefore(d.exercise.id, anchor, d.exercise.targetSets)
+                byId[d.exercise.id] = sets.map { HintRow(it.setNumber, it.reps, it.kg) }
             }
-            SetHints(byId)
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SetHints())
+        SetHints(byId)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SetHints())
 
     private val _exitRequested = MutableStateFlow(false)
     val exitRequested: StateFlow<Boolean> = _exitRequested.asStateFlow()
@@ -74,6 +87,20 @@ class ActiveSessionViewModel @Inject constructor(
 
     fun removeSessionExercise(sessionExerciseId: Long) = viewModelScope.launch {
         repo.removeSessionExercise(sessionExerciseId)
+    }
+
+    /**
+     * Swap the target session-exercise with its neighbour [delta] slots away. The screen has
+     * the current ordered list so it can compute valid bounds before calling — passing a
+     * delta that would go off the edge is treated as a no-op rather than an error.
+     */
+    fun moveSessionExercise(targetId: Long, delta: Int) = viewModelScope.launch {
+        if (delta == 0) return@launch
+        val ordered = details.value.map { it.sessionExercise.id }
+        val idx = ordered.indexOf(targetId)
+        val neighborIdx = idx + delta
+        if (idx < 0 || neighborIdx !in ordered.indices) return@launch
+        repo.swapSessionExerciseOrder(targetId, ordered[neighborIdx])
     }
 
     fun setExerciseSkipped(sessionExerciseId: Long, skipped: Boolean) = viewModelScope.launch {
