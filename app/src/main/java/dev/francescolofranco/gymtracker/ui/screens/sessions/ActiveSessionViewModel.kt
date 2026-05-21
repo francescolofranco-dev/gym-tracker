@@ -106,6 +106,23 @@ class ActiveSessionViewModel @Inject constructor(
         repo.unlogSet(setLogId)
     }
 
+    /**
+     * Persist a value the user typed into the numpad but didn't ✓-commit. Two behaviours
+     * roll up into the same call:
+     *  1. If this is the FIRST kg seen across any set in this exercise, propagate it (kg only,
+     *     not reps) to all the other pending sets so the user doesn't have to retype four
+     *     identical weights. The source row still gets its own reps draft saved.
+     *  2. Otherwise just save this set's draft so the typed value survives navigation.
+     */
+    fun saveSetDraft(sessionExerciseId: Long, setLogId: Long, reps: Int?, kg: Double?) = viewModelScope.launch {
+        val isFirstKg = kg != null && kg > 0.0 && !repo.hasAnyKg(sessionExerciseId)
+        // Save this row's reps+kg draft first so reps don't get blown away by the bulk apply.
+        repo.saveSetDraft(setLogId, reps, kg)
+        if (isFirstKg) {
+            repo.applyKgToPendingSets(sessionExerciseId, kg = kg!!)
+        }
+    }
+
     fun toggleSetSkipped(setLogId: Long, currentlySkipped: Boolean) = viewModelScope.launch {
         repo.setSetSkipped(setLogId, !currentlySkipped)
     }

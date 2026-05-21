@@ -112,6 +112,22 @@ class SessionRepository @Inject constructor(
     suspend fun lastSessionSets(exerciseId: Long, limit: Int): List<SetLogEntity> =
         setLogDao.lastSessionSets(exerciseId, limit)
 
+    /**
+     * Hint sets anchored to a specific session's [beforeStartedAt]: returns sets from the
+     * previous session for this exercise that started strictly before the anchor. Used by the
+     * past-session detail screen so % deltas reference the workout immediately before that
+     * session, not the globally-latest one (which would be wrong when viewing history).
+     */
+    suspend fun lastSessionSetsBefore(
+        exerciseId: Long,
+        beforeStartedAt: Instant,
+        limit: Int,
+    ): List<SetLogEntity> = setLogDao.lastSessionSetsBefore(
+        exerciseId = exerciseId,
+        beforeStartedAtEpochMs = beforeStartedAt.toEpochMilli(),
+        limit = limit,
+    )
+
     suspend fun removeSessionExercise(sessionExerciseId: Long) =
         sessionDao.removeExercise(sessionExerciseId)
 
@@ -143,6 +159,41 @@ class SessionRepository @Inject constructor(
                 isSkipped = false,
             )
         )
+    }
+
+    /**
+     * Persist a set's reps/kg WITHOUT committing it (loggedAt stays null). Used so values the
+     * user typed in the numpad survive navigating away — previously the typed-but-uncommitted
+     * value lived only in compose state, so visiting another screen and coming back wiped it.
+     * No-ops on an already-committed set: if a set is logged, use [logSet] to update the
+     * canonical values.
+     */
+    suspend fun saveSetDraft(setLogId: Long, reps: Int?, kg: Double?) {
+        val current = setLogDao.byId(setLogId) ?: return
+        if (current.loggedAt != null) return
+        setLogDao.update(current.copy(reps = reps, kg = kg))
+    }
+
+    /**
+     * One-shot bulk apply: copy [kg] into every NOT-YET-LOGGED set in a given session
+     * exercise. Used by the auto-fill flow where typing a kg into the first set propagates
+     * it to the rest. Reps are intentionally left untouched — the user wants a single weight
+     * across sets, not a single reps count. Skips logged sets so committed history isn't
+     * trampled.
+     */
+    suspend fun applyKgToPendingSets(sessionExerciseId: Long, kg: Double) {
+        val sets = setLogDao.forSessionExercise(sessionExerciseId)
+        sets.forEach { s ->
+            if (s.loggedAt == null) {
+                setLogDao.update(s.copy(kg = kg))
+            }
+        }
+    }
+
+    /** True if no set in this session-exercise has a non-null kg yet (committed or draft). */
+    suspend fun hasAnyKg(sessionExerciseId: Long): Boolean {
+        val sets = setLogDao.forSessionExercise(sessionExerciseId)
+        return sets.any { it.kg != null }
     }
 
     suspend fun setSetSkipped(setLogId: Long, skipped: Boolean) {

@@ -27,10 +27,17 @@ fun convertToKg(value: Double, unit: WeightUnit): Double = when (unit) {
 }
 
 fun formatWeight(kg: Double, unit: WeightUnit): String {
-    val converted = convertFromKg(kg, unit)
-    val rounded = (converted * 10).roundToInt() / 10.0
-    return if (rounded % 1.0 == 0.0) "${rounded.toInt()} ${unit.label()}"
-    else String.format(Locale.US, "%.1f %s", rounded, unit.label())
+    return "${formatWeightNumber(convertFromKg(kg, unit))} ${unit.label()}"
+}
+
+/**
+ * Renders a weight number with up to 3 decimals, trimming trailing zeros so 12 reads as "12",
+ * 12.5 as "12.5", and 12.345 as "12.345". The numpad allows 3 fractional digits so the display
+ * needs to match — otherwise the user enters "2.345" and the chip rounds it back to "2.3".
+ */
+fun formatWeightNumber(value: Double): String {
+    if (value % 1.0 == 0.0) return value.toInt().toString()
+    return String.format(Locale.US, "%.3f", value).trimEnd('0').trimEnd('.')
 }
 
 fun formatTotalVolume(kg: Double, unit: WeightUnit): String {

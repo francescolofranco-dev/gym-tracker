@@ -186,6 +186,9 @@ fun ActiveSessionScreen(
                         editable = true,
                         onCommitSet = { setLogId, reps, kg -> viewModel.logSet(setLogId, reps, kg) },
                         onUncommitSet = { setLogId -> viewModel.unlogSet(setLogId) },
+                        onDraftSet = { setLogId, reps, kg ->
+                            viewModel.saveSetDraft(detail.sessionExercise.id, setLogId, reps, kg)
+                        },
                         onToggleSetSkipped = { setLogId, currentlySkipped ->
                             viewModel.toggleSetSkipped(setLogId, currentlySkipped)
                         },
@@ -336,6 +339,7 @@ fun ExerciseCard(
     editable: Boolean,
     onCommitSet: (setLogId: Long, reps: Int, kg: Double) -> Unit,
     onUncommitSet: (setLogId: Long) -> Unit,
+    onDraftSet: (setLogId: Long, reps: Int?, kg: Double?) -> Unit,
     onToggleSetSkipped: (setLogId: Long, currentlySkipped: Boolean) -> Unit,
     onSkipExercise: (skipped: Boolean) -> Unit,
     onEditExerciseNotes: () -> Unit,
@@ -366,10 +370,21 @@ fun ExerciseCard(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = exercise.name,
-                    style = MaterialTheme.typography.titleMedium,
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = exercise.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    // "First time" — empty hints means this exercise has never been logged
+                    // before. The badge gives the user a heads-up that there's no historical
+                    // reference (so the dash sub-labels on the kg/reps chips are expected,
+                    // not a glitch).
+                    if (hints.isEmpty()) {
+                        Spacer(Modifier.width(8.dp))
+                        FirstTimeBadge()
+                    }
+                }
                 Text(
                     text = buildList {
                         add(exercise.primaryMuscles.sortedBy { it.ordinal }.joinToString(" + ") { it.displayName })
@@ -445,10 +460,31 @@ fun ExerciseCard(
                 ),
                 onCommit = { reps, kg -> onCommitSet(log.id, reps, kg) },
                 onUncommit = { onUncommitSet(log.id) },
+                onDraft = { reps, kg -> onDraftSet(log.id, reps, kg) },
                 onSkipToggle = { onToggleSetSkipped(log.id, log.isSkipped) },
                 editable = editable,
             )
         }
+    }
+}
+
+/**
+ * Compact pill rendered next to an exercise name when there's no prior session to compare
+ * against — keeps the sub-label dashes on the kg/reps chips from feeling like missing data.
+ */
+@Composable
+private fun FirstTimeBadge() {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.tertiaryContainer)
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+    ) {
+        Text(
+            text = "First time",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onTertiaryContainer,
+        )
     }
 }
 

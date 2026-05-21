@@ -14,7 +14,7 @@ import dev.francescolofranco.gymtracker.ui.nav.SessionRoutes
 import dev.francescolofranco.gymtracker.work.IdleSessionScheduler
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -39,18 +39,22 @@ class SessionDetailViewModel @Inject constructor(
     val unit: StateFlow<WeightUnit> = userPrefs.unit
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WeightUnit.KG)
 
-    val hints: StateFlow<SetHints> = details
-        .map { items ->
-            val byId = HashMap<Long, List<HintRow>>()
-            items.forEach { d ->
-                if (byId[d.exercise.id] == null) {
-                    val sets = repo.lastSessionSets(d.exercise.id, d.exercise.targetSets)
-                    byId[d.exercise.id] = sets.map { HintRow(it.setNumber, it.reps, it.kg) }
-                }
+    /**
+     * Past-session deltas compare against the session immediately BEFORE the one being viewed,
+     * not the globally-latest. Anchor the hint query to this session's [startedAt] so the
+     * percentage on a 3-month-old workout reflects the user's progress at that time.
+     */
+    val hints: StateFlow<SetHints> = combine(session, details) { s, items ->
+        val anchor = s?.startedAt ?: return@combine SetHints()
+        val byId = HashMap<Long, List<HintRow>>()
+        items.forEach { d ->
+            if (byId[d.exercise.id] == null) {
+                val sets = repo.lastSessionSetsBefore(d.exercise.id, anchor, d.exercise.targetSets)
+                byId[d.exercise.id] = sets.map { HintRow(it.setNumber, it.reps, it.kg) }
             }
-            SetHints(byId)
         }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SetHints())
+        SetHints(byId)
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SetHints())
 
     fun logSet(setLogId: Long, reps: Int, kg: Double) = viewModelScope.launch {
         repo.logSet(setLogId, reps = reps, kg = kg)
@@ -58,6 +62,18 @@ class SessionDetailViewModel @Inject constructor(
 
     fun unlogSet(setLogId: Long) = viewModelScope.launch {
         repo.unlogSet(setLogId)
+    }
+
+    /**
+     * Persist a typed-but-uncommitted reps/kg so the value survives navigation. On a past
+     * session the auto-fill bulk apply isn't useful (you're not building the session, just
+     * editing history), so we always go through the single-row draft path.
+     */
+    fun saveSetDraft(sessionExerciseId: Long, setLogId: Long, reps: Int?, kg: Double?) = viewModelScope.launch {
+        // sessionExerciseId is accepted for parity with the active VM's signature; unused here
+        // because past-session detail shouldn't trigger the "first kg" auto-fill.
+        @Suppress("UNUSED_VARIABLE") val _se = sessionExerciseId
+        repo.saveSetDraft(setLogId, reps, kg)
     }
 
     fun toggleSetSkipped(setLogId: Long, currentlySkipped: Boolean) = viewModelScope.launch {

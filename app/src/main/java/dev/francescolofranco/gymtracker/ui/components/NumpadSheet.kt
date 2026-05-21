@@ -52,6 +52,10 @@ fun NumpadSheet(
 
     // Buffer mirrors the decimal/integer input state. Coerce on commit.
     var buffer by remember { mutableStateOf(initialBuffer(initialValue, allowDecimal)) }
+    // Pristine flag: the buffer was seeded from the existing value, the user hasn't typed yet.
+    // First digit press wipes the seed instead of appending — saves the "tap backspace 3 times
+    // before typing the new weight" dance the user complained about.
+    var pristine by remember { mutableStateOf(true) }
 
     LaunchedEffect(buffer) {
         bufferToDouble(buffer)?.let { v ->
@@ -104,7 +108,13 @@ fun NumpadSheet(
                                 NumpadKey(
                                     token = token,
                                     onTap = { tapped ->
-                                        buffer = applyToken(buffer, tapped, allowDecimal)
+                                        // First non-backspace press while pristine wipes the seed
+                                        // so the user can just start typing the new value.
+                                        // Backspace stays "edit existing" so the user can correct
+                                        // a typo in the seed if they want.
+                                        val seed = if (pristine && tapped != BACKSPACE_TOKEN) "" else buffer
+                                        buffer = applyToken(seed, tapped, allowDecimal)
+                                        pristine = false
                                     }
                                 )
                             }
@@ -154,11 +164,18 @@ private fun applyToken(buffer: String, token: String, allowDecimal: Boolean): St
         else if (buffer.isEmpty()) "0." else "$buffer."
         else -> {
             val candidate = buffer + token
-            // Cap length to keep things sane: 6 chars is plenty (e.g. "999.99")
-            if (candidate.length > 6) buffer else candidate
+            // Cap fractional precision at 3 (user wants "up to 3 decimal precision"),
+            // and integer side at 4 so we still fit "9999" or "9999.999".
+            val dotIdx = candidate.indexOf('.')
+            val intLen = if (dotIdx >= 0) dotIdx else candidate.length
+            val fracLen = if (dotIdx >= 0) candidate.length - dotIdx - 1 else 0
+            if (intLen > MAX_INTEGER_DIGITS || fracLen > MAX_FRACTION_DIGITS) buffer else candidate
         }
     }
 }
+
+private const val MAX_INTEGER_DIGITS = 4
+private const val MAX_FRACTION_DIGITS = 3
 
 private fun bufferToDouble(buffer: String): Double? {
     if (buffer.isEmpty() || buffer == ".") return 0.0
@@ -168,7 +185,12 @@ private fun bufferToDouble(buffer: String): Double? {
 private fun initialBuffer(value: Double, allowDecimal: Boolean): String {
     if (value == 0.0) return ""
     return if (allowDecimal) {
-        if (value % 1.0 == 0.0) value.toInt().toString() else value.toString()
+        if (value % 1.0 == 0.0) value.toInt().toString()
+        // Round to 3 decimals + strip trailing zeros so the seed matches what the buffer
+        // is allowed to contain (MAX_FRACTION_DIGITS). Otherwise floating-point noise
+        // like 2.5000000004 would seed an unrepresentable buffer.
+        else String.format(java.util.Locale.US, "%.3f", value)
+            .trimEnd('0').trimEnd('.')
     } else {
         value.toInt().toString()
     }

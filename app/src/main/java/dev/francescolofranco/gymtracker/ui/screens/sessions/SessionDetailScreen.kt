@@ -142,6 +142,9 @@ fun SessionDetailScreen(
                         editable = true,
                         onCommitSet = { setLogId, reps, kg -> viewModel.logSet(setLogId, reps, kg) },
                         onUncommitSet = { setLogId -> viewModel.unlogSet(setLogId) },
+                        onDraftSet = { setLogId, reps, kg ->
+                            viewModel.saveSetDraft(detail.sessionExercise.id, setLogId, reps, kg)
+                        },
                         onToggleSetSkipped = { setLogId, currentlySkipped ->
                             viewModel.toggleSetSkipped(setLogId, currentlySkipped)
                         },

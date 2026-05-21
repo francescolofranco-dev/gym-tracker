@@ -64,4 +64,38 @@ interface SetLogDao {
         """
     )
     suspend fun lastSessionSets(exerciseId: Long, limit: Int): List<SetLogEntity>
+
+    /**
+     * Same as [lastSessionSets] but anchored to a specific session's [startedAt]: returns sets
+     * from the most-recent prior session that started strictly before the anchor. Used by the
+     * past-session detail screen so a session's % delta compares against the workout immediately
+     * before it (not the globally-latest, which is what [lastSessionSets] would return).
+     */
+    @Query(
+        """
+        SELECT sl.* FROM set_log sl
+        JOIN session_exercise se ON sl.sessionExerciseId = se.id
+        WHERE se.exerciseId = :exerciseId
+          AND sl.reps IS NOT NULL
+          AND sl.isSkipped = 0
+          AND se.sessionId = (
+              SELECT s.id FROM session s
+              JOIN session_exercise se2 ON se2.sessionId = s.id
+              JOIN set_log sl2 ON sl2.sessionExerciseId = se2.id
+              WHERE se2.exerciseId = :exerciseId
+                AND sl2.reps IS NOT NULL
+                AND sl2.isSkipped = 0
+                AND s.startedAt < :beforeStartedAtEpochMs
+              ORDER BY s.startedAt DESC
+              LIMIT 1
+          )
+        ORDER BY sl.setNumber ASC
+        LIMIT :limit
+        """
+    )
+    suspend fun lastSessionSetsBefore(
+        exerciseId: Long,
+        beforeStartedAtEpochMs: Long,
+        limit: Int,
+    ): List<SetLogEntity>
 }

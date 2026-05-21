@@ -50,7 +50,6 @@ import dev.francescolofranco.gymtracker.ui.theme.VolumeBlue
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.util.Locale
 
 data class SetRowState(
     val log: SetLogEntity,
@@ -68,6 +67,7 @@ fun SetRow(
     state: SetRowState,
     onCommit: (reps: Int, kg: Double) -> Unit,
     onUncommit: () -> Unit,
+    onDraft: (reps: Int?, kg: Double?) -> Unit,
     onSkipToggle: () -> Unit,
     editable: Boolean = true,
 ) {
@@ -81,6 +81,12 @@ fun SetRow(
     var reps by remember(log.id, log.loggedAt, log.reps) { mutableStateOf(initialReps) }
     var kgInternal by remember(log.id, log.loggedAt, log.kg) { mutableStateOf(initialKgInternal) }
     var numpadFor by remember(log.id) { mutableStateOf<NumpadField?>(null) }
+
+    // Snapshot the values the numpad was opened against — on dismiss we only fire onDraft
+    // when something actually changed and the row is still uncommitted. Logged rows already
+    // route through onCommit on each digit, so they don't need the draft pathway.
+    var preOpenReps by remember(log.id) { mutableStateOf(reps) }
+    var preOpenKg by remember(log.id) { mutableStateOf(kgInternal) }
 
     val displayKg = convertFromKg(kgInternal, state.unit)
     val belowRange = isLogged && (log.reps ?: 0) < state.targetReps.first
@@ -97,9 +103,15 @@ fun SetRow(
     ) {
         SetIndex(number = log.setNumber, belowRange = belowRange, isLogged = isLogged)
 
+        // Reps delta only after the set is logged ("show a % increase once a set is marked
+        // as done"). Before that, comparing the in-progress stepper value to last session's
+        // reps would just nag the user as they're scrubbing the wheel.
+        val repsDelta = if (isLogged) percentDeltaOrDash(reps.toDouble(), state.hintReps?.toDouble()) else null
         CompactStepper(
             value = reps.toDouble(),
             label = "$reps",
+            subLabel = repsDelta?.text,
+            subLabelColor = repsDelta?.tone?.color(),
             onValueChange = {
                 reps = it.toInt().coerceAtLeast(0)
                 if (isLogged) onCommit(reps, kgInternal)
@@ -113,19 +125,14 @@ fun SetRow(
         )
 
         // Kg: tap-to-numpad chip only (no +/-). Manual digit entry is much faster than
-        // stepping 2.5 kg at a time for typical lifting changes. A small percentage sub-label
-        // shows progress vs the last session's matching set when there's a hint to compare to.
-        val pctDelta = computePercentDelta(kgInternal, state.hintKg)
+        // stepping 2.5 kg at a time for typical lifting changes. The sub-label is always
+        // populated — a dash when there's no previous session to compare against, otherwise
+        // ±% vs the matching set so the user can see at a glance whether they're progressing.
+        val pctDelta = percentDeltaOrDash(kgInternal, state.hintKg)
         WeightChip(
             label = formatWeightChip(displayKg, state.unit, state.isBodyweight),
-            subLabel = pctDelta?.text,
-            subLabelColor = pctDelta?.let {
-                when (it.tone) {
-                    PercentTone.Up -> MaterialTheme.colorScheme.primary
-                    PercentTone.Down -> MaterialTheme.colorScheme.error
-                    PercentTone.Same -> MaterialTheme.colorScheme.onSurfaceVariant
-                }
-            },
+            subLabel = pctDelta.text,
+            subLabelColor = pctDelta.tone.color(),
             onClick = if (editable) ({ numpadFor = NumpadField.KG }) else null,
             enabled = editable && !isSkipped,
             modifier = Modifier.weight(1.2f),
@@ -143,32 +150,57 @@ fun SetRow(
         )
     }
 
-    when (numpadFor) {
-        NumpadField.REPS -> NumpadSheet(
-            initialValue = reps.toDouble(),
-            allowDecimal = false,
-            onValueChange = {
-                reps = it.toInt().coerceAtLeast(0)
-                if (isLogged) onCommit(reps, kgInternal)
-            },
-            onDismiss = { numpadFor = null },
-            label = "Reps · set ${log.setNumber}",
-            minValue = 0.0,
-            maxValue = 200.0,
-        )
+    fun finishNumpad() {
+        // Persist as a draft if anything changed and the row isn't committed yet. Logged rows
+        // are already saved per-keystroke through onCommit, so they don't need this.
+        if (!isLogged && (reps != preOpenReps || kgInternal != preOpenKg)) {
+            onDraft(
+                reps.takeIf { it > 0 || log.reps != null },
+                kgInternal.takeIf { it > 0.0 || log.kg != null },
+            )
+        }
+        numpadFor = null
+    }
 
-        NumpadField.KG -> NumpadSheet(
-            initialValue = displayKg,
-            allowDecimal = true,
-            onValueChange = { v ->
-                kgInternal = convertToKg(v, state.unit).coerceAtLeast(0.0)
-                if (isLogged) onCommit(reps, kgInternal)
-            },
-            onDismiss = { numpadFor = null },
-            label = "${state.unit.label()} · set ${log.setNumber}",
-            minValue = 0.0,
-            maxValue = 9999.0,
-        )
+    when (numpadFor) {
+        NumpadField.REPS -> {
+            // Snapshot on first composition of this branch so dismiss can diff.
+            LaunchedEffect(numpadFor) {
+                preOpenReps = reps
+                preOpenKg = kgInternal
+            }
+            NumpadSheet(
+                initialValue = reps.toDouble(),
+                allowDecimal = false,
+                onValueChange = {
+                    reps = it.toInt().coerceAtLeast(0)
+                    if (isLogged) onCommit(reps, kgInternal)
+                },
+                onDismiss = { finishNumpad() },
+                label = "Reps · set ${log.setNumber}",
+                minValue = 0.0,
+                maxValue = 200.0,
+            )
+        }
+
+        NumpadField.KG -> {
+            LaunchedEffect(numpadFor) {
+                preOpenReps = reps
+                preOpenKg = kgInternal
+            }
+            NumpadSheet(
+                initialValue = displayKg,
+                allowDecimal = true,
+                onValueChange = { v ->
+                    kgInternal = convertToKg(v, state.unit).coerceAtLeast(0.0)
+                    if (isLogged) onCommit(reps, kgInternal)
+                },
+                onDismiss = { finishNumpad() },
+                label = "${state.unit.label()} · set ${log.setNumber}",
+                minValue = 0.0,
+                maxValue = 9999.0,
+            )
+        }
 
         null -> Unit
     }
@@ -222,6 +254,8 @@ private fun CompactStepper(
     onChipClick: (() -> Unit)? = null,
     enabled: Boolean = true,
     modifier: Modifier = Modifier,
+    subLabel: String? = null,
+    subLabelColor: androidx.compose.ui.graphics.Color? = null,
 ) {
     val haptic = LocalHapticFeedback.current
     fun update(delta: Double) {
@@ -261,13 +295,25 @@ private fun CompactStepper(
                 .semantics { contentDescription = "Value $label" },
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                maxLines = 1,
-            )
+            androidx.compose.foundation.layout.Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    maxLines = 1,
+                )
+                if (subLabel != null) {
+                    Text(
+                        text = subLabel,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = subLabelColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                    )
+                }
+            }
         }
 
         StepperKey(
@@ -441,27 +487,32 @@ private fun CheckButton(
 }
 
 private fun formatWeightChip(value: Double, unit: WeightUnit, isBodyweight: Boolean): String {
-    val rounded = (value * 10).toInt() / 10.0
-    val number = if (rounded % 1.0 == 0.0) "${rounded.toInt()}"
-    else String.format(Locale.US, "%.1f", rounded)
     val prefix = if (isBodyweight) "+" else ""
-    return "$prefix$number ${unit.label()}"
+    return "$prefix${formatWeightNumber(value)} ${unit.label()}"
 }
 
 private enum class PercentTone { Up, Down, Same }
 
 private data class PercentDelta(val text: String, val tone: PercentTone)
 
+@Composable
+private fun PercentTone.color(): androidx.compose.ui.graphics.Color = when (this) {
+    PercentTone.Up -> MaterialTheme.colorScheme.primary
+    PercentTone.Down -> MaterialTheme.colorScheme.error
+    PercentTone.Same -> MaterialTheme.colorScheme.onSurfaceVariant
+}
+
 /**
- * Percentage change vs the matching set from the last session. Returns:
+ * Percentage change vs the matching set from the previous session. Always returns a renderable
+ * value so the chip layout doesn't jump as logs come and go:
  *  - "+N%" / "-N%" when the rounded change is non-zero,
- *  - "0%" (neutral tone) when the new weight matches the previous one — the explicit
- *    "you're at the same weight" signal that the user asked for instead of no chip at all.
- * Returns null only when there's no prior data to compare against (hintKg null or ≤ 0).
+ *  - "0%" (neutral tone) when current matches prior,
+ *  - "-" (neutral tone) when there's no prior data to compare against. The dash is the
+ *    explicit "first-time / no reference" affordance the user asked for.
  */
-private fun computePercentDelta(currentKg: Double, hintKg: Double?): PercentDelta? {
-    if (hintKg == null || hintKg <= 0.0) return null
-    val pct = ((currentKg - hintKg) / hintKg) * 100.0
+private fun percentDeltaOrDash(current: Double, hint: Double?): PercentDelta {
+    if (hint == null || hint <= 0.0) return PercentDelta("-", PercentTone.Same)
+    val pct = ((current - hint) / hint) * 100.0
     val rounded = pct.toInt()
     return when {
         rounded > 0 -> PercentDelta("+$rounded%", PercentTone.Up)
