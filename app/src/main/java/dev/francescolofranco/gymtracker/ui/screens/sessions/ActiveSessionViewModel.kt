@@ -134,15 +134,30 @@ class ActiveSessionViewModel @Inject constructor(
     }
 
     /**
-     * Persist a value the user typed into the numpad but didn't ✓-commit. Two behaviours
-     * roll up into the same call:
-     *  1. If this is the FIRST kg seen across any set in this exercise, propagate it (kg only,
-     *     not reps) to all the other pending sets so the user doesn't have to retype four
-     *     identical weights. The source row still gets its own reps draft saved.
-     *  2. Otherwise just save this set's draft so the typed value survives navigation.
+     * Persist a value the user typed into the numpad / bumped on the stepper but didn't
+     * ✓-commit. Two behaviours roll up into the same call:
+     *  1. The row's reps+kg are always written so the in-progress value survives navigation
+     *     and LazyColumn recycling.
+     *  2. If [kgFromExplicitEntry] is true (user actually typed kg in the numpad) AND this is
+     *     the FIRST kg in this exercise, propagate it to all the other pending sets — the
+     *     auto-fill the user asked for. A stepper rep bump passes false here so the hint kg
+     *     doesn't propagate just because the user touched the row.
      */
-    fun saveSetDraft(sessionExerciseId: Long, setLogId: Long, reps: Int?, kg: Double?) = viewModelScope.launch {
-        val isFirstKg = kg != null && kg > 0.0 && !repo.hasAnyKg(sessionExerciseId)
+    fun saveSetDraft(
+        sessionExerciseId: Long,
+        setLogId: Long,
+        reps: Int?,
+        kg: Double?,
+        kgFromExplicitEntry: Boolean,
+    ) = viewModelScope.launch {
+        // "First explicit kg" = the user typed kg in the numpad AND no OTHER set has kg yet.
+        // We exclude the source row from the check because the row may already have a draft
+        // kg from a prior stepper-only interaction (which wrote the hint kg as a default) —
+        // that shouldn't burn the auto-fill trigger before the user has actually entered a
+        // real weight.
+        val isFirstKg = kgFromExplicitEntry &&
+            kg != null && kg > 0.0 &&
+            !repo.anyOtherSetHasKg(sessionExerciseId, excludeSetLogId = setLogId)
         // Save this row's reps+kg draft first so reps don't get blown away by the bulk apply.
         repo.saveSetDraft(setLogId, reps, kg)
         if (isFirstKg) {

@@ -198,10 +198,16 @@ class SessionRepository @Inject constructor(
         }
     }
 
-    /** True if no set in this session-exercise has a non-null kg yet (committed or draft). */
-    suspend fun hasAnyKg(sessionExerciseId: Long): Boolean {
+    /**
+     * True if any set OTHER than [excludeSetLogId] has a non-null kg. Used to decide whether
+     * the "first explicit kg" auto-fill should fire: we want to propagate when the source set
+     * is the only one with kg, even if the source already had a hint-derived draft kg written.
+     * Passing 0 (or any non-matching id) effectively asks "does any set have kg" for the
+     * legacy non-exclusion case.
+     */
+    suspend fun anyOtherSetHasKg(sessionExerciseId: Long, excludeSetLogId: Long): Boolean {
         val sets = setLogDao.forSessionExercise(sessionExerciseId)
-        return sets.any { it.kg != null }
+        return sets.any { it.id != excludeSetLogId && it.kg != null }
     }
 
     suspend fun setSetSkipped(setLogId: Long, skipped: Boolean) {

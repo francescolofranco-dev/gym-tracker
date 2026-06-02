@@ -190,8 +190,8 @@ fun ActiveSessionScreen(
                         canMoveDown = index < details.lastIndex,
                         onCommitSet = { setLogId, reps, kg -> viewModel.logSet(setLogId, reps, kg) },
                         onUncommitSet = { setLogId -> viewModel.unlogSet(setLogId) },
-                        onDraftSet = { setLogId, reps, kg ->
-                            viewModel.saveSetDraft(detail.sessionExercise.id, setLogId, reps, kg)
+                        onDraftSet = { setLogId, reps, kg, kgExplicit ->
+                            viewModel.saveSetDraft(detail.sessionExercise.id, setLogId, reps, kg, kgExplicit)
                         },
                         onToggleSetSkipped = { setLogId, currentlySkipped ->
                             viewModel.toggleSetSkipped(setLogId, currentlySkipped)
@@ -347,7 +347,7 @@ fun ExerciseCard(
     canMoveDown: Boolean,
     onCommitSet: (setLogId: Long, reps: Int, kg: Double) -> Unit,
     onUncommitSet: (setLogId: Long) -> Unit,
-    onDraftSet: (setLogId: Long, reps: Int?, kg: Double?) -> Unit,
+    onDraftSet: (setLogId: Long, reps: Int?, kg: Double?, kgFromExplicitEntry: Boolean) -> Unit,
     onToggleSetSkipped: (setLogId: Long, currentlySkipped: Boolean) -> Unit,
     onSkipExercise: (skipped: Boolean) -> Unit,
     onMoveUp: () -> Unit,
@@ -490,7 +490,7 @@ fun ExerciseCard(
                 ),
                 onCommit = { reps, kg -> onCommitSet(log.id, reps, kg) },
                 onUncommit = { onUncommitSet(log.id) },
-                onDraft = { reps, kg -> onDraftSet(log.id, reps, kg) },
+                onDraft = { reps, kg, kgExplicit -> onDraftSet(log.id, reps, kg, kgExplicit) },
                 onSkipToggle = { onToggleSetSkipped(log.id, log.isSkipped) },
                 editable = editable,
             )

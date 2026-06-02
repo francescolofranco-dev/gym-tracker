@@ -67,7 +67,14 @@ fun SetRow(
     state: SetRowState,
     onCommit: (reps: Int, kg: Double) -> Unit,
     onUncommit: () -> Unit,
-    onDraft: (reps: Int?, kg: Double?) -> Unit,
+    /**
+     * Persist a draft change. [kgFromExplicitEntry] is true only when the user typed kg in the
+     * numpad (vs. just bumping reps on the stepper) — that's the signal the ViewModel uses to
+     * decide whether to fire the "first kg" auto-fill across the exercise's other sets. Without
+     * this distinction, bumping reps on a fresh exercise would propagate the HINT kg to every
+     * pending set, which is not what the user asked for.
+     */
+    onDraft: (reps: Int?, kg: Double?, kgFromExplicitEntry: Boolean) -> Unit,
     onSkipToggle: () -> Unit,
     editable: Boolean = true,
 ) {
@@ -121,6 +128,19 @@ fun SetRow(
             onValueChange = {
                 reps = it.toInt().coerceAtLeast(0)
                 if (isLogged) onCommit(reps, kgInternal)
+                // Unlogged stepper bumps used to live only in compose state — when the row
+                // recycled out of the LazyColumn viewport (or the user left the screen),
+                // the change was lost and the chip reset to the hint. Persist as a draft so
+                // the value sticks across recomposition and navigation.
+                //
+                // takeIf mirrors finishNumpad: a zero-with-no-history clears the field, but
+                // a non-zero value (or any history) is preserved. kgFromExplicitEntry = false
+                // because the user touched reps, not kg.
+                else if (editable) onDraft(
+                    reps.takeIf { it > 0 || log.reps != null },
+                    kgInternal.takeIf { it > 0.0 || log.kg != null },
+                    false,
+                )
             },
             step = 1.0,
             min = 0.0,
@@ -159,10 +179,15 @@ fun SetRow(
     fun finishNumpad() {
         // Persist as a draft if anything changed and the row isn't committed yet. Logged rows
         // are already saved per-keystroke through onCommit, so they don't need this.
+        // Auto-fill kg across the exercise only when the user actually typed a NEW kg in the
+        // numpad (kg branch + value changed from preOpen) — otherwise the hint-derived kg
+        // would propagate just because the user opened the numpad and closed it.
+        val kgFromExplicit = numpadFor == NumpadField.KG && kgInternal != preOpenKg
         if (!isLogged && (reps != preOpenReps || kgInternal != preOpenKg)) {
             onDraft(
                 reps.takeIf { it > 0 || log.reps != null },
                 kgInternal.takeIf { it > 0.0 || log.kg != null },
+                kgFromExplicit,
             )
         }
         numpadFor = null
@@ -503,8 +528,11 @@ private data class PercentDelta(val text: String, val tone: PercentTone)
 
 @Composable
 private fun PercentTone.color(): androidx.compose.ui.graphics.Color = when (this) {
-    PercentTone.Up -> MaterialTheme.colorScheme.primary
-    PercentTone.Down -> MaterialTheme.colorScheme.error
+    // Green = progress, orange = regression. Distinct from the brand primary (also orange) +
+    // Material error (red), but the user explicitly wanted green/orange semantics for the
+    // up/down direction, not the design-system default tonal pairing.
+    PercentTone.Up -> dev.francescolofranco.gymtracker.ui.theme.VolumeGreen
+    PercentTone.Down -> dev.francescolofranco.gymtracker.ui.theme.BrandOrange
     PercentTone.Same -> MaterialTheme.colorScheme.onSurfaceVariant
 }
 

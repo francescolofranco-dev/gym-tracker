@@ -144,8 +144,8 @@ fun SessionDetailScreen(
                         canMoveDown = index < details.lastIndex,
                         onCommitSet = { setLogId, reps, kg -> viewModel.logSet(setLogId, reps, kg) },
                         onUncommitSet = { setLogId -> viewModel.unlogSet(setLogId) },
-                        onDraftSet = { setLogId, reps, kg ->
-                            viewModel.saveSetDraft(detail.sessionExercise.id, setLogId, reps, kg)
+                        onDraftSet = { setLogId, reps, kg, kgExplicit ->
+                            viewModel.saveSetDraft(detail.sessionExercise.id, setLogId, reps, kg, kgExplicit)
                         },
                         onToggleSetSkipped = { setLogId, currentlySkipped ->
                             viewModel.toggleSetSkipped(setLogId, currentlySkipped)

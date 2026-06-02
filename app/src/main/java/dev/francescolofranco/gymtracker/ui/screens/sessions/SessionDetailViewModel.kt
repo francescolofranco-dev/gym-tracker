@@ -75,12 +75,17 @@ class SessionDetailViewModel @Inject constructor(
     /**
      * Persist a typed-but-uncommitted reps/kg so the value survives navigation. On a past
      * session the auto-fill bulk apply isn't useful (you're not building the session, just
-     * editing history), so we always go through the single-row draft path.
+     * editing history), so we always go through the single-row draft path and ignore the
+     * kgFromExplicitEntry flag.
      */
-    fun saveSetDraft(sessionExerciseId: Long, setLogId: Long, reps: Int?, kg: Double?) = viewModelScope.launch {
-        // sessionExerciseId is accepted for parity with the active VM's signature; unused here
-        // because past-session detail shouldn't trigger the "first kg" auto-fill.
-        @Suppress("UNUSED_VARIABLE") val _se = sessionExerciseId
+    @Suppress("UNUSED_PARAMETER")
+    fun saveSetDraft(
+        sessionExerciseId: Long,
+        setLogId: Long,
+        reps: Int?,
+        kg: Double?,
+        kgFromExplicitEntry: Boolean,
+    ) = viewModelScope.launch {
         repo.saveSetDraft(setLogId, reps, kg)
     }
 
