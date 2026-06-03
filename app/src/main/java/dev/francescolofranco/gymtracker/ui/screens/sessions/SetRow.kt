@@ -528,11 +528,11 @@ private data class PercentDelta(val text: String, val tone: PercentTone)
 
 @Composable
 private fun PercentTone.color(): androidx.compose.ui.graphics.Color = when (this) {
-    // Green = progress, orange = regression. Distinct from the brand primary (also orange) +
-    // Material error (red), but the user explicitly wanted green/orange semantics for the
-    // up/down direction, not the design-system default tonal pairing.
+    // Green = progress, amber = regression. Amber is its own token (not the brand primary, now
+    // cyan, nor Material error red) so the up/down deltas keep the green/amber semantics the
+    // user asked for without colliding with the primary action colour.
     PercentTone.Up -> dev.francescolofranco.gymtracker.ui.theme.VolumeGreen
-    PercentTone.Down -> dev.francescolofranco.gymtracker.ui.theme.BrandOrange
+    PercentTone.Down -> dev.francescolofranco.gymtracker.ui.theme.RegressionAmber
     PercentTone.Same -> MaterialTheme.colorScheme.onSurfaceVariant
 }
 

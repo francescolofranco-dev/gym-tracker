@@ -1,6 +1,7 @@
 package dev.francescolofranco.gymtracker.ui.screens.stats
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,10 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SegmentedButton
@@ -26,7 +24,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -36,10 +33,6 @@ import dev.francescolofranco.gymtracker.domain.WeekMode
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.ui.screens.sessions.formatDuration
 import dev.francescolofranco.gymtracker.ui.screens.sessions.formatTotalVolume
-import dev.francescolofranco.gymtracker.ui.theme.VolumeBlue
-import dev.francescolofranco.gymtracker.ui.theme.VolumeGreen
-import dev.francescolofranco.gymtracker.ui.theme.VolumeGrey
-import dev.francescolofranco.gymtracker.ui.theme.VolumeRed
 import kotlin.math.roundToInt
 
 @Composable
@@ -60,19 +53,17 @@ fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
             )
         }
         item {
-            BodyDiagram(
+            RegionalRadar(
                 volumes = state.muscleVolumes,
-                onMuscleTap = { viewModel.selectMuscle(it) },
+                modifier = Modifier.padding(horizontal = 16.dp),
             )
-        }
-        item {
-            VolumeLegend(modifier = Modifier.padding(horizontal = 16.dp))
         }
         item {
             VolumeByMuscleCard(
                 volumes = state.muscleVolumes,
                 previous = state.previousMuscleVolumes,
                 unit = state.unit,
+                onMuscleClick = { viewModel.selectMuscle(it) },
                 modifier = Modifier.padding(horizontal = 16.dp),
             )
         }
@@ -116,37 +107,6 @@ private fun WeekModeToggle(
     }
 }
 
-@Composable
-private fun VolumeLegend(modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        LegendItem("0", VolumeGrey, modifier = Modifier.weight(1f))
-        LegendItem("1–2", VolumeBlue, modifier = Modifier.weight(1f))
-        LegendItem("3–10", VolumeGreen, modifier = Modifier.weight(1f))
-        LegendItem("11+", VolumeRed, modifier = Modifier.weight(1f))
-    }
-}
-
-@Composable
-private fun LegendItem(label: String, color: Color, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier,
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(12.dp)
-                .clip(CircleShape)
-                .background(color),
-        )
-        Text(text = label, style = MaterialTheme.typography.labelSmall)
-    }
-}
-
 /**
  * Per-muscle kg tonnage this period — replaces the single pooled "Total volume" number from
  * before with one row per muscle that actually got work, sorted descending. The bar is sized
@@ -158,6 +118,7 @@ private fun VolumeByMuscleCard(
     volumes: Map<Muscle, MuscleVolume>,
     previous: Map<Muscle, MuscleVolume>,
     unit: WeightUnit,
+    onMuscleClick: (Muscle) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val rows = remember(volumes) {
@@ -193,6 +154,7 @@ private fun VolumeByMuscleCard(
                     previousKg = previous[v.muscle]?.totalVolumeKg ?: 0.0,
                     maxKg = maxKg,
                     unit = unit,
+                    onClick = { onMuscleClick(v.muscle) },
                 )
             }
         }
@@ -205,12 +167,17 @@ private fun MuscleVolumeBar(
     previousKg: Double,
     maxKg: Double,
     unit: WeightUnit,
+    onClick: () -> Unit,
 ) {
     val fraction = (volume.totalVolumeKg / maxKg).coerceIn(0.0, 1.0).toFloat()
     val deltaKg = volume.totalVolumeKg - previousKg
 
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .clickable(onClick = onClick)
+            .padding(vertical = 2.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

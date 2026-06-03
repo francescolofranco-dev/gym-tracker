@@ -59,7 +59,7 @@ class TimerTileService : TileService() {
 
     private fun refresh(state: TimerState) {
         val tile = qsTile ?: return
-        tile.icon = Icon.createWithResource(applicationContext, R.drawable.ic_launcher_foreground)
+        tile.icon = Icon.createWithResource(applicationContext, R.drawable.ic_launcher_monochrome)
         tile.label = getString(R.string.tile_timer_label)
         tile.contentDescription = tile.label
         tile.state = if (state.isRunning) Tile.STATE_ACTIVE else Tile.STATE_INACTIVE

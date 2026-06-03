@@ -60,8 +60,8 @@ private val DarkColors = darkColorScheme(
 
 /**
  * Branded palette — we deliberately bypass Material You's dynamic colour extraction so the app
- * has a consistent, energetic feel regardless of the user's wallpaper. The orange primary is
- * picked to stay clear of the volume traffic-light (grey/blue/green/red) on the body diagram.
+ * has a consistent, modern feel regardless of the user's wallpaper. The electric-cyan primary is
+ * picked to stay clear of the volume traffic-light (grey/blue/green/red) on the Stats screen.
  */
 @Composable
 fun GymTrackerTheme(

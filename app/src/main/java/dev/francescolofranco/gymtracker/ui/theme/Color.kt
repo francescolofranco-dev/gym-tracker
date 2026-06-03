@@ -10,16 +10,21 @@ val VolumeGreen = Color(0xFF22C55E)  // 3-10 sets — in range
 val VolumeRed = Color(0xFFEF4444)    // 11+ sets — over
 
 // ─── Brand accent ─────────────────────────────────────────────────────────────────────────
-// Vibrant orange — energetic, distinct from the volume traffic-light so the primary action
-// (Start session, Backup now, ✓) never clashes with the muscle heatmap.
-val BrandOrange = Color(0xFFFF6B35)
-val BrandOrangeDeep = Color(0xFFC2410C)
+// Electric cyan — a colder, more modern evolution of the app's original orange. Still
+// energetic, but deliberately kept clear of the volume traffic-light (grey/blue/green/red) so
+// the primary action (Start session, Backup now, ✓) never clashes with the muscle heatmap.
+val BrandCyan = Color(0xFF22D3EE)      // primary in the dark scheme / electric accent
+val BrandCyanDeep = Color(0xFF0E7490)  // primary in the light scheme (passes contrast on white)
+
+// Regression amber — the "you went down vs. last session" tone on set-row deltas. Kept as its
+// own token (not the brand) so the cyan primary stays reserved for positive/primary affordances.
+val RegressionAmber = Color(0xFFF59E0B)
 
 // ─── Dark scheme ──────────────────────────────────────────────────────────────────────────
-val DarkPrimary = BrandOrange
-val DarkOnPrimary = Color(0xFF2C0900)
-val DarkPrimaryContainer = Color(0xFF5D2300)
-val DarkOnPrimaryContainer = Color(0xFFFFDBC9)
+val DarkPrimary = BrandCyan
+val DarkOnPrimary = Color(0xFF00363F)
+val DarkPrimaryContainer = Color(0xFF064E5B)
+val DarkOnPrimaryContainer = Color(0xFFA5EEF7)
 
 val DarkSecondary = Color(0xFF6EE7B7)
 val DarkOnSecondary = Color(0xFF003827)
@@ -43,10 +48,10 @@ val DarkOutline = Color(0xFF565C66)
 val DarkOutlineVariant = Color(0xFF3A4049)
 
 // ─── Light scheme ─────────────────────────────────────────────────────────────────────────
-val LightPrimary = BrandOrangeDeep
+val LightPrimary = BrandCyanDeep
 val LightOnPrimary = Color(0xFFFFFFFF)
-val LightPrimaryContainer = Color(0xFFFFDBC9)
-val LightOnPrimaryContainer = Color(0xFF380C00)
+val LightPrimaryContainer = Color(0xFFCFF6FB)
+val LightOnPrimaryContainer = Color(0xFF00363F)
 
 val LightSecondary = Color(0xFF047857)
 val LightOnSecondary = Color(0xFFFFFFFF)
