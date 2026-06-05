@@ -67,7 +67,7 @@ fun weekRange(mode: WeekMode, now: Instant = Instant.now(), zone: ZoneId = ZoneI
             endExclusive = now,
         )
         WeekMode.MON_SUN -> {
-            val today = LocalDate.now(zone)
+            val today = now.atZone(zone).toLocalDate()
             val monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
             val nextMonday = monday.plusDays(7)
             DateRange(
@@ -79,7 +79,7 @@ fun weekRange(mode: WeekMode, now: Instant = Instant.now(), zone: ZoneId = ZoneI
 }
 
 fun monthRange(now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): DateRange {
-    val today = LocalDate.now(zone)
+    val today = now.atZone(zone).toLocalDate()
     val ym = YearMonth.from(today)
     val first = ym.atDay(1).atStartOfDay(zone).toInstant()
     val nextFirst = ym.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant()
@@ -87,7 +87,7 @@ fun monthRange(now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault
 }
 
 fun yearRange(now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): DateRange {
-    val today = LocalDate.now(zone)
+    val today = now.atZone(zone).toLocalDate()
     val first = LocalDate.of(today.year, 1, 1).atStartOfDay(zone).toInstant()
     val nextFirst = LocalDate.of(today.year + 1, 1, 1).atStartOfDay(zone).toInstant()
     return DateRange(first, nextFirst)
@@ -106,7 +106,7 @@ fun previousOf(current: DateRange): DateRange {
 }
 
 fun previousMonthRange(now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): DateRange {
-    val today = LocalDate.now(zone)
+    val today = now.atZone(zone).toLocalDate()
     val ym = YearMonth.from(today).minusMonths(1)
     val first = ym.atDay(1).atStartOfDay(zone).toInstant()
     val nextFirst = ym.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant()
@@ -114,7 +114,7 @@ fun previousMonthRange(now: Instant = Instant.now(), zone: ZoneId = ZoneId.syste
 }
 
 fun previousYearRange(now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): DateRange {
-    val today = LocalDate.now(zone)
+    val today = now.atZone(zone).toLocalDate()
     val first = LocalDate.of(today.year - 1, 1, 1).atStartOfDay(zone).toInstant()
     val nextFirst = LocalDate.of(today.year, 1, 1).atStartOfDay(zone).toInstant()
     return DateRange(first, nextFirst)
