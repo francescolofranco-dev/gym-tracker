@@ -127,12 +127,8 @@ fun GymApp() {
             composable(
                 route = SessionRoutes.DETAIL,
                 arguments = listOf(navArgument(SessionRoutes.DETAIL_ARG) { type = NavType.LongType }),
-            ) { entry ->
-                val id = entry.arguments?.getLong(SessionRoutes.DETAIL_ARG) ?: return@composable
-                SessionDetailScreen(
-                    sessionId = id,
-                    onBack = { nav.popBackStack() },
-                )
+            ) {
+                SessionDetailScreen(onBack = { nav.popBackStack() })
             }
         }
     }

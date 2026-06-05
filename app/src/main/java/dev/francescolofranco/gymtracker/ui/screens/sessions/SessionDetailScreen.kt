@@ -43,7 +43,6 @@ import java.time.Duration
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SessionDetailScreen(
-    sessionId: Long,
     onBack: () -> Unit,
     viewModel: SessionDetailViewModel = hiltViewModel(),
 ) {
