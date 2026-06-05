@@ -178,5 +178,3 @@ fun volumeColor(total: Int): Color = when {
     total <= Muscle.WEEKLY_MAX -> VolumeGreen
     else -> VolumeRed
 }
-
-fun setVolumeKg(rows: List<StatSetRow>): Double = rows.sumOf { (it.kg ?: 0.0) * it.reps }

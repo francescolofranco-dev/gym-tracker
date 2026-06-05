@@ -26,10 +26,6 @@ fun convertToKg(value: Double, unit: WeightUnit): Double = when (unit) {
     WeightUnit.LBS -> value / LBS_PER_KG
 }
 
-fun formatWeight(kg: Double, unit: WeightUnit): String {
-    return "${formatWeightNumber(convertFromKg(kg, unit))} ${unit.label()}"
-}
-
 /**
  * Renders a weight number with up to 3 decimals, trimming trailing zeros so 12 reads as "12",
  * 12.5 as "12.5", and 12.345 as "12.345". The numpad allows 3 fractional digits so the display

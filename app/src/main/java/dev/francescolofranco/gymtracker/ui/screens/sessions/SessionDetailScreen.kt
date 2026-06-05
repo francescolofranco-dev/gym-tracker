@@ -40,7 +40,6 @@ import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetai
 import kotlinx.coroutines.launch
 import java.time.Duration
 
-@Suppress("UNUSED_PARAMETER")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SessionDetailScreen(

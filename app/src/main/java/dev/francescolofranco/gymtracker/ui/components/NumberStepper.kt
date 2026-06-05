@@ -49,12 +49,12 @@ fun NumberStepper(
     value: Double,
     onValueChange: (Double) -> Unit,
     step: Double,
+    modifier: Modifier = Modifier,
     fastStep: Double = step * 2,
     min: Double = 0.0,
     max: Double = Double.MAX_VALUE,
     valueLabel: String = formatValue(value),
     onChipClick: (() -> Unit)? = null,
-    modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
     val haptic = LocalHapticFeedback.current
