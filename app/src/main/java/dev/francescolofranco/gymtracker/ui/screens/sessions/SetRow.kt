@@ -8,14 +8,14 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -36,20 +36,34 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.francescolofranco.gymtracker.data.db.entities.SetLogEntity
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.ui.components.NumpadSheet
+import dev.francescolofranco.gymtracker.ui.theme.RegressionAmber
 import dev.francescolofranco.gymtracker.ui.theme.VolumeBlue
+import dev.francescolofranco.gymtracker.ui.theme.VolumeGreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.time.Duration.Companion.milliseconds
+
+// Shared column geometry so the header labels and every set row line up into a strict grid.
+private val ColIndexWidth = 24.dp
+private val ColCheckWidth = 52.dp
+private const val ColWeightWeight = 1f
+private const val ColRepsWeight = 1.3f
 
 data class SetRowState(
     val log: SetLogEntity,
@@ -60,7 +74,39 @@ data class SetRowState(
     val hintReps: Int?,
     /** kg to display when log.kg is null (planned). */
     val hintKg: Double?,
+    /** True when this is the current set to log (first un-logged, non-skipped). */
+    val isActive: Boolean = false,
 )
+
+/** Column headers (# / WEIGHT / REPS) drawn once above the set rows; matches the row grid. */
+@Composable
+fun SetTableHeader() {
+    val style = MaterialTheme.typography.labelMedium
+    val color = MaterialTheme.colorScheme.onSurfaceVariant
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text("#", style = style, color = color, modifier = Modifier.width(ColIndexWidth))
+        Text(
+            "WEIGHT",
+            style = style,
+            color = color,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.weight(ColWeightWeight),
+        )
+        Text(
+            "REPS",
+            style = style,
+            color = color,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.weight(ColRepsWeight),
+        )
+        Spacer(Modifier.width(ColCheckWidth))
+    }
+}
 
 @Composable
 fun SetRow(
@@ -68,11 +114,7 @@ fun SetRow(
     onCommit: (reps: Int, kg: Double) -> Unit,
     onUncommit: () -> Unit,
     /**
-     * Persist a draft change. [kgFromExplicitEntry] is true only when the user typed kg in the
-     * numpad (vs. just bumping reps on the stepper) — that's the signal the ViewModel uses to
-     * decide whether to fire the "first kg" auto-fill across the exercise's other sets. Without
-     * this distinction, bumping reps on a fresh exercise would propagate the HINT kg to every
-     * pending set, which is not what the user asked for.
+     * Persist a draft change.
      */
     onDraft: (reps: Int?, kg: Double?, kgFromExplicitEntry: Boolean) -> Unit,
     onSkipToggle: () -> Unit,
@@ -98,82 +140,116 @@ fun SetRow(
     val displayKg = convertFromKg(kgInternal, state.unit)
     val belowRange = isLogged && (log.reps ?: 0) < state.targetReps.first
     val rowAlpha = if (isSkipped) 0.45f else 1f
+    val isActiveSet = state.isActive && !isLogged && !isSkipped
+
+    // Deltas vs the matching set last session. Weight always renders ("-" when no reference);
+    // reps only renders the % once committed (while scrubbing an un-logged set the live % nags).
+    val kgDelta = percentDeltaOrDash(kgInternal, state.hintKg)
+    val kgDeltaColor = kgDelta.tone.color()
+    val repsDelta = when {
+        state.hintReps == null -> percentDeltaOrDash(reps.toDouble(), null)
+        isLogged -> percentDeltaOrDash(reps.toDouble(), state.hintReps.toDouble())
+        else -> null
+    }
+    val repsDeltaColor = (repsDelta?.tone ?: PercentTone.Same).color()
+
+    val indexColor = when {
+        isActiveSet -> MaterialTheme.colorScheme.primary
+        belowRange -> VolumeBlue
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+
+    fun bumpReps(delta: Int) {
+        val next = (reps + delta).coerceIn(0, 200)
+        if (next == reps) return
+        reps = next
+        if (isLogged) {
+            onCommit(reps, kgInternal)
+        } else if (editable) {
+            // Persist a stepper bump as a draft so it survives recomposition / navigation.
+            onDraft(
+                reps.takeIf { it > 0 || log.reps != null },
+                kgInternal.takeIf { it > 0.0 || log.kg != null },
+                false,
+            )
+        }
+    }
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .alpha(rowAlpha)
-            .height(56.dp)
-            .padding(horizontal = 4.dp, vertical = 4.dp),
+            .padding(horizontal = 4.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        SetIndex(number = log.setNumber, belowRange = belowRange, isLogged = isLogged)
-
-        // Reps delta:
-        //  - First-time exercise (no hintReps) → always show "-" so the row reads as
-        //    "no reference yet" rather than "no chip at all", matching the kg behaviour.
-        //  - Has hint → only show the % after the set is committed; while the user is still
-        //    scrubbing the stepper the live delta would just nag.
-        val repsDelta = when {
-            state.hintReps == null -> percentDeltaOrDash(reps.toDouble(), null)
-            isLogged -> percentDeltaOrDash(reps.toDouble(), state.hintReps.toDouble())
-            else -> null
+        // # column
+        Cell(modifier = Modifier.width(ColIndexWidth), captionText = null, horizontalAlignment = Alignment.Start) {
+            Text(
+                text = "${log.setNumber}",
+                style = MaterialTheme.typography.titleMedium.asNumber(),
+                color = indexColor,
+            )
         }
-        CompactStepper(
-            value = reps.toDouble(),
-            label = "$reps",
-            subLabel = repsDelta?.text,
-            subLabelColor = repsDelta?.tone?.color(),
-            onValueChange = {
-                reps = it.toInt().coerceAtLeast(0)
-                if (isLogged) onCommit(reps, kgInternal)
-                // Unlogged stepper bumps used to live only in compose state — when the row
-                // recycled out of the LazyColumn viewport (or the user left the screen),
-                // the change was lost and the chip reset to the hint. Persist as a draft so
-                // the value sticks across recomposition and navigation.
-                //
-                // takeIf mirrors finishNumpad: a zero-with-no-history clears the field, but
-                // a non-zero value (or any history) is preserved. kgFromExplicitEntry = false
-                // because the user touched reps, not kg.
-                else if (editable) onDraft(
-                    reps.takeIf { it > 0 || log.reps != null },
-                    kgInternal.takeIf { it > 0.0 || log.kg != null },
-                    false,
+
+        // WEIGHT column — big value + small unit, tap to open the kg numpad.
+        Cell(
+            modifier = Modifier.weight(ColWeightWeight),
+            captionText = kgDelta.text,
+            captionColor = kgDeltaColor,
+        ) {
+            WeightValue(
+                number = formatWeightChip(displayKg, state.isBodyweight),
+                unit = state.unit.label(),
+                onClick = if (editable) ({ numpadFor = NumpadField.KG }) else null,
+                enabled = editable && !isSkipped,
+            )
+        }
+
+        // REPS column — ghost - / + keys around the tappable value.
+        Cell(
+            modifier = Modifier.weight(ColRepsWeight),
+            captionText = repsDelta?.text,
+            captionColor = repsDeltaColor,
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
+            ) {
+                GhostStepper(
+                    icon = Icons.Filled.Remove,
+                    contentDescription = "Decrease reps",
+                    enabled = editable && !isSkipped && reps > 0,
+                    onTap = { bumpReps(-1) },
+                    onHoldStep = { bumpReps(-2) },
                 )
-            },
-            step = 1.0,
-            min = 0.0,
-            max = 200.0,
-            onChipClick = if (editable) ({ numpadFor = NumpadField.REPS }) else null,
-            enabled = editable && !isSkipped,
-            modifier = Modifier.weight(1f),
-        )
+                RepsValue(
+                    reps = reps,
+                    onTap = if (editable) ({ numpadFor = NumpadField.REPS }) else null,
+                    enabled = editable && !isSkipped,
+                )
+                GhostStepper(
+                    icon = Icons.Filled.Add,
+                    contentDescription = "Increase reps",
+                    enabled = editable && !isSkipped && reps < 200,
+                    onTap = { bumpReps(1) },
+                    onHoldStep = { bumpReps(2) },
+                )
+            }
+        }
 
-        // Kg: tap-to-numpad chip only (no +/-). Manual digit entry is much faster than
-        // stepping 2.5 kg at a time for typical lifting changes. The sub-label is always
-        // populated — a dash when there's no previous session to compare against, otherwise
-        // ±% vs the matching set so the user can see at a glance whether they're progressing.
-        val pctDelta = percentDeltaOrDash(kgInternal, state.hintKg)
-        WeightChip(
-            label = formatWeightChip(displayKg, state.unit, state.isBodyweight),
-            subLabel = pctDelta.text,
-            subLabelColor = pctDelta.tone.color(),
-            onClick = if (editable) ({ numpadFor = NumpadField.KG }) else null,
-            enabled = editable && !isSkipped,
-            modifier = Modifier.weight(1.2f),
-        )
-
-        CheckButton(
-            isLogged = isLogged,
-            isSkipped = isSkipped,
-            editable = editable,
-            onTap = {
-                if (!editable) return@CheckButton
-                if (isLogged) onUncommit() else onCommit(reps, kgInternal)
-            },
-            onLongPress = { if (editable) onSkipToggle() },
-        )
+        // Check column
+        Cell(modifier = Modifier.width(ColCheckWidth), captionText = null) {
+            CheckSquare(
+                isLogged = isLogged,
+                isSkipped = isSkipped,
+                editable = editable,
+                onTap = {
+                    if (!editable) return@CheckSquare
+                    if (isLogged) onUncommit() else onCommit(reps, kgInternal)
+                },
+                onLongPress = { if (editable) onSkipToggle() },
+            )
+        }
     }
 
     fun finishNumpad() {
@@ -237,145 +313,51 @@ fun SetRow(
     }
 }
 
-@Composable
-private fun SetIndex(number: Int, belowRange: Boolean, isLogged: Boolean) {
-    // Green = logged is consistent with the body diagram's "in-range" colour and matches the
-    // CheckButton below, so a glance down the index column tells the user how many sets are
-    // in the bank. Below-range still wins the colour slot since it's the more actionable
-    // state ("you fell short of the rep target on that one").
-    val bg = when {
-        belowRange -> VolumeBlue
-        isLogged -> dev.francescolofranco.gymtracker.ui.theme.VolumeGreen
-        else -> MaterialTheme.colorScheme.surfaceContainerHighest
-    }
-    val fg = when {
-        belowRange -> androidx.compose.ui.graphics.Color.White
-        isLogged -> androidx.compose.ui.graphics.Color.White
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
-    Box(
-        modifier = Modifier
-            .size(36.dp)
-            .clip(CircleShape)
-            .background(bg),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = "$number",
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            color = fg,
-        )
-    }
-}
-
 /**
- * Compact stepper used inside a set row: 36dp -/+ buttons, chip with no min width so the whole
- * row fits inside a phone column. Tap +/- to step, long-press to scrub fast, tap the chip to
- * open the numpad. Vertical center-aligned at row height 48dp.
+ * One grid cell: the [content] sits on a shared top line (so values, ghost keys and the check
+ * align across columns) with an optional ±% [captionText] on a baseline below. The caption slot
+ * is always reserved so every cell is the same height.
  */
 @Composable
-private fun CompactStepper(
-    value: Double,
-    label: String,
-    onValueChange: (Double) -> Unit,
-    step: Double,
-    fastStep: Double = step * 2,
-    min: Double = 0.0,
-    max: Double = Double.MAX_VALUE,
-    onChipClick: (() -> Unit)? = null,
-    enabled: Boolean = true,
-    modifier: Modifier = Modifier,
-    subLabel: String? = null,
-    subLabelColor: androidx.compose.ui.graphics.Color? = null,
+private fun Cell(
+    modifier: Modifier,
+    captionText: String?,
+    captionColor: Color = Color.Unspecified,
+    horizontalAlignment: Alignment.Horizontal = Alignment.CenterHorizontally,
+    content: @Composable () -> Unit,
 ) {
-    val haptic = LocalHapticFeedback.current
-    fun update(delta: Double) {
-        val next = (value + delta).coerceIn(min, max)
-        if (next != value) onValueChange(next)
-    }
-    Row(
-        modifier = modifier
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        StepperKey(
-            icon = Icons.Filled.Remove,
-            contentDescription = "Decrease",
-            enabled = enabled && value > min,
-            onTap = { update(-step) },
-            onHoldStep = { update(-fastStep) },
-        )
-
-        Box(
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight()
-                .pointerInput(onChipClick, enabled) {
-                    if (onChipClick == null || !enabled) return@pointerInput
-                    awaitEachGesture {
-                        awaitFirstDown()
-                        val up = waitForUpOrCancellation()
-                        if (up != null) {
-                            haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
-                            onChipClick()
-                        }
-                    }
-                }
-                .semantics { contentDescription = "Value $label" },
-            contentAlignment = Alignment.Center,
-        ) {
-            androidx.compose.foundation.layout.Column(
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
+    Column(modifier = modifier, horizontalAlignment = horizontalAlignment) {
+        Box(modifier = Modifier.height(34.dp), contentAlignment = Alignment.Center) {
+            content()
+        }
+        Box(modifier = Modifier.height(16.dp), contentAlignment = Alignment.Center) {
+            if (captionText != null) {
                 Text(
-                    text = label,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    text = captionText,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontWeight = FontWeight.Medium,
+                        platformStyle = PlatformTextStyle(includeFontPadding = false),
+                    ),
+                    color = captionColor,
                     maxLines = 1,
                 )
-                if (subLabel != null) {
-                    Text(
-                        text = subLabel,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = subLabelColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                    )
-                }
             }
         }
-
-        StepperKey(
-            icon = Icons.Filled.Add,
-            contentDescription = "Increase",
-            enabled = enabled && value < max,
-            onTap = { update(step) },
-            onHoldStep = { update(fastStep) },
-        )
     }
 }
 
-/**
- * Read-and-tap chip for kg / lbs — no +/- buttons, just shows the value and opens the numpad
- * on tap. Matches CompactStepper's height/styling so the row stays aligned.
- */
+/** Big weight value with a small unit suffix ("20 kg"); tap to open the kg numpad. */
 @Composable
-private fun WeightChip(
-    label: String,
-    subLabel: String?,
-    subLabelColor: androidx.compose.ui.graphics.Color?,
+private fun WeightValue(
+    number: String,
+    unit: String,
     onClick: (() -> Unit)?,
     enabled: Boolean,
-    modifier: Modifier = Modifier,
 ) {
     val haptic = LocalHapticFeedback.current
-    Box(
-        modifier = modifier
-            .fillMaxHeight()
-            .clip(RoundedCornerShape(14.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+    Row(
+        verticalAlignment = Alignment.Bottom,
+        modifier = Modifier
             .pointerInput(onClick, enabled) {
                 if (onClick == null || !enabled) return@pointerInput
                 awaitEachGesture {
@@ -387,33 +369,57 @@ private fun WeightChip(
                     }
                 }
             }
-            .semantics { contentDescription = "Weight $label, tap to edit" },
-        contentAlignment = Alignment.Center,
+            .semantics { contentDescription = "Weight $number $unit, tap to edit" },
     ) {
-        androidx.compose.foundation.layout.Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = label,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                maxLines = 1,
-            )
-            if (subLabel != null) {
-                Text(
-                    text = subLabel,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = subLabelColor ?: MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                )
-            }
-        }
+        Text(
+            text = number,
+            style = MaterialTheme.typography.titleLarge.asNumber(),
+            color = MaterialTheme.colorScheme.onSurface,
+            maxLines = 1,
+        )
+        Spacer(Modifier.width(2.dp))
+        Text(
+            text = unit,
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+        )
     }
 }
 
+/** The reps value — a big tappable numeral that opens the reps numpad. */
 @Composable
-private fun StepperKey(
+private fun RepsValue(reps: Int, onTap: (() -> Unit)?, enabled: Boolean) {
+    val haptic = LocalHapticFeedback.current
+    Text(
+        text = "$reps",
+        style = MaterialTheme.typography.titleLarge.asNumber(),
+        color = MaterialTheme.colorScheme.onSurface,
+        maxLines = 1,
+        textAlign = TextAlign.Center,
+        modifier = Modifier
+            .width(34.dp)
+            .pointerInput(onTap, enabled) {
+                if (onTap == null || !enabled) return@pointerInput
+                awaitEachGesture {
+                    awaitFirstDown()
+                    val up = waitForUpOrCancellation()
+                    if (up != null) {
+                        haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                        onTap()
+                    }
+                }
+            }
+            .semantics { contentDescription = "Reps $reps, tap to edit" },
+    )
+}
+
+/**
+ * Flat "ghost" +/- key: just the cyan glyph, no filled background, on a 40dp touch target. Tap to
+ * step once, press-and-hold to scrub.
+ */
+@Composable
+private fun GhostStepper(
     icon: ImageVector,
     contentDescription: String,
     enabled: Boolean,
@@ -424,20 +430,17 @@ private fun StepperKey(
     val haptic = LocalHapticFeedback.current
     var pressed by remember { mutableStateOf(false) }
 
-    // The pointerInput / LaunchedEffect coroutines are long-lived — they capture onTap and
-    // onHoldStep at first launch. Without these "latest" references, the second tap would
-    // call the original closure that still sees the original `value`, producing the same
-    // result as the first tap (and looking like the buttons stopped working). Routing every
-    // call through the current refs makes each invocation observe the live state.
+    // Long-lived coroutines capture the first lambdas; route through "latest" refs so every call
+    // observes live state (otherwise repeat taps recompute the same value and look stuck).
     val currentOnTap by rememberUpdatedState(onTap)
     val currentOnHoldStep by rememberUpdatedState(onHoldStep)
 
     LaunchedEffect(pressed) {
         if (pressed) {
-            delay(400)
+            delay(400.milliseconds)
             while (isActive && pressed) {
                 currentOnHoldStep()
-                delay(80)
+                delay(80.milliseconds)
             }
         }
     }
@@ -445,11 +448,6 @@ private fun StepperKey(
     Box(
         modifier = Modifier
             .size(40.dp)
-            .clip(CircleShape)
-            .background(
-                if (enabled) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.surfaceVariant,
-            )
             .pointerInput(enabled) {
                 if (!enabled) return@pointerInput
                 awaitEachGesture {
@@ -470,15 +468,23 @@ private fun StepperKey(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer
-            else MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = if (enabled) {
+                MaterialTheme.colorScheme.primary
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+            },
+            modifier = Modifier.size(22.dp),
         )
     }
 }
 
+/**
+ * Tap-to-toggle check, a rounded square. Logged sets fill solid green with a white tick;
+ * un-logged sets are a muted square. Long-press toggles the skipped state.
+ */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-private fun CheckButton(
+private fun CheckSquare(
     isLogged: Boolean,
     isSkipped: Boolean,
     editable: Boolean,
@@ -487,15 +493,10 @@ private fun CheckButton(
 ) {
     val bg = when {
         isSkipped -> MaterialTheme.colorScheme.surfaceContainerHighest
-        // Match the SetIndex circle so "logged" reads as the same green affordance across the row.
-        isLogged -> dev.francescolofranco.gymtracker.ui.theme.VolumeGreen
+        isLogged -> VolumeGreen
         else -> MaterialTheme.colorScheme.surfaceVariant
     }
-    val tint = when {
-        isSkipped -> MaterialTheme.colorScheme.onSurfaceVariant
-        isLogged -> androidx.compose.ui.graphics.Color.White
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
-    }
+    val tint = if (isLogged) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
     val clickModifier = if (editable) {
         Modifier.combinedClickable(onClick = onTap, onLongClick = onLongPress)
     } else {
@@ -503,23 +504,41 @@ private fun CheckButton(
     }
     Box(
         modifier = Modifier
-            .size(48.dp)
+            .size(44.dp)
             .clip(RoundedCornerShape(14.dp))
             .background(bg)
-            .then(clickModifier),
+            .then(clickModifier)
+            .semantics {
+                contentDescription = if (isLogged) "Logged (long-press to skip)" else "Mark logged"
+            },
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             imageVector = Icons.Filled.Check,
-            contentDescription = if (isLogged) "Logged (long-press to skip)" else "Mark logged",
+            contentDescription = null,
             tint = tint,
+            modifier = Modifier.size(22.dp),
         )
     }
 }
 
-private fun formatWeightChip(value: Double, unit: WeightUnit, isBodyweight: Boolean): String {
+/**
+ * Tight, font-padding-free style for the big numerals so they sit on the true vertical centre of
+ * their cell and line up with the ghost keys. Compose's default includeFontPadding adds space
+ * above the glyph, which leaves numbers floating high.
+ */
+private fun TextStyle.asNumber(): TextStyle = copy(
+    fontWeight = FontWeight.SemiBold,
+    platformStyle = PlatformTextStyle(includeFontPadding = false),
+    lineHeightStyle = LineHeightStyle(
+        alignment = LineHeightStyle.Alignment.Center,
+        trim = LineHeightStyle.Trim.Both,
+    ),
+)
+
+private fun formatWeightChip(value: Double, isBodyweight: Boolean): String {
     val prefix = if (isBodyweight) "+" else ""
-    return "$prefix${formatWeightNumber(value)} ${unit.label()}"
+    return "$prefix${formatWeightNumber(value)}"
 }
 
 private enum class PercentTone { Up, Down, Same }
@@ -527,22 +546,21 @@ private enum class PercentTone { Up, Down, Same }
 private data class PercentDelta(val text: String, val tone: PercentTone)
 
 @Composable
-private fun PercentTone.color(): androidx.compose.ui.graphics.Color = when (this) {
+private fun PercentTone.color(): Color = when (this) {
     // Green = progress, amber = regression. Amber is its own token (not the brand primary, now
-    // cyan, nor Material error red) so the up/down deltas keep the green/amber semantics the
-    // user asked for without colliding with the primary action colour.
-    PercentTone.Up -> dev.francescolofranco.gymtracker.ui.theme.VolumeGreen
-    PercentTone.Down -> dev.francescolofranco.gymtracker.ui.theme.RegressionAmber
+    // cyan, nor Material error red) so the up/down deltas keep the green/amber semantics without
+    // colliding with the primary action colour.
+    PercentTone.Up -> VolumeGreen
+    PercentTone.Down -> RegressionAmber
     PercentTone.Same -> MaterialTheme.colorScheme.onSurfaceVariant
 }
 
 /**
  * Percentage change vs the matching set from the previous session. Always returns a renderable
- * value so the chip layout doesn't jump as logs come and go:
+ * value so the caption layout doesn't jump as logs come and go:
  *  - "+N%" / "-N%" when the rounded change is non-zero,
  *  - "0%" (neutral tone) when current matches prior,
- *  - "-" (neutral tone) when there's no prior data to compare against. The dash is the
- *    explicit "first-time / no reference" affordance the user asked for.
+ *  - "-" (neutral tone) when there's no prior data to compare against.
  */
 private fun percentDeltaOrDash(current: Double, hint: Double?): PercentDelta {
     if (hint == null || hint <= 0.0) return PercentDelta("-", PercentTone.Same)

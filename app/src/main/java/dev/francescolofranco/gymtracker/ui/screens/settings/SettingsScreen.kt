@@ -85,7 +85,7 @@ fun SettingsScreen(
     val driveState by driveViewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
 
-    var pendingRestoreUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var pendingRestoreUri by remember { mutableStateOf<Uri?>(null) }
     var pendingDriveRestore by remember { mutableStateOf<DriveSnapshot?>(null) }
 
     val createDoc = rememberLauncherForActivityResult(
@@ -228,6 +228,7 @@ fun SettingsScreen(
     pendingRestoreUri?.let { uri ->
         AlertDialog(
             onDismissRequest = { pendingRestoreUri = null },
+            shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
             title = { Text("Restore from this file?") },
             text = {
                 Text(
@@ -250,6 +251,7 @@ fun SettingsScreen(
     pendingDriveRestore?.let { snap ->
         AlertDialog(
             onDismissRequest = { pendingDriveRestore = null },
+            shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
             title = { Text("Restore from Drive?") },
             text = {
                 Text(
@@ -443,7 +445,7 @@ private fun NotificationRow() {
 private fun rememberNotificationGranted(): State<Boolean> {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val state = remember { androidx.compose.runtime.mutableStateOf(checkNotificationGranted(context)) }
+    val state = remember { mutableStateOf(checkNotificationGranted(context)) }
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {

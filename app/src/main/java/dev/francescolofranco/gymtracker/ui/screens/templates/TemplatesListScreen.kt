@@ -125,6 +125,7 @@ fun TemplatesListScreen(
     pendingDelete?.let { target ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
+            shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
             title = { Text("Delete template?") },
             text = { Text("\"${target.name}\" will be removed. Past sessions started from this template stay intact.") },
             confirmButton = {

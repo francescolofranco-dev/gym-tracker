@@ -56,6 +56,7 @@ import java.time.Instant
 import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -107,6 +108,7 @@ fun SessionsScreen(
     if (confirmEnd) {
         AlertDialog(
             onDismissRequest = { confirmEnd = false },
+            shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
             title = { Text("End this session?") },
             text = {
                 Text(
@@ -187,6 +189,7 @@ fun SessionsScreen(
                 }
                 Button(
                     onClick = { startWithPermission { viewModel.startBlankSession() } },
+                    shape = dev.francescolofranco.gymtracker.ui.theme.ButtonShape,
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
@@ -376,7 +379,7 @@ private fun rememberElapsed(start: Instant): Duration {
     LaunchedEffect(start) {
         while (true) {
             now = Instant.now()
-            delay(1_000)
+            delay(1_000.milliseconds)
         }
     }
     return remember(now, start) { Duration.between(start, now) }

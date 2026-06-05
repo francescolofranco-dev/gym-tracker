@@ -143,6 +143,7 @@ fun ExerciseFormSheet(
             Button(
                 onClick = { onSave(state) },
                 enabled = state.isValid,
+                shape = dev.francescolofranco.gymtracker.ui.theme.ButtonShape,
                 modifier = Modifier.fillMaxWidth(),
             ) {
                 Text("Save")

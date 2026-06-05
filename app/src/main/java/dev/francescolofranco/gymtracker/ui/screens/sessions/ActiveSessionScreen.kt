@@ -1,6 +1,8 @@
 package dev.francescolofranco.gymtracker.ui.screens.sessions
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -52,7 +54,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -63,7 +64,6 @@ import dev.francescolofranco.gymtracker.domain.WeightUnit
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ActiveSessionScreen(
-    sessionId: Long,
     onExit: () -> Unit,
     viewModel: ActiveSessionViewModel = hiltViewModel(),
 ) {
@@ -220,6 +220,7 @@ fun ActiveSessionScreen(
     if (confirmEnd) {
         AlertDialog(
             onDismissRequest = { confirmEnd = false },
+            shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
             title = { Text("End session?") },
             text = { Text("This finalises the session. You can still edit sets afterwards.") },
             confirmButton = {
@@ -269,6 +270,7 @@ private fun StartWorkoutBanner(enabled: Boolean, onStart: () -> Unit) {
     androidx.compose.material3.Button(
         onClick = onStart,
         enabled = enabled,
+        shape = dev.francescolofranco.gymtracker.ui.theme.ButtonShape,
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
@@ -363,10 +365,13 @@ fun ExerciseCard(
     // the exercise is done without shouting — matches the SetIndex / CheckButton green.
     val isComplete = !detail.sessionExercise.isSkipped &&
         exercise.targetSets > 0 && loggedSets >= exercise.targetSets
-    val cardBg = if (isComplete) {
-        dev.francescolofranco.gymtracker.ui.theme.VolumeGreen.copy(alpha = 0.18f)
-            .compositeOver(MaterialTheme.colorScheme.surfaceContainer)
-    } else MaterialTheme.colorScheme.surfaceContainer
+    // Completed exercises get a calm green outline + a "Done" tag rather than a heavy green fill
+    // wash, which read as too loud over the grey set rows.
+    val cardBorder = if (isComplete) {
+        BorderStroke(1.5.dp, dev.francescolofranco.gymtracker.ui.theme.VolumeGreen)
+    } else {
+        null
+    }
 
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -374,7 +379,14 @@ fun ExerciseCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .background(cardBg)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .then(
+                if (cardBorder != null) {
+                    Modifier.border(cardBorder, RoundedCornerShape(16.dp))
+                } else {
+                    Modifier
+                },
+            )
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
@@ -390,7 +402,10 @@ fun ExerciseCard(
                     // before. The badge gives the user a heads-up that there's no historical
                     // reference (so the dash sub-labels on the kg/reps chips are expected,
                     // not a glitch).
-                    if (hints.isEmpty()) {
+                    if (isComplete) {
+                        Spacer(Modifier.width(8.dp))
+                        CompletedBadge()
+                    } else if (hints.isEmpty()) {
                         Spacer(Modifier.width(8.dp))
                         FirstTimeBadge()
                     }
@@ -470,30 +485,41 @@ fun ExerciseCard(
             )
         }
 
-        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        SetTableHeader()
 
-        sets.forEach { log ->
-            // Prefer the matching set-number hint, but fall back to *any* prior hint so a new
-            // session's set 1 still pre-fills when the previous session only logged sets 3+4.
-            // Without this fallback the first sets defaulted to 0 kg and reported a misleading
-            // -100% delta.
-            val hint = hints.firstOrNull { it.setNumber == log.setNumber }
-                ?: hints.firstOrNull()
-            SetRow(
-                state = SetRowState(
-                    log = log,
-                    targetReps = exercise.repRangeMin..exercise.repRangeMax,
-                    isBodyweight = exercise.isBodyweight,
-                    unit = unit,
-                    hintReps = hint?.reps,
-                    hintKg = hint?.kg,
-                ),
-                onCommit = { reps, kg -> onCommitSet(log.id, reps, kg) },
-                onUncommit = { onUncommitSet(log.id) },
-                onDraft = { reps, kg, kgExplicit -> onDraftSet(log.id, reps, kg, kgExplicit) },
-                onSkipToggle = { onToggleSetSkipped(log.id, log.isSkipped) },
-                editable = editable,
-            )
+        // The "active" set is the first one still to log; SetRow tints its index. Only while
+        // editable — a finished session shown in the detail view has no current set.
+        val activeSetId = if (editable) {
+            sets.firstOrNull { !it.isSkipped && !(it.loggedAt != null && it.reps != null) }?.id
+        } else {
+            null
+        }
+
+        Column {
+            sets.forEach { log ->
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                // Prefer the matching set-number hint, but fall back to *any* prior hint so a new
+                // session's set 1 still pre-fills when the previous session only logged sets 3+4.
+                val hint = hints.firstOrNull { it.setNumber == log.setNumber }
+                    ?: hints.firstOrNull()
+                SetRow(
+                    state = SetRowState(
+                        log = log,
+                        targetReps = exercise.repRangeMin..exercise.repRangeMax,
+                        isBodyweight = exercise.isBodyweight,
+                        unit = unit,
+                        hintReps = hint?.reps,
+                        hintKg = hint?.kg,
+                        isActive = log.id == activeSetId,
+                    ),
+                    onCommit = { reps, kg -> onCommitSet(log.id, reps, kg) },
+                    onUncommit = { onUncommitSet(log.id) },
+                    onDraft = { reps, kg, kgExplicit -> onDraftSet(log.id, reps, kg, kgExplicit) },
+                    onSkipToggle = { onToggleSetSkipped(log.id, log.isSkipped) },
+                    editable = editable,
+                )
+            }
         }
     }
 }
@@ -502,6 +528,22 @@ fun ExerciseCard(
  * Compact pill rendered next to an exercise name when there's no prior session to compare
  * against — keeps the sub-label dashes on the kg/reps chips from feeling like missing data.
  */
+@Composable
+private fun CompletedBadge() {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+    ) {
+        Text(
+            text = "Completed",
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSecondaryContainer,
+        )
+    }
+}
+
 @Composable
 private fun FirstTimeBadge() {
     Box(
@@ -528,11 +570,13 @@ private fun NotesDialog(
     var value by remember { mutableStateOf(initial) }
     AlertDialog(
         onDismissRequest = onCancel,
+        shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
         title = { Text(title) },
         text = {
             OutlinedTextField(
                 value = value,
                 onValueChange = { value = it },
+                placeholder = { Text("Add a note") },
                 keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
                 modifier = Modifier
                     .fillMaxWidth()

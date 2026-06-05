@@ -121,6 +121,7 @@ fun ExercisesScreen(
     deleteConfirmTarget?.let { target ->
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { deleteConfirmTarget = null },
+            shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
             title = { Text("Delete \"${target.name}\"?") },
             text = {
                 Text(

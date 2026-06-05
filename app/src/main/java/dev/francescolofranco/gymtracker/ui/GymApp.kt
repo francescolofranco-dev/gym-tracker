@@ -42,7 +42,15 @@ fun GymApp() {
 
     Scaffold(
         bottomBar = {
-            if (onTopLevel) {
+            // Animate the bar in/out instead of toggling it instantly. A hard toggle collapsed the
+            // Scaffold's bottom inset the moment you navigated into a pushed screen (e.g. tapping
+            // Start session), so the still-visible source content jumped down by the bar's height
+            // before the transition. Sliding it defers that behind the screen transition.
+            androidx.compose.animation.AnimatedVisibility(
+                visible = onTopLevel,
+                enter = androidx.compose.animation.slideInVertically { it },
+                exit = androidx.compose.animation.slideOutVertically { it },
+            ) {
                 NavigationBar {
                     TopDestination.entries.forEach { dest ->
                         val selected = current?.hierarchy?.any { it.route == dest.route } == true
@@ -112,7 +120,6 @@ fun GymApp() {
             ) { entry ->
                 val id = entry.arguments?.getLong(SessionRoutes.ACTIVE_ARG) ?: return@composable
                 ActiveSessionScreen(
-                    sessionId = id,
                     onExit = { nav.popBackStack() },
                 )
             }

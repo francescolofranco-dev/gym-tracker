@@ -91,6 +91,7 @@ fun DriveRestorePrompt(viewModel: DriveRestorePromptViewModel = hiltViewModel())
 
         is PromptState.Offer -> AlertDialog(
             onDismissRequest = { viewModel.skip() },
+            shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
             title = { Text("Restore from Drive?") },
             text = {
                 Text(
@@ -108,6 +109,7 @@ fun DriveRestorePrompt(viewModel: DriveRestorePromptViewModel = hiltViewModel())
 
         PromptState.Restoring -> AlertDialog(
             onDismissRequest = { },
+            shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
             confirmButton = { },
             title = { Text("Restoring…") },
             text = {
@@ -121,6 +123,7 @@ fun DriveRestorePrompt(viewModel: DriveRestorePromptViewModel = hiltViewModel())
 
         is PromptState.Done -> AlertDialog(
             onDismissRequest = { viewModel.acknowledge() },
+            shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
             title = { Text("Drive restore") },
             text = { Text(s.message) },
             confirmButton = {

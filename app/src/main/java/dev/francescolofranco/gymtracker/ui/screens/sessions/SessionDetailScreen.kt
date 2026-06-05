@@ -25,7 +25,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -192,6 +191,7 @@ fun SessionDetailScreen(
 
         DeleteStage.First -> AlertDialog(
             onDismissRequest = { deleteStage = DeleteStage.None },
+            shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
             title = { Text("Delete this session?") },
             text = {
                 Text(
@@ -209,6 +209,7 @@ fun SessionDetailScreen(
 
         DeleteStage.Final -> AlertDialog(
             onDismissRequest = { deleteStage = DeleteStage.None },
+            shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
             title = { Text("Are you sure?") },
             text = {
                 Text(
@@ -246,6 +247,7 @@ private fun NotesDialog(
     var value by remember { mutableStateOf(initial) }
     AlertDialog(
         onDismissRequest = onCancel,
+        shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
         title = { Text(title) },
         text = {
             OutlinedTextField(

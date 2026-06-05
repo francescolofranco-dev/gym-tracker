@@ -1,6 +1,5 @@
 package dev.francescolofranco.gymtracker.ui.screens.templates
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -96,7 +95,7 @@ fun TemplateEditScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.weight(1f),
                 )
-                OutlinedButton(onClick = { showPicker = true }) {
+                OutlinedButton(onClick = { showPicker = true }, shape = dev.francescolofranco.gymtracker.ui.theme.ButtonShape) {
                     Icon(Icons.Filled.Add, contentDescription = null)
                     Text(" Add")
                 }
@@ -139,6 +138,7 @@ fun TemplateEditScreen(
             Button(
                 onClick = { viewModel.save() },
                 enabled = state.isValid && !state.saving,
+                shape = dev.francescolofranco.gymtracker.ui.theme.ButtonShape,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp),
