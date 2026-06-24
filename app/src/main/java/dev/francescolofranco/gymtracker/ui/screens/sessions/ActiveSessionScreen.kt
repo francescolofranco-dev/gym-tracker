@@ -41,15 +41,20 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RichTooltip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,6 +65,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetail
 import dev.francescolofranco.gymtracker.domain.WeightUnit
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -409,6 +415,13 @@ fun ExerciseCard(
                         Spacer(Modifier.width(8.dp))
                         FirstTimeBadge()
                     }
+                    // Note flag — its own slot so it can sit alongside the Completed/First-time
+                    // badge. Tapping it reveals the note; editing routes through the overflow menu.
+                    val note = detail.sessionExercise.notes?.takeIf { it.isNotBlank() }
+                    if (note != null) {
+                        Spacer(Modifier.width(8.dp))
+                        NoteIndicator(note = note, onEdit = onEditExerciseNotes)
+                    }
                 }
                 Text(
                     text = buildList {
@@ -474,15 +487,6 @@ fun ExerciseCard(
                     }
                 }
             }
-        }
-
-        detail.sessionExercise.notes?.takeIf { it.isNotBlank() }?.let { notes ->
-            Text(
-                text = notes,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp, bottom = 2.dp),
-            )
         }
 
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -557,6 +561,52 @@ private fun FirstTimeBadge() {
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onTertiaryContainer,
         )
+    }
+}
+
+/**
+ * A compact, tappable note flag next to an exercise name. Tapping it pops a rich tooltip showing
+ * the note text plus an Edit action; the tooltip is persistent so it stays open for reading until
+ * the user taps away. Editing still routes through the overflow menu's "Edit note" via [onEdit].
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun NoteIndicator(note: String, onEdit: () -> Unit) {
+    val tooltipState = rememberTooltipState(isPersistent = true)
+    val scope = rememberCoroutineScope()
+    TooltipBox(
+        positionProvider = TooltipDefaults.rememberRichTooltipPositionProvider(),
+        tooltip = {
+            RichTooltip(
+                title = { Text("Note") },
+                action = {
+                    TextButton(
+                        onClick = {
+                            scope.launch { tooltipState.dismiss() }
+                            onEdit()
+                        },
+                    ) { Text("Edit") }
+                },
+            ) { Text(note) }
+        },
+        state = tooltipState,
+    ) {
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                .clickable { scope.launch { tooltipState.show() } }
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+        ) {
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.Notes,
+                // Carry the note text in the description so screen readers can read it directly:
+                // the tooltip's content lives in a popup that isn't part of this anchor's semantics.
+                contentDescription = "Note: $note",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(16.dp),
+            )
+        }
     }
 }
 

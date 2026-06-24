@@ -2,7 +2,7 @@ package dev.francescolofranco.gymtracker.data.repository
 
 import dev.francescolofranco.gymtracker.data.db.dao.ExerciseDao
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
-import dev.francescolofranco.gymtracker.data.db.projections.ExerciseSessionPoint
+import dev.francescolofranco.gymtracker.data.db.projections.ExerciseSetRow
 import dev.francescolofranco.gymtracker.domain.Muscle
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
@@ -17,7 +17,7 @@ class ExerciseRepository @Inject constructor(
 
     fun observeById(id: Long): Flow<ExerciseEntity?> = dao.observeById(id)
 
-    fun observeHistory(id: Long): Flow<List<ExerciseSessionPoint>> = dao.observeHistory(id)
+    fun observeSetHistory(id: Long): Flow<List<ExerciseSetRow>> = dao.observeSetHistory(id)
 
     suspend fun byId(id: Long): ExerciseEntity? = dao.byId(id)
 

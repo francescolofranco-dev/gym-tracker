@@ -5,7 +5,7 @@ import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
-import dev.francescolofranco.gymtracker.data.db.projections.ExerciseSessionPoint
+import dev.francescolofranco.gymtracker.data.db.projections.ExerciseSetRow
 import dev.francescolofranco.gymtracker.data.db.projections.ExerciseWithRecency
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
@@ -64,26 +64,25 @@ interface ExerciseDao {
     suspend fun restore(id: Long)
 
     /**
-     * Per-session aggregate for an exercise: one row per session that included a non-skipped
-     * occurrence of the exercise, with set count + total volume. Sessions with no logged sets
-     * for the exercise are filtered out (HAVING setsLogged > 0).
+     * Every committed set logged for an exercise across all of its sessions, oldest first. Uses
+     * the same filters as the rest of the stats layer (non-skipped occurrence, reps logged, set
+     * not skipped). The progress screen groups these by session to compute volume, estimated 1RM,
+     * top set, and reps. Sessions with no logged sets simply produce no rows.
      */
     @Query(
         """
         SELECT s.id AS sessionId,
                s.startedAt AS sessionStartedAt,
-               s.endedAt AS sessionEndedAt,
-               COUNT(sl.id) AS setsLogged,
-               COALESCE(SUM(sl.reps * COALESCE(sl.kg, 0.0)), 0.0) AS volumeKg
-        FROM session s
-        JOIN session_exercise se ON se.sessionId = s.id AND se.isSkipped = 0
-        LEFT JOIN set_log sl ON sl.sessionExerciseId = se.id
-            AND sl.reps IS NOT NULL AND sl.isSkipped = 0
+               sl.reps AS reps,
+               sl.kg AS kg,
+               sl.setNumber AS setNumber
+        FROM set_log sl
+        JOIN session_exercise se ON sl.sessionExerciseId = se.id AND se.isSkipped = 0
+        JOIN session s ON se.sessionId = s.id
         WHERE se.exerciseId = :exerciseId
-        GROUP BY s.id
-        HAVING setsLogged > 0
-        ORDER BY s.startedAt ASC
+          AND sl.reps IS NOT NULL AND sl.isSkipped = 0
+        ORDER BY s.startedAt ASC, sl.setNumber ASC
         """
     )
-    fun observeHistory(exerciseId: Long): Flow<List<ExerciseSessionPoint>>
+    fun observeSetHistory(exerciseId: Long): Flow<List<ExerciseSetRow>>
 }

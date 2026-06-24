@@ -2,11 +2,16 @@ package dev.francescolofranco.gymtracker.data.db.projections
 
 import java.time.Instant
 
-/** One point on the per-exercise volume-over-time chart, plus what to show in the history list. */
-data class ExerciseSessionPoint(
+/**
+ * One committed set of an exercise, denormalised with the date of the session it belongs to.
+ * The per-exercise progress screen reads the full ordered stream of these and derives every
+ * metric in Kotlin (volume, estimated 1RM, top set, reps) — see
+ * ui/screens/exercises/ExerciseProgress.kt.
+ */
+data class ExerciseSetRow(
     val sessionId: Long,
     val sessionStartedAt: Instant,
-    val sessionEndedAt: Instant?,
-    val setsLogged: Int,
-    val volumeKg: Double,
+    val reps: Int,
+    val kg: Double?,
+    val setNumber: Int,
 )

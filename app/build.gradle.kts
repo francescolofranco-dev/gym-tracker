@@ -92,4 +92,6 @@ dependencies {
     implementation(libs.okhttp)
 
     debugImplementation(libs.androidx.ui.tooling)
+
+    testImplementation(libs.junit)
 }

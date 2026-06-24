@@ -5,13 +5,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
-import dev.francescolofranco.gymtracker.data.db.projections.ExerciseSessionPoint
 import dev.francescolofranco.gymtracker.data.prefs.UserPrefs
 import dev.francescolofranco.gymtracker.data.repository.ExerciseRepository
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.ui.nav.ExerciseRoutes
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -28,7 +28,12 @@ class ExerciseDetailViewModel @Inject constructor(
     val exercise: StateFlow<ExerciseEntity?> = repo.observeById(exerciseId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
-    val history: StateFlow<List<ExerciseSessionPoint>> = repo.observeHistory(exerciseId)
+    /**
+     * Per-session progress points (oldest first), derived from the full committed-set stream. Every
+     * metric the detail screen shows — volume, estimated 1RM, top set, reps — comes off this one flow.
+     */
+    val progress: StateFlow<List<SessionProgressPoint>> = repo.observeSetHistory(exerciseId)
+        .map { aggregateSessions(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     val unit: StateFlow<WeightUnit> = userPrefs.unit
