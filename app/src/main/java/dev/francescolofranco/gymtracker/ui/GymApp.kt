@@ -1,15 +1,18 @@
 package dev.francescolofranco.gymtracker.ui
 
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
@@ -33,14 +36,28 @@ import dev.francescolofranco.gymtracker.ui.screens.stats.StatsScreen
 import dev.francescolofranco.gymtracker.ui.screens.templates.TemplateEditScreen
 import dev.francescolofranco.gymtracker.ui.screens.templates.TemplatesListScreen
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun GymApp() {
     val nav = rememberNavController()
     val backstack by nav.currentBackStackEntryAsState()
     val current = backstack?.destination
-    val onTopLevel = current?.route in TopDestination.entries.map { it.route }
+    val currentTopDestination = TopDestination.entries.firstOrNull { it.route == current?.route }
+    val onTopLevel = currentTopDestination != null
 
     Scaffold(
+        topBar = {
+            if (onTopLevel) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = stringResource(dev.francescolofranco.gymtracker.R.string.app_name),
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    },
+                )
+            }
+        },
         bottomBar = {
             // Animate the bar in/out instead of toggling it instantly. A hard toggle collapsed the
             // Scaffold's bottom inset the moment you navigated into a pushed screen (e.g. tapping
@@ -121,6 +138,7 @@ fun GymApp() {
                 val id = entry.arguments?.getLong(SessionRoutes.ACTIVE_ARG) ?: return@composable
                 ActiveSessionScreen(
                     onExit = { nav.popBackStack() },
+                    onOpenExerciseStats = { exerciseId -> nav.navigate(ExerciseRoutes.detail(exerciseId)) },
                 )
             }
 
@@ -128,7 +146,10 @@ fun GymApp() {
                 route = SessionRoutes.DETAIL,
                 arguments = listOf(navArgument(SessionRoutes.DETAIL_ARG) { type = NavType.LongType }),
             ) {
-                SessionDetailScreen(onBack = { nav.popBackStack() })
+                SessionDetailScreen(
+                    onBack = { nav.popBackStack() },
+                    onOpenExerciseStats = { exerciseId -> nav.navigate(ExerciseRoutes.detail(exerciseId)) },
+                )
             }
         }
     }

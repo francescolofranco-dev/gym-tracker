@@ -24,6 +24,7 @@ import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.PlayArrow
@@ -71,6 +72,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ActiveSessionScreen(
     onExit: () -> Unit,
+    onOpenExerciseStats: (Long) -> Unit,
     viewModel: ActiveSessionViewModel = hiltViewModel(),
 ) {
     val session by viewModel.session.collectAsStateWithLifecycle()
@@ -121,14 +123,12 @@ fun ActiveSessionScreen(
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("Session")
-                        if (details.isNotEmpty()) {
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                text = "$progressPct%",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = sessionProgressLabel(progressPct, details.size),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
                     }
                 },
                 actions = {
@@ -209,6 +209,7 @@ fun ActiveSessionScreen(
                         onMoveDown = { viewModel.moveSessionExercise(detail.sessionExercise.id, +1) },
                         onEditExerciseNotes = { exerciseNotesTarget = detail },
                         onRemoveExercise = { viewModel.removeSessionExercise(detail.sessionExercise.id) },
+                        onOpenExerciseStats = { onOpenExerciseStats(detail.exercise.id) },
                     )
                 }
             }
@@ -344,6 +345,12 @@ private fun SessionNotesPreview(notes: String, onEdit: () -> Unit) {
     }
 }
 
+private fun exerciseCountLabel(count: Int): String =
+    "$count exercise${if (count == 1) "" else "s"}"
+
+private fun sessionProgressLabel(progressPct: Int, exerciseCount: Int): String =
+    if (exerciseCount == 0) exerciseCountLabel(0) else "$progressPct% · ${exerciseCountLabel(exerciseCount)}"
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExerciseCard(
@@ -362,6 +369,7 @@ fun ExerciseCard(
     onMoveDown: () -> Unit,
     onEditExerciseNotes: () -> Unit,
     onRemoveExercise: () -> Unit,
+    onOpenExerciseStats: () -> Unit,
 ) {
     val exercise = detail.exercise
     val sets = detail.setLogs.sortedBy { it.setNumber }
@@ -436,10 +444,23 @@ fun ExerciseCard(
                 )
             }
             Box {
+                IconButton(onClick = onOpenExerciseStats) {
+                    Icon(Icons.Filled.BarChart, contentDescription = "Exercise stats")
+                }
+            }
+            Box {
                 IconButton(onClick = { menuExpanded = true }) {
                     Icon(Icons.Filled.MoreVert, contentDescription = "Exercise options")
                 }
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    DropdownMenuItem(
+                        text = { Text("View stats") },
+                        leadingIcon = { Icon(Icons.Filled.BarChart, contentDescription = null) },
+                        onClick = {
+                            menuExpanded = false
+                            onOpenExerciseStats()
+                        },
+                    )
                     // Move up / down: greyed out at the edges instead of hidden so the menu
                     // stays a predictable shape across rows.
                     DropdownMenuItem(
@@ -637,4 +658,3 @@ private fun NotesDialog(
         dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } },
     )
 }
-

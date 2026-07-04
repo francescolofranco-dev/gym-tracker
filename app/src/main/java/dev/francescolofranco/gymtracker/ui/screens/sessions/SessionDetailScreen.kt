@@ -44,6 +44,7 @@ import java.time.Duration
 @Composable
 fun SessionDetailScreen(
     onBack: () -> Unit,
+    onOpenExerciseStats: (Long) -> Unit,
     viewModel: SessionDetailViewModel = hiltViewModel(),
 ) {
     val session by viewModel.session.collectAsStateWithLifecycle()
@@ -154,6 +155,7 @@ fun SessionDetailScreen(
                         onMoveDown = { viewModel.moveSessionExercise(detail.sessionExercise.id, +1) },
                         onEditExerciseNotes = { exerciseNotesTarget = detail },
                         onRemoveExercise = { /* read-mostly: no removal from past sessions */ },
+                        onOpenExerciseStats = { onOpenExerciseStats(detail.exercise.id) },
                     )
                 }
             }
