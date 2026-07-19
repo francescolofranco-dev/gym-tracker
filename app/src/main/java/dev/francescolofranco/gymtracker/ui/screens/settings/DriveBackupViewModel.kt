@@ -1,11 +1,12 @@
 package dev.francescolofranco.gymtracker.ui.screens.settings
 
+import android.app.PendingIntent
 import android.content.Intent
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.francescolofranco.gymtracker.data.backup.drive.DriveAuth
+import dev.francescolofranco.gymtracker.data.backup.drive.DriveAuthorizationOutcome
 import dev.francescolofranco.gymtracker.data.backup.drive.DriveBackupRepository
 import dev.francescolofranco.gymtracker.data.backup.drive.DriveBackupResult
 import dev.francescolofranco.gymtracker.data.backup.drive.DriveRestoreResult
@@ -21,7 +22,8 @@ import java.time.Instant
 import javax.inject.Inject
 
 data class DriveUiState(
-    val account: GoogleSignInAccount? = null,
+    val connected: Boolean = false,
+    val authorizationRequest: PendingIntent? = null,
     val running: Boolean = false,
     val message: String? = null,
     val error: String? = null,
@@ -37,50 +39,93 @@ class DriveBackupViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val _ui = MutableStateFlow(DriveUiState())
-    private val account: StateFlow<GoogleSignInAccount?> = auth.account
+    private val connected: StateFlow<Boolean> = auth.connected
     private val lastBackupAt: StateFlow<Instant?> = prefs.lastBackupAt
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
 
     val state: StateFlow<DriveUiState> = combineState()
 
+    init {
+        viewModelScope.launch { auth.refreshAuthorization() }
+    }
+
     private fun combineState(): StateFlow<DriveUiState> {
         viewModelScope.launch {
-            kotlinx.coroutines.flow.combine(account, lastBackupAt) { acct, last ->
-                _ui.value.copy(account = acct, lastBackupAt = last)
+            kotlinx.coroutines.flow.combine(connected, lastBackupAt) { isConnected, last ->
+                _ui.value.copy(connected = isConnected, lastBackupAt = last)
             }.collect { _ui.value = it }
         }
         return _ui.asStateFlow()
     }
 
-    fun signInIntent(): Intent = auth.signInIntent()
-
-    fun onSignInResult(data: Intent?) {
-        auth.handleSignInResult(data)
-        val err = auth.lastError.value
-        if (err != null) {
-            _ui.value = _ui.value.copy(error = err)
-            auth.consumeError()
-        } else if (auth.account.value != null) {
-            refreshSnapshots()
+    fun connect() {
+        if (_ui.value.running) return
+        viewModelScope.launch {
+            _ui.value = _ui.value.copy(running = true, error = null)
+            try {
+                when (val outcome = auth.requestAuthorization()) {
+                    is DriveAuthorizationOutcome.Granted -> {
+                        _ui.value = _ui.value.copy(running = false)
+                    }
+                    is DriveAuthorizationOutcome.NeedsUserConsent -> {
+                        _ui.value = _ui.value.copy(
+                            running = false,
+                            authorizationRequest = outcome.pendingIntent,
+                        )
+                    }
+                }
+            } catch (t: Throwable) {
+                _ui.value = _ui.value.copy(
+                    running = false,
+                    error = t.message ?: "Google Drive authorization failed.",
+                )
+            }
         }
     }
 
-    fun signOut() = viewModelScope.launch {
-        auth.signOut()
-        _ui.value = _ui.value.copy(snapshots = emptyList())
+    fun consumeAuthorizationRequest() {
+        _ui.value = _ui.value.copy(authorizationRequest = null)
+    }
+
+    fun onAuthorizationResult(data: Intent?) = viewModelScope.launch {
+        _ui.value = _ui.value.copy(running = true, error = null)
+        try {
+            auth.handleAuthorizationResult(data)
+            _ui.value = _ui.value.copy(running = false)
+        } catch (t: Throwable) {
+            _ui.value = _ui.value.copy(
+                running = false,
+                error = t.message ?: "Google Drive authorization failed.",
+            )
+        }
+    }
+
+    fun disconnect() = viewModelScope.launch {
+        if (_ui.value.running) return@launch
+        _ui.value = _ui.value.copy(running = true, error = null)
+        try {
+            auth.revokeAccess()
+            _ui.value = _ui.value.copy(running = false, snapshots = emptyList())
+        } catch (t: Throwable) {
+            _ui.value = _ui.value.copy(
+                running = false,
+                error = t.message ?: "Unable to disconnect Google Drive.",
+            )
+        }
     }
 
     fun backupNow() = run("Uploading…") {
         when (val res = repo.runBackup()) {
             is DriveBackupResult.Success ->
                 "Uploaded ${humanByteCount(res.sizeBytes)}" + if (res.pruned > 0) ", pruned ${res.pruned} old snapshot(s)." else "."
-            DriveBackupResult.NotSignedIn -> throw IllegalStateException("Not signed in.")
+            DriveBackupResult.AuthorizationRequired ->
+                throw IllegalStateException("Google Drive authorization is required.")
             is DriveBackupResult.Error -> throw IllegalStateException(res.message)
         }.also { refreshSnapshots() }
     }
 
     fun refreshSnapshots() = viewModelScope.launch {
-        if (auth.account.value == null) return@launch
+        if (!auth.connected.value) return@launch
         runCatching { repo.listSnapshots() }
             .onSuccess { _ui.value = _ui.value.copy(snapshots = it) }
     }
@@ -88,7 +133,8 @@ class DriveBackupViewModel @Inject constructor(
     fun restore(snapshot: DriveSnapshot) = run("Restoring ${snapshot.name}…") {
         when (val res = repo.restore(snapshot.id)) {
             is DriveRestoreResult.Success -> "Restored ${res.summary.sessions} session${if (res.summary.sessions == 1) "" else "s"} from Drive."
-            DriveRestoreResult.NotSignedIn -> throw IllegalStateException("Not signed in.")
+            DriveRestoreResult.AuthorizationRequired ->
+                throw IllegalStateException("Google Drive authorization is required.")
             is DriveRestoreResult.Error -> throw IllegalStateException(res.message)
         }
     }

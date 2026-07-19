@@ -16,13 +16,13 @@ import javax.inject.Singleton
 
 sealed interface DriveBackupResult {
     data class Success(val fileId: String, val sizeBytes: Int, val pruned: Int) : DriveBackupResult
-    data object NotSignedIn : DriveBackupResult
+    data object AuthorizationRequired : DriveBackupResult
     data class Error(val message: String) : DriveBackupResult
 }
 
 sealed interface DriveRestoreResult {
     data class Success(val summary: BackupSummary) : DriveRestoreResult
-    data object NotSignedIn : DriveRestoreResult
+    data object AuthorizationRequired : DriveRestoreResult
     data class Error(val message: String) : DriveRestoreResult
 }
 
@@ -46,7 +46,7 @@ class DriveBackupRepository @Inject constructor(
 
     suspend fun runBackup(): DriveBackupResult = withContext(Dispatchers.IO) {
         try {
-            val token = auth.freshAccessToken() ?: return@withContext DriveBackupResult.NotSignedIn
+            val token = auth.freshAccessToken() ?: return@withContext DriveBackupResult.AuthorizationRequired
             val json = exporter.exportToJson()
             val bytes = json.toByteArray()
             val now = Instant.now()
@@ -71,7 +71,7 @@ class DriveBackupRepository @Inject constructor(
 
     suspend fun restore(snapshotId: String): DriveRestoreResult = withContext(Dispatchers.IO) {
         try {
-            val token = auth.freshAccessToken() ?: return@withContext DriveRestoreResult.NotSignedIn
+            val token = auth.freshAccessToken() ?: return@withContext DriveRestoreResult.AuthorizationRequired
             val bytes = client.download(token, snapshotId)
             val summary = importer.importFromJson(String(bytes))
             DriveRestoreResult.Success(summary)
@@ -103,9 +103,9 @@ class DriveBackupRepository @Inject constructor(
      */
     suspend fun suggestRestoreIfFreshInstall(): DriveSnapshot? = withContext(Dispatchers.IO) {
         if (userPrefs.hasOfferedDriveRestore.first()) return@withContext null
-        if (auth.account.value == null) return@withContext null
         if (!isDbEmpty()) return@withContext null
-        val snapshots = runCatching { listSnapshots() }.getOrDefault(emptyList())
+        val token = auth.freshAccessToken() ?: return@withContext null
+        val snapshots = runCatching { client.list(token) }.getOrDefault(emptyList())
         snapshots.firstOrNull()
     }
 

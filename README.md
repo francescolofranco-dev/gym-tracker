@@ -21,7 +21,7 @@ Android workout tracker for logging gym sessions, sets, reps, weight, notes, and
 - Hilt
 - DataStore
 - WorkManager
-- Google Drive sign-in and backup support
+- Google Identity Services authorization and Google Drive backup support
 
 ## Getting Started
 
@@ -41,6 +41,16 @@ Run unit tests:
 
 ```bash
 ./gradlew :app:testDebugUnitTest
+```
+
+### Google Drive authorization
+
+Drive backup requires the Google Drive API and an Android OAuth client in Google Cloud Console.
+Register package `dev.francescolofranco.gymtracker` with the SHA-1 of each signing certificate used
+to install the app. Get the local debug fingerprint with:
+
+```bash
+./gradlew :app:signingReport
 ```
 
 ## Project Structure

@@ -6,6 +6,7 @@ import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -96,9 +97,16 @@ fun SettingsScreen(
         contract = ActivityResultContracts.OpenDocument(),
     ) { uri -> if (uri != null) pendingRestoreUri = uri }
 
-    val driveSignIn = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.StartActivityForResult(),
-    ) { result -> driveViewModel.onSignInResult(result.data) }
+    val driveAuthorization = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult(),
+    ) { result -> driveViewModel.onAuthorizationResult(result.data) }
+
+    LaunchedEffect(driveState.authorizationRequest) {
+        driveState.authorizationRequest?.let { pendingIntent ->
+            driveAuthorization.launch(IntentSenderRequest.Builder(pendingIntent.intentSender).build())
+            driveViewModel.consumeAuthorizationRequest()
+        }
+    }
 
     LaunchedEffect(backupState.message, backupState.error) {
         val text = backupState.error ?: backupState.message
@@ -114,8 +122,8 @@ fun SettingsScreen(
             driveViewModel.consumeMessage()
         }
     }
-    LaunchedEffect(driveState.account) {
-        if (driveState.account != null) driveViewModel.refreshSnapshots()
+    LaunchedEffect(driveState.connected) {
+        if (driveState.connected) driveViewModel.refreshSnapshots()
     }
 
     Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
@@ -174,12 +182,12 @@ fun SettingsScreen(
             item {
                 DriveAccountRow(
                     state = driveState,
-                    onSignIn = { driveSignIn.launch(driveViewModel.signInIntent()) },
-                    onSignOut = { driveViewModel.signOut() },
+                    onConnect = driveViewModel::connect,
+                    onDisconnect = driveViewModel::disconnect,
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
             }
-            if (driveState.account != null) {
+            if (driveState.connected) {
                 item {
                     SettingsRow(
                         icon = Icons.Filled.CloudSync,
@@ -275,16 +283,15 @@ fun SettingsScreen(
 @Composable
 private fun DriveAccountRow(
     state: DriveUiState,
-    onSignIn: () -> Unit,
-    onSignOut: () -> Unit,
+    onConnect: () -> Unit,
+    onDisconnect: () -> Unit,
 ) {
-    val account = state.account
-    if (account == null) {
+    if (!state.connected) {
         SettingsRow(
             icon = Icons.Filled.CloudOff,
             title = "Connect Google Drive",
             subtitle = "Daily 03:00 backups upload to your Drive's appDataFolder; keeps the last 7 snapshots.",
-            onClick = onSignIn,
+            onClick = onConnect,
             enabled = !state.running,
         )
     } else {
@@ -301,7 +308,7 @@ private fun DriveAccountRow(
                 tint = MaterialTheme.colorScheme.primary,
             )
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = account.email ?: "Connected", style = MaterialTheme.typography.titleMedium)
+                Text(text = "Google Drive connected", style = MaterialTheme.typography.titleMedium)
                 Text(
                     text = state.lastBackupAt?.let { "Last backup: ${formatRelativeTime(it)}" }
                         ?: "Connected — daily backup will run at 03:00.",
@@ -309,7 +316,7 @@ private fun DriveAccountRow(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
-            TextButton(onClick = onSignOut, enabled = !state.running) {
+            TextButton(onClick = onDisconnect, enabled = !state.running) {
                 Text("Disconnect")
             }
         }

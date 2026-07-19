@@ -65,7 +65,8 @@ class DriveRestorePromptViewModel @Inject constructor(
                 is DriveRestoreResult.Success ->
                     PromptState.Done("Restored ${result.summary.sessions} session${if (result.summary.sessions == 1) "" else "s"} from Drive.")
                 is DriveRestoreResult.Error -> PromptState.Done("Restore failed: ${result.message}")
-                DriveRestoreResult.NotSignedIn -> PromptState.Done("Drive sign-in expired.")
+                DriveRestoreResult.AuthorizationRequired ->
+                    PromptState.Done("Google Drive authorization expired.")
             }
         }
     }

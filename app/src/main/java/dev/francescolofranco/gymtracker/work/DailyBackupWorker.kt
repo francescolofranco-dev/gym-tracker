@@ -44,8 +44,8 @@ class DailyBackupWorker(
                     Log.i(TAG, "Daily Drive backup uploaded (${outcome.sizeBytes}B, pruned ${outcome.pruned}).")
                     Result.success()
                 }
-                DriveBackupResult.NotSignedIn -> {
-                    // Not an error — the user simply hasn't connected Drive yet. Don't retry.
+                DriveBackupResult.AuthorizationRequired -> {
+                    // Not an error — the user hasn't authorized Drive or revoked the grant.
                     Log.i(TAG, "Drive not connected; skipping daily backup.")
                     Result.success()
                 }
