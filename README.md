@@ -29,7 +29,7 @@ Requirements:
 
 - Android Studio
 - JDK 17
-- Android SDK with API 35
+- Android SDK with API 37
 
 Run from Android Studio, or use Gradle:
 

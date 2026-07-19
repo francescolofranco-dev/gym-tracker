@@ -164,7 +164,7 @@ class ActiveSessionViewModel @Inject constructor(
         // Save this row's reps+kg draft first so reps don't get blown away by the bulk apply.
         repo.saveSetDraft(setLogId, reps, kg)
         if (isFirstKg) {
-            repo.applyKgToPendingSets(sessionExerciseId, kg = kg!!)
+            repo.applyKgToPendingSets(sessionExerciseId, kg = kg)
         }
     }
 

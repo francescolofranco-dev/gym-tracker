@@ -64,7 +64,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.backup.drive.DriveSnapshot
 import dev.francescolofranco.gymtracker.domain.WeightUnit
@@ -430,13 +430,7 @@ private fun NotificationRow() {
                 putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            // Older devices may not have this action — fall back to app-details settings.
-            val target = if (intent.resolveActivity(context.packageManager) != null) intent
-            else Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                data = Uri.fromParts("package", context.packageName, null)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-            }
-            context.startActivity(target)
+            context.startActivity(intent)
         },
     )
 }

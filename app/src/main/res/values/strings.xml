@@ -13,5 +13,6 @@
     <string name="timer_stop">Stop</string>
     <string name="timer_channel_name">Workout timer</string>
     <string name="timer_channel_desc">Persistent timer for workouts.</string>
+    <string name="timer_elapsed_placeholder">00:00</string>
     <string name="tile_timer_label">Gym Timer</string>
 </resources>

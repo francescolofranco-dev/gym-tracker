@@ -33,6 +33,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -43,7 +44,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.domain.WeightUnit
@@ -205,7 +206,7 @@ private fun ProgressSection(
     unit: WeightUnit,
 ) {
     val metrics = remember(isBodyweight) { metricsFor(isBodyweight) }
-    var selectedIndex by rememberSaveable(isBodyweight) { mutableStateOf(0) }
+    var selectedIndex by rememberSaveable(isBodyweight) { mutableIntStateOf(0) }
     val metric = metrics[selectedIndex.coerceIn(0, metrics.lastIndex)]
 
     Column(

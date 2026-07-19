@@ -27,6 +27,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -131,18 +133,18 @@ fun SetRow(
     // that first composes before the hint loads must re-derive its initial value once it does.
     // Safe for rows with an existing draft — log.reps/log.kg take precedence over the hint in the
     // initializer above, so an in-progress edit is never overwritten by a later hint update.
-    var reps by remember(log.id, log.loggedAt, log.reps, state.hintReps) { mutableStateOf(initialReps) }
-    var kgInternal by remember(log.id, log.loggedAt, log.kg, state.hintKg) { mutableStateOf(initialKgInternal) }
+    var reps by remember(log.id, log.loggedAt, log.reps, state.hintReps) { mutableIntStateOf(initialReps) }
+    var kgInternal by remember(log.id, log.loggedAt, log.kg, state.hintKg) { mutableDoubleStateOf(initialKgInternal) }
     var numpadFor by remember(log.id) { mutableStateOf<NumpadField?>(null) }
 
     // Snapshot the values the numpad was opened against — on dismiss we only fire onDraft
     // when something actually changed and the row is still uncommitted. Logged rows already
     // route through onCommit on each digit, so they don't need the draft pathway.
-    var preOpenReps by remember(log.id) { mutableStateOf(reps) }
-    var preOpenKg by remember(log.id) { mutableStateOf(kgInternal) }
+    var preOpenReps by remember(log.id) { mutableIntStateOf(reps) }
+    var preOpenKg by remember(log.id) { mutableDoubleStateOf(kgInternal) }
 
     val displayKg = convertFromKg(kgInternal, state.unit)
-    val belowRange = isLogged && (log.reps ?: 0) < state.targetReps.first
+    val belowRange = isLogged && log.reps < state.targetReps.first
     val rowAlpha = if (isSkipped) 0.45f else 1f
     val isActiveSet = state.isActive && !isLogged && !isSkipped
 

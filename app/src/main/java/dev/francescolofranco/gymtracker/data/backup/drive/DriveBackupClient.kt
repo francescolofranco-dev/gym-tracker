@@ -38,7 +38,7 @@ class DriveBackupClient @Inject constructor(
             .header("Authorization", "Bearer $token")
             .build()
         http.newCall(req).execute().use { res ->
-            val body = res.body?.string().orEmpty()
+            val body = res.body.string()
             if (!res.isSuccessful) throw DriveApiException("List failed: $body", res.code)
             val files = JSONObject(body).optJSONArray("files") ?: return emptyList()
             return (0 until files.length()).map { i ->
@@ -73,7 +73,7 @@ class DriveBackupClient @Inject constructor(
             .header("Authorization", "Bearer $token")
             .build()
         http.newCall(req).execute().use { res ->
-            val resBody = res.body?.string().orEmpty()
+            val resBody = res.body.string()
             if (!res.isSuccessful) throw DriveApiException("Upload failed: $resBody", res.code)
             return JSONObject(resBody).getString("id")
         }
@@ -88,7 +88,7 @@ class DriveBackupClient @Inject constructor(
             .build()
         http.newCall(req).execute().use { res ->
             if (!res.isSuccessful) throw DriveApiException("Download failed", res.code)
-            return res.body?.bytes() ?: throw DriveApiException("Download body was null")
+            return res.body.bytes()
         }
     }
 
