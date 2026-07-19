@@ -5,8 +5,8 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -36,6 +36,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.domain.Muscle
+import dev.francescolofranco.gymtracker.ui.components.Loadable
+import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 
 @Composable
 fun ExercisePickerSheet(
@@ -45,7 +47,8 @@ fun ExercisePickerSheet(
     onPick: (ExerciseEntity) -> Unit,
     viewModel: ExercisePickerViewModel = hiltViewModel(),
 ) {
-    val rows by viewModel.rows.collectAsStateWithLifecycle()
+    val rowState by viewModel.rows.collectAsStateWithLifecycle()
+    val rows = (rowState as? Loadable.Ready)?.value.orEmpty()
     var pickedIds by remember { mutableStateOf(emptySet<Long>()) }
     var filter by remember { mutableStateOf<PickerFilter>(PickerFilter.All) }
 
@@ -84,7 +87,9 @@ fun ExercisePickerSheet(
         ),
     ) {
         Surface(
-            modifier = Modifier.fillMaxWidth(0.94f),
+            modifier = Modifier
+                .fillMaxWidth(0.94f)
+                .fillMaxHeight(0.86f),
             shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
             color = MaterialTheme.colorScheme.surface,
             tonalElevation = 6.dp,
@@ -102,48 +107,51 @@ fun ExercisePickerSheet(
                 }
                 HorizontalDivider(modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
 
-                if (rows.isEmpty()) {
-                    Text(
-                        text = "Create exercises in the Exercises tab first.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 24.dp, horizontal = 4.dp),
-                    )
-                } else {
-                    ExerciseFilters(
-                        filter = filter,
-                        availableMuscles = availableMuscles,
-                        onFilter = { filter = it },
-                    )
-
-                    if (visibleExercises.isEmpty()) {
+                when (rowState) {
+                    Loadable.Loading -> LoadingPane(modifier = Modifier.weight(1f))
+                    is Loadable.Ready -> if (rows.isEmpty()) {
                         Text(
-                            text = "No recently used exercises yet.",
+                            text = "Create exercises in the Exercises tab first.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier.padding(vertical = 24.dp, horizontal = 4.dp),
                         )
                     } else {
-                        LazyColumn(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .heightIn(max = 520.dp),
-                        ) {
-                            items(items = visibleExercises, key = { it.id }) { e ->
-                                // Track the tap locally as well as relying on excludeIds. Session
-                                // persistence is asynchronous, so this closes the brief window in
-                                // which a double-tap could enqueue the same exercise twice.
-                                val alreadyAdded = e.id in excludeIds || e.id in pickedIds
-                                PickerRow(
-                                    exercise = e,
-                                    alreadyAdded = alreadyAdded,
-                                    onClick = {
-                                        if (!alreadyAdded) {
-                                            pickedIds += e.id
-                                            onPick(e)
-                                        }
-                                    },
-                                )
+                        ExerciseFilters(
+                            filter = filter,
+                            availableMuscles = availableMuscles,
+                            onFilter = { filter = it },
+                        )
+
+                        if (visibleExercises.isEmpty()) {
+                            Text(
+                                text = "No recently used exercises yet.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = 24.dp, horizontal = 4.dp),
+                            )
+                        } else {
+                            LazyColumn(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                            ) {
+                                items(items = visibleExercises, key = { it.id }) { e ->
+                                    // Track the tap locally as well as relying on excludeIds.
+                                    // Session persistence is asynchronous, so this closes the brief
+                                    // window in which a double-tap could enqueue the exercise twice.
+                                    val alreadyAdded = e.id in excludeIds || e.id in pickedIds
+                                    PickerRow(
+                                        exercise = e,
+                                        alreadyAdded = alreadyAdded,
+                                        onClick = {
+                                            if (!alreadyAdded) {
+                                                pickedIds += e.id
+                                                onPick(e)
+                                            }
+                                        },
+                                    )
+                                }
                             }
                         }
                     }

@@ -50,6 +50,8 @@ import dev.francescolofranco.gymtracker.data.db.entities.SessionEntity
 import dev.francescolofranco.gymtracker.data.db.entities.TemplateEntity
 import dev.francescolofranco.gymtracker.data.db.projections.SessionSummary
 import dev.francescolofranco.gymtracker.domain.WeightUnit
+import dev.francescolofranco.gymtracker.ui.components.Loadable
+import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.Instant
@@ -65,10 +67,7 @@ fun SessionsScreen(
     onOpenDetail: (Long) -> Unit,
     viewModel: SessionsViewModel = hiltViewModel(),
 ) {
-    val active by viewModel.active.collectAsStateWithLifecycle()
-    val past by viewModel.past.collectAsStateWithLifecycle()
-    val unit by viewModel.unit.collectAsStateWithLifecycle()
-    val suggestion by viewModel.suggestion.collectAsStateWithLifecycle()
+    val content by viewModel.content.collectAsStateWithLifecycle()
 
     var confirmEnd by remember { mutableStateOf(false) }
 
@@ -129,80 +128,85 @@ fun SessionsScreen(
     }
 
     Scaffold { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-        ) {
-            // Only surface a "Session in progress" banner once the user has actually started
-            // (acceptedAt set via the explicit "Start workout" button or by logging the first
-            // ✓). Drafts stay invisible from this screen — the user re-enters via Start.
-            active?.takeIf { it.acceptedAt != null }?.let { session ->
-                ActiveSessionBanner(
-                    session = session,
-                    onResume = { onOpenActive(session.id) },
-                    onEnd = { confirmEnd = true },
-                )
-            }
-
-            if (past.isEmpty() && active == null) {
-                EmptyState(
+        when (val current = content) {
+            Loadable.Loading -> LoadingPane(modifier = Modifier.padding(padding))
+            is Loadable.Ready -> {
+                val (active, past, unit, suggestion) = current.value
+                Column(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                )
-            } else {
-                val grouped = remember(past) { groupPastSessionsByMonth(past) }
-                LazyColumn(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    contentPadding = PaddingValues(bottom = 16.dp),
+                        .fillMaxSize()
+                        .padding(padding),
                 ) {
-                    grouped.forEach { (label, group) ->
-                        item(key = "h-$label") { MonthHeader(label = label) }
-                        items(items = group, key = { it.session.id }) { summary ->
-                            PastSessionRow(
-                                summary = summary,
-                                unit = unit,
-                                onClick = { onOpenDetail(summary.session.id) },
-                            )
-                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
+                    // Only surface a "Session in progress" banner once the user has actually
+                    // started. Drafts stay invisible here; the user re-enters via Start.
+                    active?.takeIf { it.acceptedAt != null }?.let { session ->
+                        ActiveSessionBanner(
+                            session = session,
+                            onResume = { onOpenActive(session.id) },
+                            onEnd = { confirmEnd = true },
+                        )
+                    }
+
+                    if (past.isEmpty() && active == null) {
+                        EmptyState(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
+                        )
+                    } else {
+                        val grouped = remember(past) { groupPastSessionsByMonth(past) }
+                        LazyColumn(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxWidth(),
+                            contentPadding = PaddingValues(bottom = 16.dp),
+                        ) {
+                            grouped.forEach { (label, group) ->
+                                item(key = "h-$label") { MonthHeader(label = label) }
+                                items(items = group, key = { it.session.id }) { summary ->
+                                    PastSessionRow(
+                                        summary = summary,
+                                        unit = unit,
+                                        onClick = { onOpenDetail(summary.session.id) },
+                                    )
+                                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
+                                }
+                            }
                         }
                     }
-                }
-            }
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                if (active == null && suggestion != null) {
-                    SuggestionBanner(
-                        template = suggestion!!,
-                        onUseTemplate = {
-                            startWithPermission { viewModel.startWithTemplate(suggestion!!.id) }
-                        },
-                    )
-                }
-                Button(
-                    onClick = { startWithPermission { viewModel.startBlankSession() } },
-                    shape = dev.francescolofranco.gymtracker.ui.theme.ButtonShape,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp),
-                ) {
-                    Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = null)
-                    Spacer(Modifier.width(8.dp))
-                    Text(
-                        text = when {
-                            active != null -> "Resume session"
-                            suggestion != null -> "Start blank"
-                            else -> "Start session"
-                        },
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        if (active == null && suggestion != null) {
+                            SuggestionBanner(
+                                template = suggestion,
+                                onUseTemplate = {
+                                    startWithPermission { viewModel.startWithTemplate(suggestion.id) }
+                                },
+                            )
+                        }
+                        Button(
+                            onClick = { startWithPermission { viewModel.startBlankSession() } },
+                            shape = dev.francescolofranco.gymtracker.ui.theme.ButtonShape,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                        ) {
+                            Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = null)
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = when {
+                                    active != null -> "Resume session"
+                                    suggestion != null -> "Start blank"
+                                    else -> "Start session"
+                                },
+                            )
+                        }
+                    }
                 }
             }
         }

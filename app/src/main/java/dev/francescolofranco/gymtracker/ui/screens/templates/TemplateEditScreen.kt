@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
+import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.screens.sessions.ExercisePickerSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -67,6 +68,10 @@ fun TemplateEditScreen(
             )
         },
     ) { padding ->
+        if (state.loading) {
+            LoadingPane(modifier = Modifier.padding(padding))
+            return@Scaffold
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -122,15 +127,17 @@ fun TemplateEditScreen(
                     contentPadding = PaddingValues(bottom = 16.dp),
                 ) {
                     items(items = state.exercises, key = { it.id }) { e ->
-                        TemplateExerciseRow(
-                            exercise = e,
-                            isFirst = state.exercises.first().id == e.id,
-                            isLast = state.exercises.last().id == e.id,
-                            onMoveUp = { viewModel.moveUp(e.id) },
-                            onMoveDown = { viewModel.moveDown(e.id) },
-                            onRemove = { viewModel.remove(e.id) },
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
+                        Column(modifier = Modifier.animateItem()) {
+                            TemplateExerciseRow(
+                                exercise = e,
+                                isFirst = state.exercises.first().id == e.id,
+                                isLast = state.exercises.last().id == e.id,
+                                onMoveUp = { viewModel.moveUp(e.id) },
+                                onMoveDown = { viewModel.moveDown(e.id) },
+                                onRemove = { viewModel.remove(e.id) },
+                            )
+                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
+                        }
                     }
                 }
             }

@@ -31,14 +31,21 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.domain.Muscle
 import dev.francescolofranco.gymtracker.domain.WeekMode
 import dev.francescolofranco.gymtracker.domain.WeightUnit
+import dev.francescolofranco.gymtracker.ui.components.Loadable
+import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.screens.sessions.formatDuration
 import dev.francescolofranco.gymtracker.ui.screens.sessions.formatTotalVolume
 import kotlin.math.roundToInt
 
 @Composable
 fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
-    val state by viewModel.uiState.collectAsStateWithLifecycle()
+    val loadableState by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedMuscle by viewModel.selectedMuscle.collectAsStateWithLifecycle()
+    val state = (loadableState as? Loadable.Ready)?.value
+    if (state == null) {
+        LoadingPane()
+        return
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),

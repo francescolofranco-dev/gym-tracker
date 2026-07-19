@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.data.repository.ExerciseRepository
 import dev.francescolofranco.gymtracker.domain.Muscle
+import dev.francescolofranco.gymtracker.ui.components.Loadable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -25,14 +26,16 @@ class ExercisesViewModel @Inject constructor(
      * order. Multi-primary exercises only appear once (under their lead) rather than being
      * duplicated across every group they touch, which would clutter the list.
      */
-    val grouped: StateFlow<Map<Muscle, List<ExerciseEntity>>> =
+    val grouped: StateFlow<Loadable<Map<Muscle, List<ExerciseEntity>>>> =
         repo.observeActive()
             .map { list ->
-                list.groupBy { ex -> ex.primaryMuscles.minByOrNull { it.ordinal } ?: Muscle.CORE }
-                    .toSortedMap(compareBy { it.ordinal })
-                    .mapValues { (_, items) -> items.sortedBy { it.name.lowercase() } }
+                Loadable.Ready(
+                    list.groupBy { ex -> ex.primaryMuscles.minByOrNull { it.ordinal } ?: Muscle.CORE }
+                        .toSortedMap(compareBy { it.ordinal })
+                        .mapValues { (_, items) -> items.sortedBy { it.name.lowercase() } },
+                )
             }
-            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Loadable.Loading)
 
     private val _editing = MutableStateFlow<EditMode>(EditMode.None)
     val editing: StateFlow<EditMode> = _editing.asStateFlow()

@@ -19,6 +19,7 @@ import javax.inject.Inject
 data class TemplateEditState(
     val name: String = "",
     val exercises: List<ExerciseEntity> = emptyList(),
+    val loading: Boolean = false,
     val saving: Boolean = false,
     val saved: Boolean = false,
 ) {
@@ -35,7 +36,7 @@ class TemplateEditViewModel @Inject constructor(
     private val templateId: Long = savedState.get<Long>(TemplateRoutes.EDIT_ARG) ?: 0L
     val isNew: Boolean = templateId <= 0L
 
-    private val _state = MutableStateFlow(TemplateEditState())
+    private val _state = MutableStateFlow(TemplateEditState(loading = !isNew))
     val state: StateFlow<TemplateEditState> = _state.asStateFlow()
 
     val availableExercises: StateFlow<List<ExerciseEntity>> = exercises.observeActive()
@@ -49,7 +50,10 @@ class TemplateEditViewModel @Inject constructor(
                         _state.value = _state.value.copy(
                             name = ts.template.name,
                             exercises = ts.exercises,
+                            loading = false,
                         )
+                    } else {
+                        _state.value = _state.value.copy(loading = false)
                     }
                 }
             }

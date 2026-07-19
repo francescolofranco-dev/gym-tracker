@@ -10,6 +10,7 @@ import dev.francescolofranco.gymtracker.data.prefs.UserPrefs
 import dev.francescolofranco.gymtracker.data.repository.SessionRepository
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.service.TimerController
+import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.nav.SessionRoutes
 import dev.francescolofranco.gymtracker.work.IdleSessionScheduler
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +29,13 @@ data class SetHints(
 )
 
 data class HintRow(val setNumber: Int, val reps: Int?, val kg: Double?)
+
+data class ActiveSessionContent(
+    val session: SessionEntity?,
+    val details: List<SessionExerciseDetail>,
+    val unit: WeightUnit,
+    val keepScreenOn: Boolean,
+)
 
 @HiltViewModel
 class ActiveSessionViewModel @Inject constructor(
@@ -51,6 +59,19 @@ class ActiveSessionViewModel @Inject constructor(
 
     val keepScreenOn: StateFlow<Boolean> = userPrefs.keepScreenOnDuringSession
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
+
+    val content: StateFlow<Loadable<ActiveSessionContent>> = combine(
+        repo.observeSession(sessionId),
+        repo.observeExerciseDetails(sessionId),
+        userPrefs.unit,
+        userPrefs.keepScreenOnDuringSession,
+    ) { session, details, unit, keepScreenOn ->
+        Loadable.Ready(ActiveSessionContent(session, details, unit, keepScreenOn))
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        Loadable.Loading,
+    )
 
     /**
      * Anchor hints to the LAST COMPLETED session preceding this one (not the global latest,

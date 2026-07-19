@@ -1,5 +1,13 @@
 package dev.francescolofranco.gymtracker.ui
 
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.consumeWindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -9,16 +17,13 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dev.francescolofranco.gymtracker.ui.nav.ExerciseRoutes
@@ -40,117 +45,108 @@ import dev.francescolofranco.gymtracker.ui.screens.templates.TemplatesListScreen
 @Composable
 fun GymApp() {
     val nav = rememberNavController()
-    val backstack by nav.currentBackStackEntryAsState()
-    val current = backstack?.destination
-    val currentTopDestination = TopDestination.entries.firstOrNull { it.route == current?.route }
-    val onTopLevel = currentTopDestination != null
+    val navigateToTop: (TopDestination) -> Unit = { destination ->
+        nav.navigate(destination.route) {
+            popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
 
-    Scaffold(
-        topBar = {
-            if (onTopLevel) {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = stringResource(dev.francescolofranco.gymtracker.R.string.app_name),
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    },
-                )
+    NavHost(
+        navController = nav,
+        startDestination = TopDestination.Sessions.route,
+        modifier = Modifier.fillMaxSize(),
+        enterTransition = {
+            if (initialState.destination.route.isTopLevel() && targetState.destination.route.isTopLevel()) {
+                fadeIn(animationSpec = tween(140))
+            } else {
+                fadeIn(animationSpec = tween(180)) +
+                    slideInHorizontally(animationSpec = tween(220)) { it / 12 }
             }
         },
-        bottomBar = {
-            // Animate the bar in/out instead of toggling it instantly. A hard toggle collapsed the
-            // Scaffold's bottom inset the moment you navigated into a pushed screen (e.g. tapping
-            // Start session), so the still-visible source content jumped down by the bar's height
-            // before the transition. Sliding it defers that behind the screen transition.
-            androidx.compose.animation.AnimatedVisibility(
-                visible = onTopLevel,
-                enter = androidx.compose.animation.slideInVertically { it },
-                exit = androidx.compose.animation.slideOutVertically { it },
-            ) {
-                NavigationBar {
-                    TopDestination.entries.forEach { dest ->
-                        val selected = current?.hierarchy?.any { it.route == dest.route } == true
-                        NavigationBarItem(
-                            selected = selected,
-                            onClick = {
-                                nav.navigate(dest.route) {
-                                    popUpTo(nav.graph.findStartDestination().id) { saveState = true }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = { Icon(dest.icon, contentDescription = null) },
-                            label = { Text(stringResource(dest.labelRes)) }
-                        )
-                    }
-                }
+        exitTransition = {
+            if (initialState.destination.route.isTopLevel() && targetState.destination.route.isTopLevel()) {
+                fadeOut(animationSpec = tween(100))
+            } else {
+                fadeOut(animationSpec = tween(140)) +
+                    slideOutHorizontally(animationSpec = tween(220)) { -it / 12 }
             }
-        }
-    ) { padding ->
-        NavHost(
-            navController = nav,
-            startDestination = TopDestination.Sessions.route,
-            modifier = Modifier.padding(padding)
-        ) {
-            composable(TopDestination.Sessions.route) {
+        },
+        popEnterTransition = {
+            fadeIn(animationSpec = tween(180)) +
+                slideInHorizontally(animationSpec = tween(220)) { -it / 12 }
+        },
+        popExitTransition = {
+            fadeOut(animationSpec = tween(140)) +
+                slideOutHorizontally(animationSpec = tween(220)) { it / 12 }
+        },
+    ) {
+        composable(TopDestination.Sessions.route) {
+            TopLevelScaffold(TopDestination.Sessions, navigateToTop) {
                 SessionsScreen(
                     onOpenActive = { id -> nav.navigate(SessionRoutes.active(id)) },
                     onOpenDetail = { id -> nav.navigate(SessionRoutes.detail(id)) },
                 )
             }
-            composable(TopDestination.Exercises.route) {
+        }
+        composable(TopDestination.Exercises.route) {
+            TopLevelScaffold(TopDestination.Exercises, navigateToTop) {
                 ExercisesScreen(onOpenDetail = { id -> nav.navigate(ExerciseRoutes.detail(id)) })
             }
-            composable(TopDestination.Stats.route) { StatsScreen() }
-            composable(TopDestination.Settings.route) {
+        }
+        composable(TopDestination.Stats.route) {
+            TopLevelScaffold(TopDestination.Stats, navigateToTop) { StatsScreen() }
+        }
+        composable(TopDestination.Settings.route) {
+            TopLevelScaffold(TopDestination.Settings, navigateToTop) {
                 SettingsScreen(onOpenTemplates = { nav.navigate(TemplateRoutes.LIST) })
             }
+        }
 
-            composable(TemplateRoutes.LIST) {
-                TemplatesListScreen(
-                    onBack = { nav.popBackStack() },
-                    onCreate = { nav.navigate(TemplateRoutes.create()) },
-                    onEdit = { id -> nav.navigate(TemplateRoutes.edit(id)) },
-                )
-            }
-            composable(
-                route = TemplateRoutes.EDIT,
-                arguments = listOf(navArgument(TemplateRoutes.EDIT_ARG) { type = NavType.LongType }),
-            ) {
-                TemplateEditScreen(onBack = { nav.popBackStack() })
-            }
+        composable(TemplateRoutes.LIST) {
+            TemplatesListScreen(
+                onBack = { nav.popBackStack() },
+                onCreate = { nav.navigate(TemplateRoutes.create()) },
+                onEdit = { id -> nav.navigate(TemplateRoutes.edit(id)) },
+            )
+        }
+        composable(
+            route = TemplateRoutes.EDIT,
+            arguments = listOf(navArgument(TemplateRoutes.EDIT_ARG) { type = NavType.LongType }),
+        ) {
+            TemplateEditScreen(onBack = { nav.popBackStack() })
+        }
 
-            composable(
-                route = ExerciseRoutes.DETAIL,
-                arguments = listOf(navArgument(ExerciseRoutes.DETAIL_ARG) { type = NavType.LongType }),
-            ) {
-                ExerciseDetailScreen(
-                    onBack = { nav.popBackStack() },
-                    onOpenSession = { id -> nav.navigate(SessionRoutes.detail(id)) },
-                )
-            }
+        composable(
+            route = ExerciseRoutes.DETAIL,
+            arguments = listOf(navArgument(ExerciseRoutes.DETAIL_ARG) { type = NavType.LongType }),
+        ) {
+            ExerciseDetailScreen(
+                onBack = { nav.popBackStack() },
+                onOpenSession = { id -> nav.navigate(SessionRoutes.detail(id)) },
+            )
+        }
 
-            composable(
-                route = SessionRoutes.ACTIVE,
-                arguments = listOf(navArgument(SessionRoutes.ACTIVE_ARG) { type = NavType.LongType }),
-            ) { entry ->
-                val id = entry.arguments?.getLong(SessionRoutes.ACTIVE_ARG) ?: return@composable
-                ActiveSessionScreen(
-                    onExit = { nav.popBackStack() },
-                    onOpenExerciseStats = { exerciseId -> nav.navigate(ExerciseRoutes.detail(exerciseId)) },
-                )
-            }
+        composable(
+            route = SessionRoutes.ACTIVE,
+            arguments = listOf(navArgument(SessionRoutes.ACTIVE_ARG) { type = NavType.LongType }),
+        ) { entry ->
+            val id = entry.arguments?.getLong(SessionRoutes.ACTIVE_ARG) ?: return@composable
+            ActiveSessionScreen(
+                onExit = { nav.popBackStack() },
+                onOpenExerciseStats = { exerciseId -> nav.navigate(ExerciseRoutes.detail(exerciseId)) },
+            )
+        }
 
-            composable(
-                route = SessionRoutes.DETAIL,
-                arguments = listOf(navArgument(SessionRoutes.DETAIL_ARG) { type = NavType.LongType }),
-            ) {
-                SessionDetailScreen(
-                    onBack = { nav.popBackStack() },
-                    onOpenExerciseStats = { exerciseId -> nav.navigate(ExerciseRoutes.detail(exerciseId)) },
-                )
-            }
+        composable(
+            route = SessionRoutes.DETAIL,
+            arguments = listOf(navArgument(SessionRoutes.DETAIL_ARG) { type = NavType.LongType }),
+        ) {
+            SessionDetailScreen(
+                onBack = { nav.popBackStack() },
+                onOpenExerciseStats = { exerciseId -> nav.navigate(ExerciseRoutes.detail(exerciseId)) },
+            )
         }
     }
 
@@ -158,3 +154,47 @@ fun GymApp() {
     // marks the offer consumed afterwards.
     DriveRestorePrompt()
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TopLevelScaffold(
+    selected: TopDestination,
+    onNavigate: (TopDestination) -> Unit,
+    content: @Composable () -> Unit,
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = stringResource(dev.francescolofranco.gymtracker.R.string.app_name),
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                },
+            )
+        },
+        bottomBar = {
+            NavigationBar {
+                TopDestination.entries.forEach { destination ->
+                    NavigationBarItem(
+                        selected = destination == selected,
+                        onClick = { onNavigate(destination) },
+                        icon = { Icon(destination.icon, contentDescription = null) },
+                        label = { Text(stringResource(destination.labelRes)) },
+                    )
+                }
+            }
+        },
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .consumeWindowInsets(padding),
+        ) {
+            content()
+        }
+    }
+}
+
+private fun String?.isTopLevel(): Boolean = TopDestination.entries.any { it.route == this }

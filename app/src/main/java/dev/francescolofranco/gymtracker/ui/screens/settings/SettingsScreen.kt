@@ -69,6 +69,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.backup.drive.DriveSnapshot
 import dev.francescolofranco.gymtracker.domain.WeightUnit
+import dev.francescolofranco.gymtracker.ui.components.Loadable
+import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
@@ -81,7 +83,8 @@ fun SettingsScreen(
     backupViewModel: BackupViewModel = hiltViewModel(),
     driveViewModel: DriveBackupViewModel = hiltViewModel(),
 ) {
-    val unit by settingsViewModel.unit.collectAsStateWithLifecycle()
+    val loadableSettings by settingsViewModel.content.collectAsStateWithLifecycle()
+    val settings = (loadableSettings as? Loadable.Ready)?.value
     val backupState by backupViewModel.state.collectAsStateWithLifecycle()
     val driveState by driveViewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
@@ -127,6 +130,10 @@ fun SettingsScreen(
     }
 
     Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
+        if (settings == null) {
+            LoadingPane(modifier = Modifier.padding(padding))
+            return@Scaffold
+        }
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -134,11 +141,10 @@ fun SettingsScreen(
             contentPadding = PaddingValues(vertical = 12.dp),
         ) {
             item { SectionHeader("Display") }
-            item { UnitsRow(unit = unit, onChange = settingsViewModel::setUnit) }
+            item { UnitsRow(unit = settings.unit, onChange = settingsViewModel::setUnit) }
             item {
-                val keepOn by settingsViewModel.keepScreenOnDuringSession.collectAsStateWithLifecycle()
                 KeepScreenOnRow(
-                    enabled = keepOn,
+                    enabled = settings.keepScreenOnDuringSession,
                     onChange = settingsViewModel::setKeepScreenOnDuringSession,
                 )
             }
@@ -178,8 +184,8 @@ fun SettingsScreen(
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
             }
-            item { SectionHeader("Google Drive") }
-            item {
+            item(key = "drive_header") { SectionHeader("Google Drive") }
+            item(key = "drive_account") {
                 DriveAccountRow(
                     state = driveState,
                     onConnect = driveViewModel::connect,
@@ -188,19 +194,25 @@ fun SettingsScreen(
                 HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
             }
             if (driveState.connected) {
-                item {
-                    SettingsRow(
-                        icon = Icons.Filled.CloudSync,
-                        title = "Backup now",
-                        subtitle = "Upload a fresh JSON snapshot to your Drive's appDataFolder.",
-                        onClick = { driveViewModel.backupNow() },
-                        enabled = !driveState.running,
-                    )
-                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
+                item(key = "drive_backup_now") {
+                    Column(modifier = Modifier.animateItem()) {
+                        SettingsRow(
+                            icon = Icons.Filled.CloudSync,
+                            title = "Backup now",
+                            subtitle = "Upload a fresh JSON snapshot to your Drive's appDataFolder.",
+                            onClick = { driveViewModel.backupNow() },
+                            enabled = !driveState.running,
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
+                    }
                 }
                 if (driveState.snapshots.isEmpty()) {
-                    item {
-                        Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    item(key = "drive_empty") {
+                        Column(
+                            modifier = Modifier
+                                .animateItem()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                        ) {
                             Text(
                                 text = "No Drive snapshots yet — daily 03:00 backups will populate them.",
                                 style = MaterialTheme.typography.bodySmall,
@@ -209,27 +221,35 @@ fun SettingsScreen(
                         }
                     }
                 } else {
-                    item {
+                    item(key = "drive_recent_header") {
                         Text(
                             text = "Recent snapshots",
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            modifier = Modifier
+                                .animateItem()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
                         )
                     }
-                    items(items = driveState.snapshots, key = { it.id }) { snap ->
-                        SnapshotRow(
-                            snapshot = snap,
-                            onClick = { pendingDriveRestore = snap },
-                            enabled = !driveState.running,
-                        )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
+                    items(items = driveState.snapshots, key = { "drive_snapshot_${it.id}" }) { snap ->
+                        Column(modifier = Modifier.animateItem()) {
+                            SnapshotRow(
+                                snapshot = snap,
+                                onClick = { pendingDriveRestore = snap },
+                                enabled = !driveState.running,
+                            )
+                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
+                        }
                     }
                 }
             }
 
-            item { SectionHeader("About") }
-            item { AboutRow() }
+            item(key = "about_header") {
+                Column(modifier = Modifier.animateItem()) { SectionHeader("About") }
+            }
+            item(key = "about_row") {
+                Column(modifier = Modifier.animateItem()) { AboutRow() }
+            }
         }
     }
 
@@ -286,7 +306,15 @@ private fun DriveAccountRow(
     onConnect: () -> Unit,
     onDisconnect: () -> Unit,
 ) {
-    if (!state.connected) {
+    if (state.checkingConnection) {
+        SettingsRow(
+            icon = Icons.Filled.CloudSync,
+            title = "Checking Google Drive…",
+            subtitle = "Looking for an existing backup connection.",
+            onClick = {},
+            enabled = false,
+        )
+    } else if (!state.connected) {
         SettingsRow(
             icon = Icons.Filled.CloudOff,
             title = "Connect Google Drive",

@@ -37,6 +37,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetail
+import dev.francescolofranco.gymtracker.domain.WeightUnit
+import dev.francescolofranco.gymtracker.ui.components.Loadable
+import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import kotlinx.coroutines.launch
 import java.time.Duration
 
@@ -47,9 +50,11 @@ fun SessionDetailScreen(
     onOpenExerciseStats: (Long) -> Unit,
     viewModel: SessionDetailViewModel = hiltViewModel(),
 ) {
-    val session by viewModel.session.collectAsStateWithLifecycle()
-    val details by viewModel.details.collectAsStateWithLifecycle()
-    val unit by viewModel.unit.collectAsStateWithLifecycle()
+    val loadableContent by viewModel.content.collectAsStateWithLifecycle()
+    val content = (loadableContent as? Loadable.Ready)?.value
+    val session = content?.session
+    val details = content?.details.orEmpty()
+    val unit = content?.unit ?: WeightUnit.KG
     val hints by viewModel.hints.collectAsStateWithLifecycle()
 
     var sessionNotesEditor by remember { mutableStateOf(false) }
@@ -83,10 +88,10 @@ fun SessionDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { sessionNotesEditor = true }) {
+                    IconButton(onClick = { sessionNotesEditor = true }, enabled = content != null) {
                         Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = "Session notes")
                     }
-                    IconButton(onClick = { deleteStage = DeleteStage.First }) {
+                    IconButton(onClick = { deleteStage = DeleteStage.First }, enabled = content != null) {
                         Icon(
                             imageVector = Icons.Filled.DeleteForever,
                             contentDescription = "Delete session",
@@ -97,7 +102,9 @@ fun SessionDetailScreen(
             )
         },
     ) { padding ->
-        if (details.isEmpty()) {
+        if (content == null) {
+            LoadingPane(modifier = Modifier.padding(padding))
+        } else if (details.isEmpty()) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -134,6 +141,7 @@ fun SessionDetailScreen(
                 }
                 itemsIndexed(items = details, key = { _, d -> d.sessionExercise.id }) { index, detail ->
                     ExerciseCard(
+                        modifier = Modifier.animateItem(),
                         detail = detail,
                         unit = unit,
                         hints = hints.byExerciseId[detail.exercise.id] ?: emptyList(),

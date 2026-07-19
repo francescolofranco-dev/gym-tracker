@@ -33,6 +33,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
+import dev.francescolofranco.gymtracker.ui.components.Loadable
+import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -73,33 +75,39 @@ fun ExercisesScreen(
             )
         },
     ) { padding ->
-        if (grouped.isEmpty()) {
-            EmptyState(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(24.dp),
-            )
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(bottom = 96.dp),
-            ) {
-                grouped.forEach { (muscle, items) ->
-                    stickyHeader(key = "header-${muscle.name}") {
-                        SectionHeader(text = muscle.displayName)
-                    }
-                    items(
-                        items = items,
-                        key = { it.id },
-                    ) { exercise ->
-                        ExerciseRow(
-                            exercise = exercise,
-                            onTap = { onOpenDetail(exercise.id) },
-                            onDeleteRequest = { deleteConfirmTarget = exercise },
-                        )
+        when (val current = grouped) {
+            Loadable.Loading -> LoadingPane(modifier = Modifier.padding(padding))
+            is Loadable.Ready -> {
+                if (current.value.isEmpty()) {
+                    EmptyState(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(padding)
+                            .padding(24.dp),
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(padding),
+                        contentPadding = PaddingValues(bottom = 96.dp),
+                    ) {
+                        current.value.forEach { (muscle, items) ->
+                            stickyHeader(key = "header-${muscle.name}") {
+                                SectionHeader(text = muscle.displayName)
+                            }
+                            items(
+                                items = items,
+                                key = { it.id },
+                            ) { exercise ->
+                                ExerciseRow(
+                                    modifier = Modifier.animateItem(),
+                                    exercise = exercise,
+                                    onTap = { onOpenDetail(exercise.id) },
+                                    onDeleteRequest = { deleteConfirmTarget = exercise },
+                                )
+                            }
+                        }
                     }
                 }
             }

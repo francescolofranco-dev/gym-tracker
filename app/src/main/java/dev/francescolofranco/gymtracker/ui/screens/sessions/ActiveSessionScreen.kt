@@ -1,5 +1,10 @@
 package dev.francescolofranco.gymtracker.ui.screens.sessions
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -67,6 +72,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetail
 import dev.francescolofranco.gymtracker.domain.WeightUnit
+import dev.francescolofranco.gymtracker.ui.components.Loadable
+import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -76,12 +83,14 @@ fun ActiveSessionScreen(
     onOpenExerciseStats: (Long) -> Unit,
     viewModel: ActiveSessionViewModel = hiltViewModel(),
 ) {
-    val session by viewModel.session.collectAsStateWithLifecycle()
-    val details by viewModel.details.collectAsStateWithLifecycle()
-    val unit by viewModel.unit.collectAsStateWithLifecycle()
+    val loadableContent by viewModel.content.collectAsStateWithLifecycle()
+    val content = (loadableContent as? Loadable.Ready)?.value
+    val session = content?.session
+    val details = content?.details.orEmpty()
+    val unit = content?.unit ?: WeightUnit.KG
     val hints by viewModel.hints.collectAsStateWithLifecycle()
     val exitRequested by viewModel.exitRequested.collectAsStateWithLifecycle()
-    val keepScreenOn by viewModel.keepScreenOn.collectAsStateWithLifecycle()
+    val keepScreenOn = content?.keepScreenOn ?: false
 
     var showPicker by remember { mutableStateOf(false) }
     var confirmEnd by remember { mutableStateOf(false) }
@@ -133,10 +142,10 @@ fun ActiveSessionScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { sessionNotesEditor = true }) {
+                    IconButton(onClick = { sessionNotesEditor = true }, enabled = content != null) {
                         Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = "Session notes")
                     }
-                    TextButton(onClick = { confirmEnd = true }) {
+                    TextButton(onClick = { confirmEnd = true }, enabled = content != null) {
                         Icon(Icons.Filled.Stop, contentDescription = null)
                         Spacer(Modifier.width(4.dp))
                         Text("End")
@@ -145,13 +154,19 @@ fun ActiveSessionScreen(
             )
         },
         floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { showPicker = true },
-                icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                text = { Text("Select exercise") },
-            )
+            if (content != null) {
+                ExtendedFloatingActionButton(
+                    onClick = { showPicker = true },
+                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
+                    text = { Text("Select exercise") },
+                )
+            }
         },
     ) { padding ->
+        if (content == null) {
+            LoadingPane(modifier = Modifier.padding(padding))
+            return@Scaffold
+        }
         val isDraft = session?.acceptedAt == null
         Column(
             modifier = Modifier
@@ -161,13 +176,22 @@ fun ActiveSessionScreen(
             // Draft state shows a prominent "Start workout" CTA in place of the timer pill —
             // the timer can't start until the session is accepted. Disabled until at least one
             // exercise has been picked, otherwise there's nothing to start.
-            if (isDraft) {
-                StartWorkoutBanner(
-                    enabled = details.isNotEmpty(),
-                    onStart = { viewModel.acceptSession() },
-                )
-            } else {
-                TimerPill()
+            AnimatedContent(
+                targetState = isDraft,
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(140)) togetherWith
+                        fadeOut(animationSpec = tween(100))
+                },
+                label = "session-header",
+            ) { draft ->
+                if (draft) {
+                    StartWorkoutBanner(
+                        enabled = details.isNotEmpty(),
+                        onStart = { viewModel.acceptSession() },
+                    )
+                } else {
+                    TimerPill()
+                }
             }
 
             if (details.isEmpty()) {
@@ -189,6 +213,7 @@ fun ActiveSessionScreen(
                 }
                 itemsIndexed(items = details, key = { _, d -> d.sessionExercise.id }) { index, detail ->
                     ExerciseCard(
+                        modifier = Modifier.animateItem(),
                         detail = detail,
                         unit = unit,
                         hints = hints.byExerciseId[detail.exercise.id] ?: emptyList(),
@@ -371,6 +396,7 @@ fun ExerciseCard(
     onEditExerciseNotes: () -> Unit,
     onRemoveExercise: () -> Unit,
     onOpenExerciseStats: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val exercise = detail.exercise
     val sets = detail.setLogs.sortedBy { it.setNumber }
@@ -391,7 +417,7 @@ fun ExerciseCard(
     var menuExpanded by remember { mutableStateOf(false) }
 
     Column(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer)

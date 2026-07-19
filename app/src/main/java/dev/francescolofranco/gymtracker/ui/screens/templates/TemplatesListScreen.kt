@@ -37,6 +37,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.TemplateEntity
+import dev.francescolofranco.gymtracker.ui.components.Loadable
+import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -68,55 +70,62 @@ fun TemplatesListScreen(
             )
         },
     ) { padding ->
-        if (items.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center,
-            ) {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.padding(32.dp),
-                ) {
-                    Text(text = "No templates yet", style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        text = "Build a template — e.g. Push, Pull, Legs — and the home screen will rotate suggestions for you.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(bottom = 96.dp),
-            ) {
-                items(items = items, key = { it.id }) { template ->
-                    Row(
+        when (val current = items) {
+            Loadable.Loading -> LoadingPane(modifier = Modifier.padding(padding))
+            is Loadable.Ready -> {
+                if (current.value.isEmpty()) {
+                    Box(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { onEdit(template.id) }
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically,
+                            .fillMaxSize()
+                            .padding(padding),
+                        contentAlignment = Alignment.Center,
                     ) {
-                        Text(
-                            text = template.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.weight(1f),
-                        )
-                        IconButton(onClick = { pendingDelete = template }) {
-                            Icon(
-                                imageVector = Icons.Filled.Delete,
-                                contentDescription = "Delete template",
-                                tint = MaterialTheme.colorScheme.error,
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(32.dp),
+                        ) {
+                            Text(text = "No templates yet", style = MaterialTheme.typography.titleLarge)
+                            Text(
+                                text = "Build a template — e.g. Push, Pull, Legs — and the home screen will rotate suggestions for you.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
                     }
-                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(padding),
+                        contentPadding = PaddingValues(bottom = 96.dp),
+                    ) {
+                        items(items = current.value, key = { it.id }) { template ->
+                            Column(modifier = Modifier.animateItem()) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable { onEdit(template.id) }
+                                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = template.name,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    IconButton(onClick = { pendingDelete = template }) {
+                                        Icon(
+                                            imageVector = Icons.Filled.Delete,
+                                            contentDescription = "Delete template",
+                                            tint = MaterialTheme.colorScheme.error,
+                                        )
+                                    }
+                                }
+                                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
+                            }
+                        }
+                    }
                 }
             }
         }

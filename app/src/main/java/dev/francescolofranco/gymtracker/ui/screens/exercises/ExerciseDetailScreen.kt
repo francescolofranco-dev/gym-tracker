@@ -48,6 +48,8 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.domain.WeightUnit
+import dev.francescolofranco.gymtracker.ui.components.Loadable
+import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.screens.sessions.convertFromKg
 import dev.francescolofranco.gymtracker.ui.screens.sessions.formatSessionDate
 import dev.francescolofranco.gymtracker.ui.screens.sessions.formatWeightNumber
@@ -64,9 +66,9 @@ fun ExerciseDetailScreen(
     onOpenSession: (Long) -> Unit,
     viewModel: ExerciseDetailViewModel = hiltViewModel(),
 ) {
-    val exercise by viewModel.exercise.collectAsStateWithLifecycle()
-    val progress by viewModel.progress.collectAsStateWithLifecycle()
-    val unit by viewModel.unit.collectAsStateWithLifecycle()
+    val loadableContent by viewModel.content.collectAsStateWithLifecycle()
+    val content = (loadableContent as? Loadable.Ready)?.value
+    val exercise = content?.exercise
     var showEdit by remember { mutableStateOf(false) }
 
     Scaffold(
@@ -86,6 +88,11 @@ fun ExerciseDetailScreen(
             )
         },
     ) { padding ->
+        if (content == null) {
+            LoadingPane(modifier = Modifier.padding(padding))
+            return@Scaffold
+        }
+
         val ex = exercise
         if (ex == null) {
             Box(
@@ -102,6 +109,8 @@ fun ExerciseDetailScreen(
             }
             return@Scaffold
         }
+        val progress = content.progress
+        val unit = content.unit
 
         // Pair each session with the most recent *earlier* session that has a value for the headline
         // metric, so the per-row delta bridges over any zero-load session instead of vanishing, then

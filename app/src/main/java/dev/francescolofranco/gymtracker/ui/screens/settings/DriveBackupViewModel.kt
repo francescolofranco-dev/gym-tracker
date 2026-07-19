@@ -23,6 +23,7 @@ import javax.inject.Inject
 
 data class DriveUiState(
     val connected: Boolean = false,
+    val checkingConnection: Boolean = true,
     val authorizationRequest: PendingIntent? = null,
     val running: Boolean = false,
     val message: String? = null,
@@ -46,7 +47,10 @@ class DriveBackupViewModel @Inject constructor(
     val state: StateFlow<DriveUiState> = combineState()
 
     init {
-        viewModelScope.launch { auth.refreshAuthorization() }
+        viewModelScope.launch {
+            auth.refreshAuthorization()
+            _ui.value = _ui.value.copy(checkingConnection = false)
+        }
     }
 
     private fun combineState(): StateFlow<DriveUiState> {

@@ -10,6 +10,7 @@ import dev.francescolofranco.gymtracker.data.prefs.UserPrefs
 import dev.francescolofranco.gymtracker.data.repository.SessionRepository
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.service.TimerController
+import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.nav.SessionRoutes
 import dev.francescolofranco.gymtracker.work.IdleSessionScheduler
 import kotlinx.coroutines.flow.SharingStarted
@@ -18,6 +19,12 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+
+data class SessionDetailContent(
+    val session: SessionEntity?,
+    val details: List<SessionExerciseDetail>,
+    val unit: WeightUnit,
+)
 
 @HiltViewModel
 class SessionDetailViewModel @Inject constructor(
@@ -38,6 +45,18 @@ class SessionDetailViewModel @Inject constructor(
 
     val unit: StateFlow<WeightUnit> = userPrefs.unit
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WeightUnit.KG)
+
+    val content: StateFlow<Loadable<SessionDetailContent>> = combine(
+        repo.observeSession(sessionId),
+        repo.observeExerciseDetails(sessionId),
+        userPrefs.unit,
+    ) { session, details, unit ->
+        Loadable.Ready(SessionDetailContent(session, details, unit))
+    }.stateIn(
+        viewModelScope,
+        SharingStarted.WhileSubscribed(5_000),
+        Loadable.Loading,
+    )
 
     /**
      * Past-session deltas compare against the session immediately BEFORE the one being viewed,
