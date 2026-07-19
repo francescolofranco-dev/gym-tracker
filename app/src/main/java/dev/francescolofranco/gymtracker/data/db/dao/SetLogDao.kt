@@ -102,4 +102,36 @@ interface SetLogDao {
         beforeStartedAtEpochMs: Long,
         limit: Int,
     ): List<SetLogEntity>
+
+    /**
+     * Most recent logged value for ONE specific set number, searched independently across all
+     * ended sessions before the anchor — not confined to a single session's rows.
+     *
+     * [lastSessionSetsBefore] anchors to one session and returns whatever it logged; if that
+     * session only completed set 1 before being abandoned, callers used to fall back to reusing
+     * set 1's value as the hint for sets 2-4 too. That made the "vs last time" % badge compare
+     * e.g. today's set 3 against the *previous session's set 1* instead of the last time set 3
+     * was actually performed — which can flip the sign of the delta (looks like a regression when
+     * it's really an improvement). This query instead resolves each set number on its own.
+     */
+    @Query(
+        """
+        SELECT sl.* FROM set_log sl
+        JOIN session_exercise se ON sl.sessionExerciseId = se.id
+        JOIN session s ON s.id = se.sessionId
+        WHERE se.exerciseId = :exerciseId
+          AND sl.setNumber = :setNumber
+          AND sl.reps IS NOT NULL
+          AND sl.isSkipped = 0
+          AND s.startedAt < :beforeStartedAtEpochMs
+          AND s.endedAt IS NOT NULL
+        ORDER BY s.startedAt DESC
+        LIMIT 1
+        """
+    )
+    suspend fun lastLoggedSetBefore(
+        exerciseId: Long,
+        setNumber: Int,
+        beforeStartedAtEpochMs: Long,
+    ): SetLogEntity?
 }

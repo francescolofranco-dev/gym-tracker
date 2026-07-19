@@ -57,8 +57,11 @@ class SessionDetailViewModel @Inject constructor(
         val byId = HashMap<Long, List<HintRow>>()
         items.forEach { d ->
             if (byId[d.exercise.id] == null) {
-                val sets = repo.lastSessionSetsBefore(d.exercise.id, anchor, d.exercise.targetSets)
-                byId[d.exercise.id] = sets.map { HintRow(it.setNumber, it.reps, it.kg) }
+                byId[d.exercise.id] = (1..d.exercise.targetSets).mapNotNull { setNumber ->
+                    repo.lastLoggedSetBefore(d.exercise.id, setNumber, anchor)?.let {
+                        HintRow(setNumber, it.reps, it.kg)
+                    }
+                }
             }
         }
         SetHints(byId)

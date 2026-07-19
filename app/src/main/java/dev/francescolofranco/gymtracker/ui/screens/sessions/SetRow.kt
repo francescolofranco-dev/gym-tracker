@@ -127,8 +127,12 @@ fun SetRow(
     val initialReps = (log.reps ?: state.hintReps ?: state.targetReps.first).coerceAtLeast(0)
     val initialKgInternal = log.kg ?: state.hintKg ?: 0.0
 
-    var reps by remember(log.id, log.loggedAt, log.reps) { mutableStateOf(initialReps) }
-    var kgInternal by remember(log.id, log.loggedAt, log.kg) { mutableStateOf(initialKgInternal) }
+    // hintReps/hintKg are keyed here too: they arrive asynchronously (DB round trip), and a row
+    // that first composes before the hint loads must re-derive its initial value once it does.
+    // Safe for rows with an existing draft — log.reps/log.kg take precedence over the hint in the
+    // initializer above, so an in-progress edit is never overwritten by a later hint update.
+    var reps by remember(log.id, log.loggedAt, log.reps, state.hintReps) { mutableStateOf(initialReps) }
+    var kgInternal by remember(log.id, log.loggedAt, log.kg, state.hintKg) { mutableStateOf(initialKgInternal) }
     var numpadFor by remember(log.id) { mutableStateOf<NumpadField?>(null) }
 
     // Snapshot the values the numpad was opened against — on dismiss we only fire onDraft

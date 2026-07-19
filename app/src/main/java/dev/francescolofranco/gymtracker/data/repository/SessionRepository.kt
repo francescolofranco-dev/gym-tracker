@@ -128,6 +128,20 @@ class SessionRepository @Inject constructor(
         limit = limit,
     )
 
+    /**
+     * Last logged value for one specific set number, searched independently across all ended
+     * sessions (see [SetLogDao.lastLoggedSetBefore]).
+     */
+    suspend fun lastLoggedSetBefore(
+        exerciseId: Long,
+        setNumber: Int,
+        beforeStartedAt: Instant,
+    ): SetLogEntity? = setLogDao.lastLoggedSetBefore(
+        exerciseId = exerciseId,
+        setNumber = setNumber,
+        beforeStartedAtEpochMs = beforeStartedAt.toEpochMilli(),
+    )
+
     suspend fun removeSessionExercise(sessionExerciseId: Long) =
         sessionDao.removeExercise(sessionExerciseId)
 

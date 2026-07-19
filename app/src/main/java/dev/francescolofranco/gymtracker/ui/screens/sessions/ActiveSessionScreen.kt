@@ -524,10 +524,11 @@ fun ExerciseCard(
         Column {
             sets.forEach { log ->
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-                // Prefer the matching set-number hint, but fall back to *any* prior hint so a new
-                // session's set 1 still pre-fills when the previous session only logged sets 3+4.
+                // Each hint is already resolved per set-number (see ActiveSessionViewModel.hints),
+                // so no cross-set fallback here — reusing e.g. set 1's hint for set 3 used to make
+                // the "vs last time" delta compare against the wrong set, sometimes flipping its
+                // sign (looked like a regression when it was really an improvement).
                 val hint = hints.firstOrNull { it.setNumber == log.setNumber }
-                    ?: hints.firstOrNull()
                 SetRow(
                     state = SetRowState(
                         log = log,
