@@ -4,6 +4,7 @@ import androidx.compose.ui.graphics.Color
 import dev.francescolofranco.gymtracker.data.db.projections.StatSetRow
 import dev.francescolofranco.gymtracker.domain.Muscle
 import dev.francescolofranco.gymtracker.domain.WeekMode
+import dev.francescolofranco.gymtracker.domain.ExerciseSide
 import dev.francescolofranco.gymtracker.ui.theme.VolumeBlue
 import dev.francescolofranco.gymtracker.ui.theme.VolumeGreen
 import dev.francescolofranco.gymtracker.ui.theme.VolumeGrey
@@ -18,6 +19,17 @@ import java.time.temporal.TemporalAdjusters
 
 data class DateRange(val startInclusive: Instant, val endExclusive: Instant)
 
+enum class StatsPeriod(val label: String, val days: Long) {
+    DAYS_7("7d", 7),
+    DAYS_28("28d", 28),
+    DAYS_90("90d", 90),
+}
+
+fun periodRange(period: StatsPeriod, now: Instant = Instant.now()): DateRange = DateRange(
+    startInclusive = now.minusSeconds(period.days * 24 * 3600L),
+    endExclusive = now,
+)
+
 /**
  * Indirect (secondary-mover) contributions weight at this factor. Industry convention
  * (RP Strength, Renaissance Periodization) treats a secondary set as ~half a working set
@@ -29,8 +41,8 @@ const val INDIRECT_WEIGHT = 0.5
 
 data class MuscleVolume(
     val muscle: Muscle,
-    val directSets: Int,
-    val indirectSets: Int,
+    val directSets: Double,
+    val indirectSets: Double,
     val directVolumeKg: Double,
     val indirectVolumeKg: Double,
     val contributingExercises: List<ContributingExercise>,
@@ -43,7 +55,7 @@ data class MuscleVolume(
     val effectiveSets: Double get() = directSets + INDIRECT_WEIGHT * indirectSets
 
     /** Rounded effective sets — for thresholds / displayed totals. */
-    val total: Int get() = kotlin.math.round(effectiveSets).toInt()
+    val total: Double get() = effectiveSets
 
     /**
      * Per-muscle kg tonnage attributed to this muscle this period, weighting indirect at
@@ -56,7 +68,7 @@ data class MuscleVolume(
 data class ContributingExercise(
     val exerciseId: Long,
     val name: String,
-    val sets: Int,
+    val sets: Double,
     val isPrimary: Boolean,
 )
 
@@ -121,33 +133,38 @@ fun previousYearRange(now: Instant = Instant.now(), zone: ZoneId = ZoneId.system
 }
 
 fun computeMuscleVolumes(rows: List<StatSetRow>): Map<Muscle, MuscleVolume> {
-    val directSets = HashMap<Muscle, Int>()
-    val indirectSets = HashMap<Muscle, Int>()
+    val directSets = HashMap<Muscle, Double>()
+    val indirectSets = HashMap<Muscle, Double>()
     val directVol = HashMap<Muscle, Double>()
     val indirectVol = HashMap<Muscle, Double>()
     val byMuscleByExercise = HashMap<Muscle, HashMap<Long, ExerciseAccumulator>>()
 
     rows.forEach { r ->
         val setVol = (r.kg ?: 0.0) * r.reps
+        // Left/right logs are each half of one bilateral-equivalent working set. Their tonnage
+        // remains additive: 10 kg × 10 on each arm really is 200 kg of external work.
+        // Side is stored on the historical set itself, so later editing the exercise's
+        // unilateral toggle cannot retroactively double or halve old statistics.
+        val setCredit = if (r.side != ExerciseSide.BOTH) 0.5 else 1.0
 
         // Each primary mover gets full credit for the set. A Bulgarian split squat with
         // {Quads, Glutes, Hamstrings} as primaries contributes +1 direct set to each of the
         // three muscles for a single working set.
         r.primaryMuscles.forEach { m ->
-            directSets.merge(m, 1, Int::plus)
+            directSets.merge(m, setCredit, Double::plus)
             directVol.merge(m, setVol, Double::plus)
             byMuscleByExercise.getOrPut(m) { HashMap() }
                 .getOrPut(r.exerciseId) { ExerciseAccumulator(r.exerciseId, r.exerciseName, isPrimary = true) }
-                .also { it.sets += 1 }
+                .also { it.sets += setCredit }
         }
 
         r.secondaryMuscles.forEach { m ->
             if (m in r.primaryMuscles) return@forEach
-            indirectSets.merge(m, 1, Int::plus)
+            indirectSets.merge(m, setCredit, Double::plus)
             indirectVol.merge(m, setVol, Double::plus)
             byMuscleByExercise.getOrPut(m) { HashMap() }
                 .getOrPut(r.exerciseId) { ExerciseAccumulator(r.exerciseId, r.exerciseName, isPrimary = false) }
-                .also { it.sets += 1 }
+                .also { it.sets += setCredit }
         }
     }
 
@@ -158,8 +175,8 @@ fun computeMuscleVolumes(rows: List<StatSetRow>): Map<Muscle, MuscleVolume> {
             .sortedWith(compareByDescending<ContributingExercise> { it.isPrimary }.thenByDescending { it.sets })
         MuscleVolume(
             muscle = m,
-            directSets = directSets[m] ?: 0,
-            indirectSets = indirectSets[m] ?: 0,
+            directSets = directSets[m] ?: 0.0,
+            indirectSets = indirectSets[m] ?: 0.0,
             directVolumeKg = directVol[m] ?: 0.0,
             indirectVolumeKg = indirectVol[m] ?: 0.0,
             contributingExercises = contrib,
@@ -168,13 +185,18 @@ fun computeMuscleVolumes(rows: List<StatSetRow>): Map<Muscle, MuscleVolume> {
 }
 
 private data class ExerciseAccumulator(val exerciseId: Long, val name: String, val isPrimary: Boolean) {
-    var sets: Int = 0
+    var sets: Double = 0.0
 }
 
 /** The 3-10 traffic-light: 0 grey, 1-2 blue (under), 3-10 green (in range), 11+ red (over). */
-fun volumeColor(total: Int): Color = when {
+fun volumeColor(total: Double, periodDays: Long = 7): Color {
+    val scale = periodDays / 7.0
+    val low = 2 * scale
+    val high = Muscle.WEEKLY_MAX * scale
+    return when {
     total <= 0 -> VolumeGrey
-    total <= 2 -> VolumeBlue
-    total <= Muscle.WEEKLY_MAX -> VolumeGreen
+    total <= low -> VolumeBlue
+    total <= high -> VolumeGreen
     else -> VolumeRed
+    }
 }

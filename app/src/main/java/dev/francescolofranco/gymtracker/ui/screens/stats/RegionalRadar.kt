@@ -14,6 +14,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
@@ -65,21 +67,22 @@ private val RINGS = floatArrayOf(0.33f, 0.66f, 1f)
 @Composable
 fun RegionalRadar(
     volumes: Map<Muscle, MuscleVolume>,
+    period: StatsPeriod,
     modifier: Modifier = Modifier,
 ) {
     // Sum rounded effective sets per region so the plotted vertex matches the number on the label.
-    val regionSets: List<Int> = remember(volumes) {
+    val regionSets: List<Double> = remember(volumes) {
         RADAR_REGIONS.map { (_, muscles) ->
-            muscles.sumOf { volumes[it]?.total ?: 0 }
+            muscles.sumOf { volumes[it]?.total ?: 0.0 }
         }
     }
-    val allZero = regionSets.all { it == 0 }
+    val allZero = regionSets.all { it == 0.0 }
     val subtitle = if (allZero) {
-        "No sets logged yet this week."
+        "No sets logged in the last ${period.days} days."
     } else {
         val strongest = RADAR_REGIONS[regionSets.indexOf(regionSets.max())].first
         val weakest = RADAR_REGIONS[regionSets.indexOf(regionSets.min())].first
-        "Weekly sets per region · $strongest leads, $weakest lags"
+        "Effective sets · last ${period.days} days · $strongest leads, $weakest lags"
     }
 
     val ringColor = MaterialTheme.colorScheme.outlineVariant
@@ -93,6 +96,11 @@ fun RegionalRadar(
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer)
+            .semantics {
+                contentDescription = RADAR_REGIONS.zip(regionSets).joinToString(", ") { (region, sets) ->
+                    "${region.first}: ${formatSetCount(sets)} effective sets"
+                }
+            }
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
@@ -111,7 +119,7 @@ fun RegionalRadar(
                 .aspectRatio(VB_W / VB_H),
         ) {
             val s = size.width / VB_W
-            val max = (regionSets.max()).coerceAtLeast(1)
+            val max = regionSets.max().coerceAtLeast(1.0)
             val n = RADAR_REGIONS.size
 
             fun point(i: Int, frac: Float): Offset {
@@ -144,7 +152,7 @@ fun RegionalRadar(
             // The data polygon: filled cyan wash + crisp cyan outline.
             val dataPath = Path().apply {
                 regionSets.forEachIndexed { i, v ->
-                    val p = point(i, v.toFloat() / max)
+                    val p = point(i, (v / max).toFloat())
                     if (i == 0) moveTo(p.x, p.y) else lineTo(p.x, p.y)
                 }
                 close()
@@ -153,7 +161,7 @@ fun RegionalRadar(
             drawPath(dataPath, color = accent, style = Stroke(width = 2f * s, join = StrokeJoin.Round))
             // Vertex dots.
             regionSets.forEachIndexed { i, v ->
-                drawCircle(color = accent, radius = 3.5f * s, center = point(i, v.toFloat() / max))
+                drawCircle(color = accent, radius = 3.5f * s, center = point(i, (v / max).toFloat()))
             }
             // Region labels (name + value), centred on the anchor just outside the outer ring.
             regionSets.forEachIndexed { i, v ->
@@ -183,9 +191,9 @@ private fun ringPath(n: Int, frac: Float, point: (Int, Float) -> Offset): Path =
     close()
 }
 
-private fun regionLabel(name: String, value: Int, nameColor: Color, valueColor: Color): AnnotatedString =
+private fun regionLabel(name: String, value: Double, nameColor: Color, valueColor: Color): AnnotatedString =
     buildAnnotatedString {
         withStyle(SpanStyle(color = nameColor)) { append(name) }
         append(" ")
-        withStyle(SpanStyle(color = valueColor)) { append(value.toString()) }
+        withStyle(SpanStyle(color = valueColor)) { append(formatSetCount(value)) }
     }

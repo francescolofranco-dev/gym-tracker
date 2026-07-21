@@ -35,10 +35,11 @@ fun MuscleDrillSheet(
     volume: MuscleVolume,
     previous: MuscleVolume?,
     unit: WeightUnit,
+    period: StatsPeriod,
     onDismiss: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    val color = volumeColor(volume.total)
+    val color = volumeColor(volume.total, period.days)
 
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         Column(
@@ -65,24 +66,24 @@ fun MuscleDrillSheet(
                 CountBlock(
                     label = "Direct",
                     count = volume.directSets,
-                    delta = (volume.directSets - (previous?.directSets ?: volume.directSets)).intDeltaIfPresent(previous != null),
+                    delta = (volume.directSets - (previous?.directSets ?: volume.directSets)).setDeltaIfPresent(previous != null),
                 )
                 CountBlock(
                     label = "Indirect",
                     count = volume.indirectSets,
-                    delta = (volume.indirectSets - (previous?.indirectSets ?: volume.indirectSets)).intDeltaIfPresent(previous != null),
+                    delta = (volume.indirectSets - (previous?.indirectSets ?: volume.indirectSets)).setDeltaIfPresent(previous != null),
                 )
                 CountBlock(
                     label = "Total",
                     count = volume.total,
-                    delta = (volume.total - (previous?.total ?: volume.total)).intDeltaIfPresent(previous != null),
+                    delta = (volume.total - (previous?.total ?: volume.total)).setDeltaIfPresent(previous != null),
                 )
             }
 
             if (volume.totalVolumeKg > 0) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "Volume this week",
+                        text = "Tonnage · ${period.label}",
                         style = MaterialTheme.typography.labelLarge,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.weight(1f),
@@ -105,14 +106,14 @@ fun MuscleDrillSheet(
             HorizontalDivider()
 
             Text(
-                text = "Contributing exercises (this week)",
+                text = "Contributing exercises · ${period.label}",
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             if (volume.contributingExercises.isEmpty()) {
                 Text(
-                    text = "No sets logged for this muscle in the selected week.",
+                    text = "No sets logged for this muscle in the selected period.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 8.dp),
@@ -134,7 +135,7 @@ fun MuscleDrillSheet(
                             )
                         }
                         Text(
-                            text = "${ce.sets} set${if (ce.sets == 1) "" else "s"}",
+                            text = "${formatSetCount(ce.sets)} effective sets",
                             style = MaterialTheme.typography.titleMedium,
                         )
                     }
@@ -147,10 +148,10 @@ fun MuscleDrillSheet(
 }
 
 @Composable
-private fun CountBlock(label: String, count: Int, delta: SmallDelta?) {
+private fun CountBlock(label: String, count: Double, delta: SmallDelta?) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(
-            text = "$count",
+            text = formatSetCount(count),
             style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.SemiBold),
         )
         Text(
@@ -192,10 +193,11 @@ private fun SmallDeltaChip(text: String, direction: Direction, modifier: Modifie
 
 private data class SmallDelta(val text: String, val direction: Direction)
 
-private fun Int.intDeltaIfPresent(hasPrevious: Boolean): SmallDelta? {
+private fun Double.setDeltaIfPresent(hasPrevious: Boolean): SmallDelta? {
     if (!hasPrevious) return null
-    if (this == 0) return SmallDelta("0", Direction.Flat)
-    val sign = if (this > 0) "+$this" else "$this"
+    if (this == 0.0) return SmallDelta("0", Direction.Flat)
+    val formatted = formatSetCount(kotlin.math.abs(this))
+    val sign = if (this > 0) "+$formatted" else "-$formatted"
     return SmallDelta(sign, directionOf(this))
 }
 
