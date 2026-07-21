@@ -53,21 +53,56 @@ class VolumeMathTest {
         )
     }
 
+    @Test
+    fun `twenty eight day workload is normalized to a weekly average`() {
+        assertEquals(7.0, weeklyAverage(28.0, StatsPeriod.DAYS_28), 1e-9)
+    }
+
+    @Test
+    fun `exercise progress compares best performance with previous equal period`() {
+        val previous = listOf(row(kg = 100.0, reps = 10))
+        val current = listOf(row(kg = 110.0, reps = 10))
+
+        val signal = computeExerciseProgress(current, previous).single()
+
+        assertEquals(10.0, signal.percentChange!!, 1e-9)
+    }
+
+    @Test
+    fun `personal records are counted only inside selected period`() {
+        val currentStart = Instant.parse("2026-07-14T12:00:00Z")
+        val rows = listOf(
+            row(sessionId = 1, startedAt = currentStart.minusSeconds(86_400), kg = 100.0),
+            row(sessionId = 2, startedAt = currentStart.plusSeconds(86_400), kg = 110.0),
+        )
+        val range = DateRange(currentStart, currentStart.plusSeconds(7 * 86_400))
+
+        val activity = personalRecordActivity(rows, range)
+
+        assertEquals(2, activity.count) // Estimated 1RM and session-volume PRs.
+        assertEquals(setOf(1L), activity.exerciseIds)
+    }
+
     private fun row(
         unilateral: Boolean = false,
         side: ExerciseSide = ExerciseSide.BOTH,
         secondaries: Set<Muscle> = emptySet(),
+        sessionId: Long = 1,
+        startedAt: Instant = Instant.EPOCH,
+        reps: Int = 10,
+        kg: Double = 100.0,
     ) = StatSetRow(
-        sessionId = 1,
-        sessionStartedAt = Instant.EPOCH,
+        sessionId = sessionId,
+        sessionStartedAt = startedAt,
         exerciseId = 1,
         exerciseName = "Press",
         primaryMuscles = setOf(Muscle.CHEST),
         secondaryMuscles = secondaries,
         isBodyweight = false,
         isUnilateral = unilateral,
+        setNumber = 1,
         side = side,
-        reps = 10,
-        kg = 100.0,
+        reps = reps,
+        kg = kg,
     )
 }

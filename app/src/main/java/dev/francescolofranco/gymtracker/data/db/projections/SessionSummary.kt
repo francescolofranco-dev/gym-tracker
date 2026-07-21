@@ -44,6 +44,7 @@ data class StatSetRow(
     val secondaryMuscles: Set<dev.francescolofranco.gymtracker.domain.Muscle>,
     val isBodyweight: Boolean,
     val isUnilateral: Boolean,
+    val setNumber: Int,
     val side: dev.francescolofranco.gymtracker.domain.ExerciseSide,
     val reps: Int,
     val kg: Double?,

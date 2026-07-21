@@ -156,7 +156,7 @@ interface SessionDao {
                e.id AS exerciseId, e.name AS exerciseName,
                e.primaryMuscles AS primaryMuscles, e.secondaryMuscles AS secondaryMuscles,
                e.isBodyweight AS isBodyweight, e.isUnilateral AS isUnilateral,
-               sl.side AS side,
+               sl.setNumber AS setNumber, sl.side AS side,
                sl.reps AS reps, sl.kg AS kg
         FROM set_log sl
         JOIN session_exercise se ON sl.sessionExerciseId = se.id AND se.isSkipped = 0
@@ -180,7 +180,7 @@ interface SessionDao {
                e.id AS exerciseId, e.name AS exerciseName,
                e.primaryMuscles AS primaryMuscles, e.secondaryMuscles AS secondaryMuscles,
                e.isBodyweight AS isBodyweight, e.isUnilateral AS isUnilateral,
-               sl.side AS side, sl.reps AS reps, sl.kg AS kg
+               sl.setNumber AS setNumber, sl.side AS side, sl.reps AS reps, sl.kg AS kg
         FROM set_log sl
         JOIN session_exercise se ON sl.sessionExerciseId = se.id AND se.isSkipped = 0
         JOIN exercise e ON se.exerciseId = e.id

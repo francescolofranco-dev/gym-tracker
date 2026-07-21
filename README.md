@@ -10,7 +10,7 @@ Android workout tracker for logging gym sessions, sets, reps, weight, notes, and
 - Resume active sessions with an accurate workout timer, plus editable session timing.
 - Review past sessions by month with duration, sets, exercises, and volume.
 - See exercise-specific stats, progress charts, session history, and personal records.
-- Compare effective muscle sets or tonnage over selectable 7, 28, and 90-day ranges.
+- Review compact 7, 28, and 90-day training insights, weekly muscle coverage, and exercise progress.
 - Back up and preview restores from files or Google Drive, with one-step restore recovery.
 - Configure display units, templates, notifications, and keep-screen-on behavior.
 

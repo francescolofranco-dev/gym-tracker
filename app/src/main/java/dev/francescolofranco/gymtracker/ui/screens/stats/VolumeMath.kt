@@ -1,10 +1,14 @@
 package dev.francescolofranco.gymtracker.ui.screens.stats
 
 import androidx.compose.ui.graphics.Color
+import dev.francescolofranco.gymtracker.data.db.projections.ExerciseSetRow
 import dev.francescolofranco.gymtracker.data.db.projections.StatSetRow
 import dev.francescolofranco.gymtracker.domain.Muscle
 import dev.francescolofranco.gymtracker.domain.WeekMode
 import dev.francescolofranco.gymtracker.domain.ExerciseSide
+import dev.francescolofranco.gymtracker.ui.screens.exercises.aggregateSessions
+import dev.francescolofranco.gymtracker.ui.screens.exercises.detectPersonalRecords
+import dev.francescolofranco.gymtracker.ui.screens.exercises.epley1Rm
 import dev.francescolofranco.gymtracker.ui.theme.VolumeBlue
 import dev.francescolofranco.gymtracker.ui.theme.VolumeGreen
 import dev.francescolofranco.gymtracker.ui.theme.VolumeGrey
@@ -12,10 +16,9 @@ import dev.francescolofranco.gymtracker.ui.theme.VolumeRed
 import java.time.DayOfWeek
 import java.time.Duration
 import java.time.Instant
-import java.time.LocalDate
-import java.time.YearMonth
 import java.time.ZoneId
 import java.time.temporal.TemporalAdjusters
+import kotlin.math.abs
 
 data class DateRange(val startInclusive: Instant, val endExclusive: Instant)
 
@@ -58,9 +61,8 @@ data class MuscleVolume(
     val total: Double get() = effectiveSets
 
     /**
-     * Per-muscle kg tonnage attributed to this muscle this period, weighting indirect at
-     * [INDIRECT_WEIGHT]. The "Volume by muscle" card and the drill-down sheet's volume
-     * row both read this.
+     * Per-muscle attributed tonnage retained for data-level analysis. It is deliberately not a
+     * headline UI metric because compound lifts can attribute the same load to several muscles.
      */
     val totalVolumeKg: Double get() = directVolumeKg + INDIRECT_WEIGHT * indirectVolumeKg
 }
@@ -90,21 +92,6 @@ fun weekRange(mode: WeekMode, now: Instant = Instant.now(), zone: ZoneId = ZoneI
     }
 }
 
-fun monthRange(now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): DateRange {
-    val today = now.atZone(zone).toLocalDate()
-    val ym = YearMonth.from(today)
-    val first = ym.atDay(1).atStartOfDay(zone).toInstant()
-    val nextFirst = ym.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant()
-    return DateRange(first, nextFirst)
-}
-
-fun yearRange(now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): DateRange {
-    val today = now.atZone(zone).toLocalDate()
-    val first = LocalDate.of(today.year, 1, 1).atStartOfDay(zone).toInstant()
-    val nextFirst = LocalDate.of(today.year + 1, 1, 1).atStartOfDay(zone).toInstant()
-    return DateRange(first, nextFirst)
-}
-
 /**
  * The period immediately preceding [current], same length. For rolling 7d this is the prior
  * 7-day window; for Mon-Sun it's the previous Mon-Sun. Used for week-over-week deltas.
@@ -115,21 +102,6 @@ fun previousOf(current: DateRange): DateRange {
         startInclusive = current.startInclusive.minus(span),
         endExclusive = current.startInclusive,
     )
-}
-
-fun previousMonthRange(now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): DateRange {
-    val today = now.atZone(zone).toLocalDate()
-    val ym = YearMonth.from(today).minusMonths(1)
-    val first = ym.atDay(1).atStartOfDay(zone).toInstant()
-    val nextFirst = ym.plusMonths(1).atDay(1).atStartOfDay(zone).toInstant()
-    return DateRange(first, nextFirst)
-}
-
-fun previousYearRange(now: Instant = Instant.now(), zone: ZoneId = ZoneId.systemDefault()): DateRange {
-    val today = now.atZone(zone).toLocalDate()
-    val first = LocalDate.of(today.year - 1, 1, 1).atStartOfDay(zone).toInstant()
-    val nextFirst = LocalDate.of(today.year, 1, 1).atStartOfDay(zone).toInstant()
-    return DateRange(first, nextFirst)
 }
 
 fun computeMuscleVolumes(rows: List<StatSetRow>): Map<Muscle, MuscleVolume> {
@@ -200,3 +172,103 @@ fun volumeColor(total: Double, periodDays: Long = 7): Color {
     else -> VolumeRed
     }
 }
+
+/** Normalizes any selected range to an average seven-day workload. */
+fun weeklyAverage(total: Double, period: StatsPeriod): Double = total * 7.0 / period.days
+
+data class MuscleChange(
+    val muscle: Muscle,
+    val currentWeeklySets: Double,
+    val previousWeeklySets: Double,
+) {
+    val deltaWeeklySets: Double get() = currentWeeklySets - previousWeeklySets
+    val percentChange: Double?
+        get() = previousWeeklySets.takeIf { it > 0.0 }
+            ?.let { deltaWeeklySets / it * 100.0 }
+}
+
+/** Workload changes large enough to be useful rather than normal set-to-set noise. */
+fun meaningfulMuscleChanges(
+    current: Map<Muscle, MuscleVolume>,
+    previous: Map<Muscle, MuscleVolume>,
+    period: StatsPeriod,
+): List<MuscleChange> = Muscle.entries.mapNotNull { muscle ->
+    val currentWeekly = weeklyAverage(current[muscle]?.effectiveSets ?: 0.0, period)
+    val previousWeekly = weeklyAverage(previous[muscle]?.effectiveSets ?: 0.0, period)
+    val change = MuscleChange(muscle, currentWeekly, previousWeekly)
+    val percent = change.percentChange
+    change.takeIf {
+        previousWeekly >= 1.0 &&
+            abs(change.deltaWeeklySets) >= 0.5 &&
+            percent != null && abs(percent) >= 15.0
+    }
+}
+
+data class ExerciseProgressSignal(
+    val exerciseId: Long,
+    val name: String,
+    val isBodyweight: Boolean,
+    val currentValue: Double,
+    val percentChange: Double?,
+)
+
+/** Best estimated 1RM (or bodyweight reps) compared with the preceding equal-length window. */
+fun computeExerciseProgress(
+    currentRows: List<StatSetRow>,
+    previousRows: List<StatSetRow>,
+): List<ExerciseProgressSignal> {
+    val previousByExercise = previousRows.groupBy { it.exerciseId }
+    return currentRows.groupBy { it.exerciseId }.mapNotNull { (exerciseId, rows) ->
+        val first = rows.firstOrNull() ?: return@mapNotNull null
+        val currentValue = headlineValue(rows, first.isBodyweight) ?: return@mapNotNull null
+        val previousValue = headlineValue(previousByExercise[exerciseId].orEmpty(), first.isBodyweight)
+        ExerciseProgressSignal(
+            exerciseId = exerciseId,
+            name = first.exerciseName,
+            isBodyweight = first.isBodyweight,
+            currentValue = currentValue,
+            percentChange = previousValue?.takeIf { it > 0.0 }
+                ?.let { (currentValue - it) / it * 100.0 },
+        )
+    }.sortedWith(
+        compareByDescending<ExerciseProgressSignal> { it.percentChange != null }
+            .thenByDescending { abs(it.percentChange ?: 0.0) }
+            .thenBy { it.name.lowercase() },
+    )
+}
+
+private fun headlineValue(rows: List<StatSetRow>, isBodyweight: Boolean): Double? =
+    if (isBodyweight) {
+        rows.maxOfOrNull { it.reps.toDouble() }
+    } else {
+        rows.mapNotNull { row -> row.kg?.takeIf { it > 0.0 }?.let { epley1Rm(it, row.reps) } }.maxOrNull()
+    }
+
+data class PersonalRecordActivity(val count: Int, val exerciseIds: Set<Long>)
+
+/** All-time PR events whose session falls inside the selected current period. */
+fun personalRecordActivity(allRows: List<StatSetRow>, current: DateRange): PersonalRecordActivity {
+    var count = 0
+    val exerciseIds = linkedSetOf<Long>()
+    allRows.groupBy { it.exerciseId }.forEach { (exerciseId, rows) ->
+        val points = aggregateSessions(rows.map(StatSetRow::toExerciseSetRow))
+        val records = detectPersonalRecords(points, rows.first().isBodyweight)
+        points.forEach { point ->
+            if (!point.startedAt.isBefore(current.startInclusive) && point.startedAt.isBefore(current.endExclusive)) {
+                val earned = records[point.sessionId].orEmpty()
+                count += earned.size
+                if (earned.isNotEmpty()) exerciseIds += exerciseId
+            }
+        }
+    }
+    return PersonalRecordActivity(count, exerciseIds)
+}
+
+private fun StatSetRow.toExerciseSetRow() = ExerciseSetRow(
+    sessionId = sessionId,
+    sessionStartedAt = sessionStartedAt,
+    reps = reps,
+    kg = kg,
+    setNumber = setNumber,
+    side = side,
+)

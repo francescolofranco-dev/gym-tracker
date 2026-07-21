@@ -1,6 +1,5 @@
 package dev.francescolofranco.gymtracker.ui.screens.stats
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.francescolofranco.gymtracker.data.db.dao.SessionDao
@@ -22,110 +21,108 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.Instant
 import javax.inject.Inject
 
-data class RangeAggregate(
+data class PeriodAggregate(
     val sessions: Int,
-    val volumeKg: Double,
-    val avgDuration: Duration?,
+    val loggedSets: Int,
+    val trainingTime: Duration,
 )
 
 data class StatsUiState(
     val period: StatsPeriod,
     val unit: WeightUnit,
     val muscleVolumes: Map<Muscle, MuscleVolume>,
-    /** Same shape as [muscleVolumes] but for the period immediately before [period]. Drives deltas. */
     val previousMuscleVolumes: Map<Muscle, MuscleVolume>,
-    val currentPeriod: RangeAggregate,
-    val previousPeriod: RangeAggregate,
-    val month: RangeAggregate,
-    val previousMonth: RangeAggregate,
-    val year: RangeAggregate,
-    val previousYear: RangeAggregate,
+    val currentPeriod: PeriodAggregate,
+    val previousPeriod: PeriodAggregate,
+    val muscleChanges: List<MuscleChange>,
+    val exerciseProgress: List<ExerciseProgressSignal>,
+    val personalRecords: PersonalRecordActivity,
 )
 
 @HiltViewModel
 class StatsViewModel @Inject constructor(
     private val sessionDao: SessionDao,
     private val repo: SessionRepository,
-    private val prefs: UserPrefs,
+    prefs: UserPrefs,
 ) : RetryableViewModel() {
 
     private val _selectedMuscle = MutableStateFlow<Muscle?>(null)
     val selectedMuscle: StateFlow<Muscle?> = _selectedMuscle
 
     private val _selectedPeriod = MutableStateFlow(StatsPeriod.DAYS_7)
-    val selectedPeriod: StateFlow<StatsPeriod> = _selectedPeriod
 
     @OptIn(ExperimentalCoroutinesApi::class)
-    private val periodData = _selectedPeriod
-        .flatMapLatest { period ->
-            val current = periodRange(period)
-            val prev = previousOf(current)
-            combine(
-                sessionDao.observeLoggedSetsBetween(current.startInclusive, current.endExclusive),
-                sessionDao.observeLoggedSetsBetween(prev.startInclusive, prev.endExclusive),
-            ) { rows, previousRows -> PeriodData(period, rows, previousRows) }
+    private val periodData = _selectedPeriod.flatMapLatest { period ->
+        val current = periodRange(period)
+        val previous = previousOf(current)
+        combine(
+            sessionDao.observeLoggedSetsBetween(current.startInclusive, current.endExclusive),
+            sessionDao.observeLoggedSetsBetween(previous.startInclusive, previous.endExclusive),
+            sessionDao.observeLoggedSetsBetween(Instant.EPOCH, current.endExclusive),
+        ) { rows, previousRows, historyRows ->
+            PeriodData(period, current, previous, rows, previousRows, historyRows)
         }
+    }
 
     @OptIn(FlowPreview::class)
     val uiState: StateFlow<Loadable<StatsUiState>> = combine(
         periodData,
         prefs.unit,
         repo.observeAllSummaries(),
-    ) { periodData, unit, summaries ->
-        val now = Instant.now()
-        val current = periodRange(periodData.period, now)
-        val previous = previousOf(current)
-        val m = monthRange(now)
-        val pm = previousMonthRange(now)
-        val y = yearRange(now)
-        val py = previousYearRange(now)
+    ) { data, unit, summaries ->
+        val currentVolumes = computeMuscleVolumes(data.rows)
+        val previousVolumes = computeMuscleVolumes(data.previousRows)
         StatsUiState(
-            period = periodData.period,
+            period = data.period,
             unit = unit,
-            muscleVolumes = computeMuscleVolumes(periodData.rows),
-            previousMuscleVolumes = computeMuscleVolumes(periodData.previousRows),
-            currentPeriod = aggregate(summaries, current),
-            previousPeriod = aggregate(summaries, previous),
-            month = aggregate(summaries, m),
-            previousMonth = aggregate(summaries, pm),
-            year = aggregate(summaries, y),
-            previousYear = aggregate(summaries, py),
+            muscleVolumes = currentVolumes,
+            previousMuscleVolumes = previousVolumes,
+            currentPeriod = aggregate(summaries, data.currentRange, data.rows.size),
+            previousPeriod = aggregate(summaries, data.previousRange, data.previousRows.size),
+            muscleChanges = meaningfulMuscleChanges(currentVolumes, previousVolumes, data.period),
+            exerciseProgress = computeExerciseProgress(data.rows, data.previousRows),
+            personalRecords = personalRecordActivity(data.historyRows, data.currentRange),
         )
-    }.debounce(24L)
-        .asLoadableState(viewModelScope)
+    }.debounce(24L).asLoadableState(viewModelScope)
 
-    fun selectMuscle(m: Muscle?) {
-        _selectedMuscle.value = m
+    fun selectMuscle(muscle: Muscle?) {
+        _selectedMuscle.value = muscle
     }
 
     fun setPeriod(period: StatsPeriod) {
         _selectedPeriod.value = period
     }
 
-    private fun aggregate(all: List<SessionSummary>, range: DateRange): RangeAggregate {
-        val inRange = all.filter {
-            val t = it.session.workoutStartedAt()
-            !t.isBefore(range.startInclusive) && t.isBefore(range.endExclusive)
+    private fun aggregate(
+        all: List<SessionSummary>,
+        range: DateRange,
+        loggedSets: Int,
+    ): PeriodAggregate {
+        val sessions = all.filter {
+            val startedAt = it.session.workoutStartedAt()
+            !startedAt.isBefore(range.startInclusive) && startedAt.isBefore(range.endExclusive)
         }
-        val volume = inRange.sumOf { it.totalVolume }
-        val durations = inRange.mapNotNull { s ->
-            s.session.endedAt?.let { s.session.workoutDuration() }
+        val trainingSeconds = sessions.sumOf { summary ->
+            if (summary.session.endedAt == null) 0L else summary.session.workoutDuration().seconds
         }
-        val avg = if (durations.isEmpty()) null
-        else Duration.ofSeconds(durations.sumOf { it.seconds } / durations.size)
-        return RangeAggregate(sessions = inRange.size, volumeKg = volume, avgDuration = avg)
+        return PeriodAggregate(
+            sessions = sessions.size,
+            loggedSets = loggedSets,
+            trainingTime = Duration.ofSeconds(trainingSeconds),
+        )
     }
 
     private data class PeriodData(
         val period: StatsPeriod,
+        val currentRange: DateRange,
+        val previousRange: DateRange,
         val rows: List<StatSetRow>,
         val previousRows: List<StatSetRow>,
+        val historyRows: List<StatSetRow>,
     )
 }
