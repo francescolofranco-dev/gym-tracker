@@ -71,6 +71,7 @@ import dev.francescolofranco.gymtracker.data.backup.drive.DriveSnapshot
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
+import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
@@ -89,8 +90,12 @@ fun SettingsScreen(
     val driveState by driveViewModel.state.collectAsStateWithLifecycle()
     val snackbar = remember { SnackbarHostState() }
 
-    var pendingRestoreUri by remember { mutableStateOf<Uri?>(null) }
-    var pendingDriveRestore by remember { mutableStateOf<DriveSnapshot?>(null) }
+    (loadableSettings as? Loadable.Error)?.let {
+        ErrorPane(it.message, settingsViewModel::retry)
+        return
+    }
+
+    var confirmRecovery by remember { mutableStateOf(false) }
 
     val createDoc = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json"),
@@ -98,7 +103,7 @@ fun SettingsScreen(
 
     val openDoc = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
-    ) { uri -> if (uri != null) pendingRestoreUri = uri }
+    ) { uri -> if (uri != null) backupViewModel.inspect(uri) }
 
     val driveAuthorization = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartIntentSenderForResult(),
@@ -159,6 +164,18 @@ fun SettingsScreen(
                     onClick = onOpenTemplates,
                 )
                 HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
+            }
+            if (backupState.hasRecovery) {
+                item {
+                    SettingsRow(
+                        icon = Icons.Filled.Restore,
+                        title = "Undo last restore",
+                        subtitle = "Recover the automatic safety copy made immediately before the last restore.",
+                        onClick = { confirmRecovery = true },
+                        enabled = !backupState.running,
+                    )
+                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
+                }
             }
             item { NotificationRow() }
             item { HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh) }
@@ -235,7 +252,7 @@ fun SettingsScreen(
                         Column(modifier = Modifier.animateItem()) {
                             SnapshotRow(
                                 snapshot = snap,
-                                onClick = { pendingDriveRestore = snap },
+                                onClick = { driveViewModel.inspectRestore(snap) },
                                 enabled = !driveState.running,
                             )
                             HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
@@ -253,48 +270,67 @@ fun SettingsScreen(
         }
     }
 
-    pendingRestoreUri?.let { uri ->
+    backupState.preview?.let { preview ->
+        val summary = preview.summary
         AlertDialog(
-            onDismissRequest = { pendingRestoreUri = null },
+            onDismissRequest = backupViewModel::dismissPreview,
             shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
             title = { Text("Restore from this file?") },
             text = {
                 Text(
-                    "This replaces every workout, exercise, and template currently in the app " +
-                        "with the contents of the backup file. There's no undo.",
+                    buildString {
+                        append("Validated snapshot")
+                        summary.exportedAt?.let { append(" from ${formatRelativeTime(it)}") }
+                        append(": ${summary.sessions} sessions, ${summary.exercises} exercises, ")
+                        append("${summary.templates} templates and ${summary.setLogs} sets. ")
+                        append("It will replace local data after saving an automatic recovery copy.")
+                    },
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
-                    backupViewModel.import(uri)
-                    pendingRestoreUri = null
-                }) { Text("Restore") }
+                TextButton(onClick = backupViewModel::restorePreview) { Text("Restore") }
             },
             dismissButton = {
-                TextButton(onClick = { pendingRestoreUri = null }) { Text("Cancel") }
+                TextButton(onClick = backupViewModel::dismissPreview) { Text("Cancel") }
             },
         )
     }
 
-    pendingDriveRestore?.let { snap ->
+    if (confirmRecovery) {
         AlertDialog(
-            onDismissRequest = { pendingDriveRestore = null },
+            onDismissRequest = { confirmRecovery = false },
+            shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
+            title = { Text("Undo the last restore?") },
+            text = { Text("This replaces current data with the safety copy captured before the last restore.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmRecovery = false
+                    backupViewModel.restoreRecovery()
+                }) { Text("Recover") }
+            },
+            dismissButton = { TextButton(onClick = { confirmRecovery = false }) { Text("Cancel") } },
+        )
+    }
+
+    driveState.restorePreview?.let { preview ->
+        val snap = preview.snapshot
+        val summary = preview.summary
+        AlertDialog(
+            onDismissRequest = driveViewModel::dismissRestorePreview,
             shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
             title = { Text("Restore from Drive?") },
             text = {
                 Text(
-                    "Replaces every workout, exercise, and template currently in the app with " +
-                        "${snap.name}. There's no undo.",
+                    "Validated ${snap.name}: ${summary.sessions} sessions, ${summary.exercises} exercises, " +
+                        "${summary.templates} templates and ${summary.setLogs} sets. Local data will be " +
+                        "replaced after an automatic recovery copy is saved.",
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
-                    driveViewModel.restore(snap)
-                    pendingDriveRestore = null
-                }) { Text("Restore") }
+                TextButton(onClick = driveViewModel::restorePreview) { Text("Restore") }
             },
             dismissButton = {
-                TextButton(onClick = { pendingDriveRestore = null }) { Text("Cancel") }
+                TextButton(onClick = driveViewModel::dismissRestorePreview) { Text("Cancel") }
             },
         )
     }

@@ -3,6 +3,7 @@ package dev.francescolofranco.gymtracker.data.backup.drive
 import dev.francescolofranco.gymtracker.data.backup.BackupExporter
 import dev.francescolofranco.gymtracker.data.backup.BackupImporter
 import dev.francescolofranco.gymtracker.data.backup.BackupSummary
+import dev.francescolofranco.gymtracker.data.backup.BackupRecoveryStore
 import dev.francescolofranco.gymtracker.data.db.dao.ExerciseDao
 import dev.francescolofranco.gymtracker.data.db.dao.SessionDao
 import dev.francescolofranco.gymtracker.data.db.dao.TemplateDao
@@ -26,6 +27,12 @@ sealed interface DriveRestoreResult {
     data class Error(val message: String) : DriveRestoreResult
 }
 
+sealed interface DriveInspectResult {
+    data class Success(val summary: BackupSummary) : DriveInspectResult
+    data object AuthorizationRequired : DriveInspectResult
+    data class Error(val message: String) : DriveInspectResult
+}
+
 /**
  * Orchestrates a Drive snapshot run: ask DriveAuth for a token, build the JSON via the
  * existing [BackupExporter], upload to the appDataFolder, then prune any snapshots beyond
@@ -38,6 +45,7 @@ class DriveBackupRepository @Inject constructor(
     private val client: DriveBackupClient,
     private val exporter: BackupExporter,
     private val importer: BackupImporter,
+    private val recoveryStore: BackupRecoveryStore,
     private val userPrefs: UserPrefs,
     private val exerciseDao: ExerciseDao,
     private val sessionDao: SessionDao,
@@ -73,12 +81,27 @@ class DriveBackupRepository @Inject constructor(
         try {
             val token = auth.freshAccessToken() ?: return@withContext DriveRestoreResult.AuthorizationRequired
             val bytes = client.download(token, snapshotId)
-            val summary = importer.importFromJson(String(bytes))
+            val json = String(bytes)
+            importer.inspectJson(json)
+            recoveryStore.captureCurrent()
+            val summary = importer.importFromJson(json)
             DriveRestoreResult.Success(summary)
         } catch (e: DriveApiException) {
             DriveRestoreResult.Error(e.message ?: "Drive request failed.")
         } catch (e: Throwable) {
             DriveRestoreResult.Error(e.message ?: "Unknown failure.")
+        }
+    }
+
+    suspend fun inspect(snapshotId: String): DriveInspectResult = withContext(Dispatchers.IO) {
+        try {
+            val token = auth.freshAccessToken() ?: return@withContext DriveInspectResult.AuthorizationRequired
+            val bytes = client.download(token, snapshotId)
+            DriveInspectResult.Success(importer.inspectJson(String(bytes)))
+        } catch (e: DriveApiException) {
+            DriveInspectResult.Error(e.message ?: "Drive request failed.")
+        } catch (e: Throwable) {
+            DriveInspectResult.Error(e.message ?: "Backup validation failed.")
         }
     }
 

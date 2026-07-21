@@ -10,7 +10,9 @@ import dev.francescolofranco.gymtracker.data.backup.drive.DriveAuthorizationOutc
 import dev.francescolofranco.gymtracker.data.backup.drive.DriveBackupRepository
 import dev.francescolofranco.gymtracker.data.backup.drive.DriveBackupResult
 import dev.francescolofranco.gymtracker.data.backup.drive.DriveRestoreResult
+import dev.francescolofranco.gymtracker.data.backup.drive.DriveInspectResult
 import dev.francescolofranco.gymtracker.data.backup.drive.DriveSnapshot
+import dev.francescolofranco.gymtracker.data.backup.BackupSummary
 import dev.francescolofranco.gymtracker.data.prefs.UserPrefs
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -30,7 +32,10 @@ data class DriveUiState(
     val error: String? = null,
     val snapshots: List<DriveSnapshot> = emptyList(),
     val lastBackupAt: Instant? = null,
+    val restorePreview: DriveRestorePreview? = null,
 )
+
+data class DriveRestorePreview(val snapshot: DriveSnapshot, val summary: BackupSummary)
 
 @HiltViewModel
 class DriveBackupViewModel @Inject constructor(
@@ -134,7 +139,35 @@ class DriveBackupViewModel @Inject constructor(
             .onSuccess { _ui.value = _ui.value.copy(snapshots = it) }
     }
 
-    fun restore(snapshot: DriveSnapshot) = run("Restoring ${snapshot.name}…") {
+    fun inspectRestore(snapshot: DriveSnapshot) {
+        if (_ui.value.running) return
+        viewModelScope.launch {
+            _ui.value = _ui.value.copy(running = true, error = null)
+            _ui.value = when (val result = repo.inspect(snapshot.id)) {
+                is DriveInspectResult.Success -> _ui.value.copy(
+                    running = false,
+                    restorePreview = DriveRestorePreview(snapshot, result.summary),
+                )
+                DriveInspectResult.AuthorizationRequired -> _ui.value.copy(
+                    running = false,
+                    error = "Google Drive authorization is required.",
+                )
+                is DriveInspectResult.Error -> _ui.value.copy(running = false, error = result.message)
+            }
+        }
+    }
+
+    fun dismissRestorePreview() {
+        _ui.value = _ui.value.copy(restorePreview = null)
+    }
+
+    fun restorePreview() {
+        val preview = _ui.value.restorePreview ?: return
+        _ui.value = _ui.value.copy(restorePreview = null)
+        restore(preview.snapshot)
+    }
+
+    private fun restore(snapshot: DriveSnapshot) = run("Restoring ${snapshot.name}…") {
         when (val res = repo.restore(snapshot.id)) {
             is DriveRestoreResult.Success -> "Restored ${res.summary.sessions} session${if (res.summary.sessions == 1) "" else "s"} from Drive."
             DriveRestoreResult.AuthorizationRequired ->

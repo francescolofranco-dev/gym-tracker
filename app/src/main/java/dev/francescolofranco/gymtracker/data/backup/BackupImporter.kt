@@ -9,6 +9,7 @@ import dev.francescolofranco.gymtracker.data.db.entities.SetLogEntity
 import dev.francescolofranco.gymtracker.data.db.entities.TemplateEntity
 import dev.francescolofranco.gymtracker.data.db.entities.TemplateExerciseEntity
 import dev.francescolofranco.gymtracker.domain.Muscle
+import dev.francescolofranco.gymtracker.domain.ExerciseSide
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.Instant
@@ -36,23 +37,16 @@ class BackupImporter @Inject constructor(
      * Replaces the entire local DB with the contents of [json]. Wraps the wipe + re-insert in a
      * single transaction so a failure mid-restore leaves the previous DB intact.
      */
-    suspend fun importFromJson(json: String): BackupSummary {
-        val root = parseRoot(json)
-        val schemaVersion = root.optInt(BackupSchema.K_SCHEMA_VERSION, -1)
-        if (schemaVersion < BackupSchema.MIN_SUPPORTED_VERSION || schemaVersion > BackupSchema.CURRENT_SCHEMA_VERSION) {
-            throw BackupParseException(
-                "Unsupported backup schema $schemaVersion " +
-                    "(supported: ${BackupSchema.MIN_SUPPORTED_VERSION}..${BackupSchema.CURRENT_SCHEMA_VERSION}).",
-            )
-        }
-        val exportedAt = root.optStringOrNull(BackupSchema.K_EXPORTED_AT)?.let { runCatching { Instant.parse(it) }.getOrNull() }
+    fun inspectJson(json: String): BackupSummary = parseBackup(json).summary
 
-        val exercises = parseList(root, BackupSchema.K_EXERCISES) { it.parseExercise() }
-        val templates = parseList(root, BackupSchema.K_TEMPLATES) { it.parseTemplate() }
-        val templateExercises = parseList(root, BackupSchema.K_TEMPLATE_EXERCISES) { it.parseTemplateExercise() }
-        val sessions = parseList(root, BackupSchema.K_SESSIONS) { it.parseSession() }
-        val sessionExercises = parseList(root, BackupSchema.K_SESSION_EXERCISES) { it.parseSessionExercise() }
-        val setLogs = parseList(root, BackupSchema.K_SET_LOGS) { it.parseSetLog() }
+    suspend fun importFromJson(json: String): BackupSummary {
+        val parsed = parseBackup(json)
+        val exercises = parsed.exercises
+        val templates = parsed.templates
+        val templateExercises = parsed.templateExercises
+        val sessions = parsed.sessions
+        val sessionExercises = parsed.sessionExercises
+        val setLogs = parsed.setLogs
 
         db.withTransaction {
             // Clear in FK-safe order (children first).
@@ -72,7 +66,29 @@ class BackupImporter @Inject constructor(
             db.setLogDao().replaceAll(setLogs)
         }
 
-        return BackupSummary(
+        return parsed.summary
+    }
+
+    private fun parseBackup(json: String): ParsedBackup {
+        val root = parseRoot(json)
+        val schemaVersion = root.optInt(BackupSchema.K_SCHEMA_VERSION, -1)
+        if (schemaVersion < BackupSchema.MIN_SUPPORTED_VERSION || schemaVersion > BackupSchema.CURRENT_SCHEMA_VERSION) {
+            throw BackupParseException(
+                "Unsupported backup schema $schemaVersion " +
+                    "(supported: ${BackupSchema.MIN_SUPPORTED_VERSION}..${BackupSchema.CURRENT_SCHEMA_VERSION}).",
+            )
+        }
+        val exportedAt = root.optStringOrNull(BackupSchema.K_EXPORTED_AT)?.let { runCatching { Instant.parse(it) }.getOrNull() }
+
+        val exercises = parseList(root, BackupSchema.K_EXERCISES) { it.parseExercise() }
+        val templates = parseList(root, BackupSchema.K_TEMPLATES) { it.parseTemplate() }
+        val templateExercises = parseList(root, BackupSchema.K_TEMPLATE_EXERCISES) { it.parseTemplateExercise() }
+        val sessions = parseList(root, BackupSchema.K_SESSIONS) { it.parseSession() }
+        val sessionExercises = parseList(root, BackupSchema.K_SESSION_EXERCISES) { it.parseSessionExercise() }
+        val setLogs = parseList(root, BackupSchema.K_SET_LOGS) { it.parseSetLog() }
+
+        validateBackupData(exercises, templates, templateExercises, sessions, sessionExercises, setLogs)
+        val summary = BackupSummary(
             exercises = exercises.size,
             templates = templates.size,
             templateExercises = templateExercises.size,
@@ -80,6 +96,15 @@ class BackupImporter @Inject constructor(
             sessionExercises = sessionExercises.size,
             setLogs = setLogs.size,
             exportedAt = exportedAt,
+        )
+        return ParsedBackup(
+            exercises,
+            templates,
+            templateExercises,
+            sessions,
+            sessionExercises,
+            setLogs,
+            summary,
         )
     }
 
@@ -94,14 +119,26 @@ class BackupImporter @Inject constructor(
         key: String,
         crossinline parse: (JSONObject) -> T,
     ): List<T> {
-        val arr = root.optJSONArray(key) ?: return emptyList()
+        val arr = root.optJSONArray(key)
+            ?: throw BackupParseException("Backup is missing the required '$key' collection.")
         return (0 until arr.length()).map { i ->
             try { parse(arr.getJSONObject(i)) } catch (t: Throwable) {
                 throw BackupParseException("Failed to parse $key[$i]: ${t.message}", t)
             }
         }
     }
+
 }
+
+private data class ParsedBackup(
+    val exercises: List<ExerciseEntity>,
+    val templates: List<TemplateEntity>,
+    val templateExercises: List<TemplateExerciseEntity>,
+    val sessions: List<SessionEntity>,
+    val sessionExercises: List<SessionExerciseEntity>,
+    val setLogs: List<SetLogEntity>,
+    val summary: BackupSummary,
+)
 
 private fun JSONObject.parseExercise(): ExerciseEntity {
     // v2 stores `primaryMuscles` as an array; v1 used a single `primaryMuscle` string.
@@ -118,6 +155,7 @@ private fun JSONObject.parseExercise(): ExerciseEntity {
         repRangeMin = getInt("repRangeMin"),
         repRangeMax = getInt("repRangeMax"),
         isBodyweight = getBoolean("isBodyweight"),
+        isUnilateral = optBoolean("isUnilateral", false),
         createdAt = Instant.parse(getString("createdAt")),
         deletedAt = optStringOrNull("deletedAt")?.let { Instant.parse(it) },
     )
@@ -167,6 +205,9 @@ private fun JSONObject.parseSetLog(): SetLogEntity = SetLogEntity(
     id = getLong("id"),
     sessionExerciseId = getLong("sessionExerciseId"),
     setNumber = getInt("setNumber"),
+    side = optString("side", ExerciseSide.BOTH.name).let {
+        runCatching { ExerciseSide.valueOf(it) }.getOrDefault(ExerciseSide.BOTH)
+    },
     reps = if (isNull("reps")) null else optInt("reps"),
     kg = if (isNull("kg")) null else optDouble("kg"),
     isSkipped = getBoolean("isSkipped"),

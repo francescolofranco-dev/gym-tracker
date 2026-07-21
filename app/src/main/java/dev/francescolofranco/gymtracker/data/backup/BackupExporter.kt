@@ -47,6 +47,7 @@ private fun ExerciseEntity.toJson(): JSONObject = JSONObject().apply {
     put("repRangeMin", repRangeMin)
     put("repRangeMax", repRangeMax)
     put("isBodyweight", isBodyweight)
+    put("isUnilateral", isUnilateral)
     put("createdAt", createdAt.toString())
     put("deletedAt", deletedAt?.toString() ?: JSONObject.NULL)
 }
@@ -85,6 +86,7 @@ private fun SetLogEntity.toJson(): JSONObject = JSONObject().apply {
     put("id", id)
     put("sessionExerciseId", sessionExerciseId)
     put("setNumber", setNumber)
+    put("side", side.name)
     put("reps", reps ?: JSONObject.NULL)
     put("kg", kg ?: JSONObject.NULL)
     put("isSkipped", isSkipped)

@@ -13,7 +13,7 @@ object BackupSchema {
      *  - v1: single `primaryMuscle` per exercise.
      *  - v2: list `primaryMuscles` per exercise (1-3 entries). Importer accepts both.
      */
-    const val CURRENT_SCHEMA_VERSION = 2
+    const val CURRENT_SCHEMA_VERSION = 3
     const val MIN_SUPPORTED_VERSION = 1
 
     const val K_SCHEMA_VERSION = "schemaVersion"
