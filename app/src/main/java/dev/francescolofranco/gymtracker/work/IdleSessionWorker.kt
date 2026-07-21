@@ -11,6 +11,7 @@ import dev.francescolofranco.gymtracker.data.repository.SessionRepository
 import dev.francescolofranco.gymtracker.service.TimerController
 import java.time.Duration
 import java.time.Instant
+import dev.francescolofranco.gymtracker.domain.workoutStartedAt
 
 /**
  * Auto-ends an active session that's been idle past [IDLE_THRESHOLD]. Re-scheduled on every
@@ -34,7 +35,7 @@ class IdleSessionWorker(
         val active = repo.activeSession() ?: return Result.success()
         if (active.id != sessionId) return Result.success()
 
-        val lastActivity = repo.lastActivityAt(sessionId) ?: active.startedAt
+        val lastActivity = repo.lastActivityAt(sessionId) ?: active.workoutStartedAt()
         val now = Instant.now()
         val idleFor = Duration.between(lastActivity, now)
         return if (idleFor >= IDLE_THRESHOLD) {

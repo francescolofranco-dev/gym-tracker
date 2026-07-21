@@ -12,6 +12,7 @@ import dev.francescolofranco.gymtracker.data.repository.TemplateRepository
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.service.TimerController
 import dev.francescolofranco.gymtracker.ui.components.Loadable
+import dev.francescolofranco.gymtracker.ui.components.RetryableViewModel
 import dev.francescolofranco.gymtracker.work.IdleSessionScheduler
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -39,7 +40,7 @@ class SessionsViewModel @Inject constructor(
     private val idleScheduler: IdleSessionScheduler,
     private val timer: TimerController,
     userPrefs: UserPrefs,
-) : ViewModel() {
+) : RetryableViewModel() {
 
     @OptIn(FlowPreview::class)
     val content: StateFlow<Loadable<SessionsContent>> = combine(
@@ -50,12 +51,7 @@ class SessionsViewModel @Inject constructor(
     ) { active, past, unit, suggestion ->
         SessionsContent(active, past, unit, suggestion)
     }.debounce(24L)
-        .map { Loadable.Ready(it) }
-        .stateIn(
-            viewModelScope,
-            SharingStarted.WhileSubscribed(5_000),
-            Loadable.Loading,
-        )
+        .asLoadableState(viewModelScope)
 
     private val _events = MutableSharedFlow<Event>(extraBufferCapacity = 1)
     val events = _events.asSharedFlow()
@@ -75,13 +71,12 @@ class SessionsViewModel @Inject constructor(
 
     /**
      * End the active session immediately — used by the in-list banner when the user wants to
-     * clear a phantom session that's lingering with `endedAt = null`. End-time falls back to
-     * last logged activity, or now if there was none.
+     * clear a session that's lingering with `endedAt = null`. A user-triggered end always uses
+     * the current time; only the idle worker backdates to the last activity.
      */
     fun endActiveSession() = viewModelScope.launch {
         val current = repo.activeSession() ?: return@launch
-        val endAt = repo.lastActivityAt(current.id) ?: java.time.Instant.now()
-        repo.endSession(current.id, endAt)
+        repo.endSession(current.id, java.time.Instant.now())
         idleScheduler.cancel(current.id)
         timer.stop()
     }

@@ -50,8 +50,11 @@ import dev.francescolofranco.gymtracker.data.db.entities.SessionEntity
 import dev.francescolofranco.gymtracker.data.db.entities.TemplateEntity
 import dev.francescolofranco.gymtracker.data.db.projections.SessionSummary
 import dev.francescolofranco.gymtracker.domain.WeightUnit
+import dev.francescolofranco.gymtracker.domain.workoutDuration
+import dev.francescolofranco.gymtracker.domain.workoutStartedAt
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
+import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.Instant
@@ -130,6 +133,7 @@ fun SessionsScreen(
     Scaffold { padding ->
         when (val current = content) {
             Loadable.Loading -> LoadingPane(modifier = Modifier.padding(padding))
+            is Loadable.Error -> ErrorPane(current.message, viewModel::retry, Modifier.padding(padding))
             is Loadable.Ready -> {
                 val (active, past, unit, suggestion) = current.value
                 Column(
@@ -251,7 +255,7 @@ private fun ActiveSessionBanner(
     onResume: () -> Unit,
     onEnd: () -> Unit,
 ) {
-    val elapsed = rememberElapsed(session.startedAt)
+    val elapsed = rememberElapsed(session.workoutStartedAt())
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -301,7 +305,7 @@ private fun ActiveSessionBanner(
 @Composable
 private fun PastSessionRow(summary: SessionSummary, unit: WeightUnit, onClick: () -> Unit) {
     val ended = summary.session.endedAt
-    val duration = if (ended != null) Duration.between(summary.session.startedAt, ended) else Duration.ZERO
+    val duration = if (ended != null) summary.session.workoutDuration() else Duration.ZERO
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -315,7 +319,7 @@ private fun PastSessionRow(summary: SessionSummary, unit: WeightUnit, onClick: (
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
-                text = formatSessionDate(summary.session.startedAt),
+                text = formatSessionDate(summary.session.workoutStartedAt()),
                 style = MaterialTheme.typography.titleMedium,
             )
             Text(
@@ -369,7 +373,7 @@ private fun groupPastSessionsByMonth(items: List<SessionSummary>): List<Pair<Str
     val zone = ZoneId.systemDefault()
     val byMonth = LinkedHashMap<YearMonth, MutableList<SessionSummary>>()
     items.forEach { s ->
-        val ym = YearMonth.from(s.session.startedAt.atZone(zone))
+        val ym = YearMonth.from(s.session.workoutStartedAt().atZone(zone))
         byMonth.getOrPut(ym) { mutableListOf() }.add(s)
     }
     return byMonth.entries.map { (ym, group) ->
