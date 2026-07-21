@@ -72,16 +72,17 @@ interface ExerciseDao {
     @Query(
         """
         SELECT s.id AS sessionId,
-               s.startedAt AS sessionStartedAt,
+               COALESCE(s.acceptedAt, s.startedAt) AS sessionStartedAt,
                sl.reps AS reps,
                sl.kg AS kg,
-               sl.setNumber AS setNumber
+               sl.setNumber AS setNumber,
+               sl.side AS side
         FROM set_log sl
         JOIN session_exercise se ON sl.sessionExerciseId = se.id AND se.isSkipped = 0
         JOIN session s ON se.sessionId = s.id
         WHERE se.exerciseId = :exerciseId
           AND sl.reps IS NOT NULL AND sl.isSkipped = 0
-        ORDER BY s.startedAt ASC, sl.setNumber ASC
+        ORDER BY COALESCE(s.acceptedAt, s.startedAt) ASC, sl.setNumber ASC, sl.side ASC
         """
     )
     fun observeSetHistory(exerciseId: Long): Flow<List<ExerciseSetRow>>

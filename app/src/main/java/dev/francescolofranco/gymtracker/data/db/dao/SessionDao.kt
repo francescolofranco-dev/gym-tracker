@@ -63,6 +63,9 @@ interface SessionDao {
     @Query("UPDATE session SET endedAt = :at WHERE id = :id")
     suspend fun end(id: Long, at: Instant = Instant.now())
 
+    @Query("UPDATE session SET startedAt = :start, acceptedAt = :start, endedAt = :end WHERE id = :id")
+    suspend fun updateTiming(id: Long, start: Instant, end: Instant)
+
     /**
      * Hard-deletes a session. Foreign keys on session_exercise and set_log are CASCADE so
      * all child rows go too.
@@ -149,22 +152,44 @@ interface SessionDao {
      */
     @Query(
         """
-        SELECT s.id AS sessionId, s.startedAt AS sessionStartedAt,
+        SELECT s.id AS sessionId, COALESCE(s.acceptedAt, s.startedAt) AS sessionStartedAt,
                e.id AS exerciseId, e.name AS exerciseName,
                e.primaryMuscles AS primaryMuscles, e.secondaryMuscles AS secondaryMuscles,
-               e.isBodyweight AS isBodyweight,
+               e.isBodyweight AS isBodyweight, e.isUnilateral AS isUnilateral,
+               sl.side AS side,
                sl.reps AS reps, sl.kg AS kg
         FROM set_log sl
         JOIN session_exercise se ON sl.sessionExerciseId = se.id AND se.isSkipped = 0
         JOIN exercise e ON se.exerciseId = e.id
         JOIN session s ON se.sessionId = s.id
         WHERE sl.reps IS NOT NULL AND sl.isSkipped = 0
-          AND s.startedAt >= :startInclusive AND s.startedAt < :endExclusive
-        ORDER BY s.startedAt
+          AND COALESCE(s.acceptedAt, s.startedAt) >= :startInclusive
+          AND COALESCE(s.acceptedAt, s.startedAt) < :endExclusive
+        ORDER BY COALESCE(s.acceptedAt, s.startedAt)
         """
     )
     fun observeLoggedSetsBetween(
         startInclusive: Instant,
         endExclusive: Instant,
     ): Flow<List<StatSetRow>>
+
+    /** Snapshot query used by tests, backup previews, and explicit refreshes. */
+    @Query(
+        """
+        SELECT s.id AS sessionId, COALESCE(s.acceptedAt, s.startedAt) AS sessionStartedAt,
+               e.id AS exerciseId, e.name AS exerciseName,
+               e.primaryMuscles AS primaryMuscles, e.secondaryMuscles AS secondaryMuscles,
+               e.isBodyweight AS isBodyweight, e.isUnilateral AS isUnilateral,
+               sl.side AS side, sl.reps AS reps, sl.kg AS kg
+        FROM set_log sl
+        JOIN session_exercise se ON sl.sessionExerciseId = se.id AND se.isSkipped = 0
+        JOIN exercise e ON se.exerciseId = e.id
+        JOIN session s ON se.sessionId = s.id
+        WHERE sl.reps IS NOT NULL AND sl.isSkipped = 0
+          AND COALESCE(s.acceptedAt, s.startedAt) >= :startInclusive
+          AND COALESCE(s.acceptedAt, s.startedAt) < :endExclusive
+        ORDER BY COALESCE(s.acceptedAt, s.startedAt)
+        """
+    )
+    suspend fun loggedSetsBetween(startInclusive: Instant, endExclusive: Instant): List<StatSetRow>
 }

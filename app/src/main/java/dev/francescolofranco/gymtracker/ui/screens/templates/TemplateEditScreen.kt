@@ -182,7 +182,9 @@ private fun TemplateExerciseRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(text = exercise.name, style = MaterialTheme.typography.titleMedium)
             Text(
-                text = "${exercise.primaryMuscles.sortedBy { it.ordinal }.joinToString(" + ") { it.displayName }} · ${exercise.targetSets}×${exercise.repRangeMin}–${exercise.repRangeMax}",
+                text = "${exercise.primaryMuscles.sortedBy { it.ordinal }.joinToString(" + ") { it.displayName }} · " +
+                    "${exercise.targetSets}×${exercise.repRangeMin}–${exercise.repRangeMax}" +
+                    if (exercise.isUnilateral) "/side · unilateral" else "",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )

@@ -74,6 +74,8 @@ import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetai
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
+import dev.francescolofranco.gymtracker.ui.components.ErrorPane
+import dev.francescolofranco.gymtracker.ui.screens.exercises.PersonalRecordType
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -89,8 +91,14 @@ fun ActiveSessionScreen(
     val details = content?.details.orEmpty()
     val unit = content?.unit ?: WeightUnit.KG
     val hints by viewModel.hints.collectAsStateWithLifecycle()
+    val personalRecords by viewModel.personalRecords.collectAsStateWithLifecycle()
     val exitRequested by viewModel.exitRequested.collectAsStateWithLifecycle()
     val keepScreenOn = content?.keepScreenOn ?: false
+
+    (loadableContent as? Loadable.Error)?.let {
+        ErrorPane(it.message, viewModel::retry)
+        return
+    }
 
     var showPicker by remember { mutableStateOf(false) }
     var confirmEnd by remember { mutableStateOf(false) }
@@ -123,7 +131,7 @@ fun ActiveSessionScreen(
             val progressPct = remember(details) {
                 val plannedTotal = details
                     .filter { !it.sessionExercise.isSkipped }
-                    .sumOf { it.exercise.targetSets }
+                    .sumOf { d -> d.setLogs.count { !it.isSkipped } }
                 val loggedTotal = details
                     .filter { !it.sessionExercise.isSkipped }
                     .sumOf { d -> d.setLogs.count { it.loggedAt != null && it.reps != null && !it.isSkipped } }
@@ -217,6 +225,7 @@ fun ActiveSessionScreen(
                         detail = detail,
                         unit = unit,
                         hints = hints.byExerciseId[detail.exercise.id] ?: emptyList(),
+                        personalRecords = personalRecords[detail.exercise.id].orEmpty(),
                         editable = true,
                         canMoveUp = index > 0,
                         canMoveDown = index < details.lastIndex,
@@ -383,6 +392,8 @@ fun ExerciseCard(
     detail: SessionExerciseDetail,
     unit: WeightUnit,
     hints: List<HintRow>,
+    modifier: Modifier = Modifier,
+    personalRecords: Set<PersonalRecordType> = emptySet(),
     editable: Boolean,
     canMoveUp: Boolean,
     canMoveDown: Boolean,
@@ -396,16 +407,16 @@ fun ExerciseCard(
     onEditExerciseNotes: () -> Unit,
     onRemoveExercise: () -> Unit,
     onOpenExerciseStats: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     val exercise = detail.exercise
-    val sets = detail.setLogs.sortedBy { it.setNumber }
+    val sets = detail.setLogs.sortedWith(compareBy({ it.setNumber }, { it.side.ordinal }))
     val loggedSets = sets.count { it.loggedAt != null && it.reps != null && !it.isSkipped }
-    val incomplete = !detail.sessionExercise.isSkipped && loggedSets < exercise.targetSets
+    val plannedSets = sets.count { !it.isSkipped }
+    val incomplete = !detail.sessionExercise.isSkipped && loggedSets < plannedSets
     // Completed = every planned set is logged. A subtle green tint on the card body confirms
     // the exercise is done without shouting — matches the SetIndex / CheckButton green.
     val isComplete = !detail.sessionExercise.isSkipped &&
-        exercise.targetSets > 0 && loggedSets >= exercise.targetSets
+        plannedSets > 0 && loggedSets >= plannedSets
     // Completed exercises get a calm green outline + a "Done" tag rather than a heavy green fill
     // wash, which read as too loud over the grey set rows.
     val cardBorder = if (isComplete) {
@@ -450,6 +461,10 @@ fun ExerciseCard(
                         Spacer(Modifier.width(8.dp))
                         FirstTimeBadge()
                     }
+                    if (personalRecords.isNotEmpty()) {
+                        Spacer(Modifier.width(8.dp))
+                        PersonalRecordBadge(personalRecords)
+                    }
                     // Note flag — its own slot so it can sit alongside the Completed/First-time
                     // badge. Tapping it reveals the note; editing routes through the overflow menu.
                     val note = detail.sessionExercise.notes?.takeIf { it.isNotBlank() }
@@ -462,7 +477,10 @@ fun ExerciseCard(
                     text = buildList {
                         add(exercise.primaryMuscles.sortedBy { it.ordinal }.joinToString(" + ") { it.displayName })
                         if (exercise.isBodyweight) add("BW")
-                        add("${exercise.targetSets}×${exercise.repRangeMin}–${exercise.repRangeMax}")
+                        add(
+                            "${exercise.targetSets}×${exercise.repRangeMin}–${exercise.repRangeMax}" +
+                                if (exercise.isUnilateral) "/side" else "",
+                        )
                         if (detail.sessionExercise.isSkipped) add("Skipped")
                         else if (incomplete) add("Incomplete")
                     }.joinToString(" · "),
@@ -555,7 +573,7 @@ fun ExerciseCard(
                 // so no cross-set fallback here — reusing e.g. set 1's hint for set 3 used to make
                 // the "vs last time" delta compare against the wrong set, sometimes flipping its
                 // sign (looked like a regression when it was really an improvement).
-                val hint = hints.firstOrNull { it.setNumber == log.setNumber }
+                val hint = hints.firstOrNull { it.setNumber == log.setNumber && it.side == log.side }
                 SetRow(
                     state = SetRowState(
                         log = log,
@@ -609,6 +627,22 @@ private fun FirstTimeBadge() {
             text = "First time",
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onTertiaryContainer,
+        )
+    }
+}
+
+@Composable
+private fun PersonalRecordBadge(records: Set<PersonalRecordType>) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(dev.francescolofranco.gymtracker.ui.theme.VolumeGreen.copy(alpha = 0.18f))
+            .padding(horizontal = 8.dp, vertical = 2.dp),
+    ) {
+        Text(
+            text = records.joinToString(" · ") { it.shortLabel },
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onSurface,
         )
     }
 }

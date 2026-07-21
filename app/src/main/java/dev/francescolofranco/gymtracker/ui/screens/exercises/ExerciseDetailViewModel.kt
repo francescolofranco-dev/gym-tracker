@@ -9,6 +9,7 @@ import dev.francescolofranco.gymtracker.data.prefs.UserPrefs
 import dev.francescolofranco.gymtracker.data.repository.ExerciseRepository
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.ui.components.Loadable
+import dev.francescolofranco.gymtracker.ui.components.RetryableViewModel
 import dev.francescolofranco.gymtracker.ui.nav.ExerciseRoutes
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,7 +29,7 @@ class ExerciseDetailViewModel @Inject constructor(
     savedState: SavedStateHandle,
     private val repo: ExerciseRepository,
     userPrefs: UserPrefs,
-) : ViewModel() {
+) : RetryableViewModel() {
 
     private val exerciseId: Long = checkNotNull(savedState.get<Long>(ExerciseRoutes.DETAIL_ARG))
 
@@ -41,12 +42,8 @@ class ExerciseDetailViewModel @Inject constructor(
         repo.observeSetHistory(exerciseId),
         userPrefs.unit,
     ) { exercise, rows, unit ->
-        Loadable.Ready(ExerciseDetailContent(exercise, aggregateSessions(rows), unit))
-    }.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5_000),
-        Loadable.Loading,
-    )
+        ExerciseDetailContent(exercise, aggregateSessions(rows), unit)
+    }.asLoadableState(viewModelScope)
 
     /**
      * Save the edited form back into the exercise. Stats queries join through the exercise
@@ -64,6 +61,7 @@ class ExerciseDetailViewModel @Inject constructor(
             repRangeMin = state.repRangeMin,
             repRangeMax = state.repRangeMax,
             isBodyweight = state.isBodyweight,
+            isUnilateral = state.isUnilateral,
         )
     }
 }

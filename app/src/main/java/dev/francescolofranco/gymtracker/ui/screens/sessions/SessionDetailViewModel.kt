@@ -11,6 +11,7 @@ import dev.francescolofranco.gymtracker.data.repository.SessionRepository
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.service.TimerController
 import dev.francescolofranco.gymtracker.ui.components.Loadable
+import dev.francescolofranco.gymtracker.ui.components.RetryableViewModel
 import dev.francescolofranco.gymtracker.ui.nav.SessionRoutes
 import dev.francescolofranco.gymtracker.work.IdleSessionScheduler
 import kotlinx.coroutines.flow.SharingStarted
@@ -19,6 +20,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import java.time.Instant
 
 data class SessionDetailContent(
     val session: SessionEntity?,
@@ -33,7 +35,7 @@ class SessionDetailViewModel @Inject constructor(
     private val timer: TimerController,
     private val idleScheduler: IdleSessionScheduler,
     userPrefs: UserPrefs,
-) : ViewModel() {
+) : RetryableViewModel() {
 
     private val sessionId: Long = checkNotNull(savedState.get<Long>(SessionRoutes.DETAIL_ARG))
 
@@ -51,12 +53,8 @@ class SessionDetailViewModel @Inject constructor(
         repo.observeExerciseDetails(sessionId),
         userPrefs.unit,
     ) { session, details, unit ->
-        Loadable.Ready(SessionDetailContent(session, details, unit))
-    }.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5_000),
-        Loadable.Loading,
-    )
+        SessionDetailContent(session, details, unit)
+    }.asLoadableState(viewModelScope)
 
     /**
      * Past-session deltas compare against the session immediately BEFORE the one being viewed,
@@ -76,9 +74,11 @@ class SessionDetailViewModel @Inject constructor(
         val byId = HashMap<Long, List<HintRow>>()
         items.forEach { d ->
             if (byId[d.exercise.id] == null) {
-                byId[d.exercise.id] = (1..d.exercise.targetSets).mapNotNull { setNumber ->
-                    repo.lastLoggedSetBefore(d.exercise.id, setNumber, anchor)?.let {
-                        HintRow(setNumber, it.reps, it.kg)
+                byId[d.exercise.id] = d.setLogs
+                    .distinctBy { it.setNumber to it.side }
+                    .mapNotNull { current ->
+                    repo.lastLoggedSetBefore(d.exercise.id, current.setNumber, current.side, anchor)?.let {
+                        HintRow(current.setNumber, current.side, it.reps, it.kg)
                     }
                 }
             }
@@ -134,6 +134,10 @@ class SessionDetailViewModel @Inject constructor(
 
     fun setSessionNotes(notes: String?) = viewModelScope.launch {
         repo.updateSessionNotes(sessionId, notes?.ifBlank { null })
+    }
+
+    fun setSessionTiming(start: Instant, end: Instant) = viewModelScope.launch {
+        repo.updateSessionTiming(sessionId, start, end)
     }
 
     suspend fun deleteSession() {

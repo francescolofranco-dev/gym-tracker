@@ -38,6 +38,7 @@ import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.domain.Muscle
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
+import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 
 @Composable
 fun ExercisePickerSheet(
@@ -107,8 +108,13 @@ fun ExercisePickerSheet(
                 }
                 HorizontalDivider(modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
 
-                when (rowState) {
+                when (val current = rowState) {
                     Loadable.Loading -> LoadingPane(modifier = Modifier.weight(1f))
+                    is Loadable.Error -> ErrorPane(
+                        current.message,
+                        viewModel::retry,
+                        Modifier.weight(1f),
+                    )
                     is Loadable.Ready -> if (rows.isEmpty()) {
                         Text(
                             text = "Create exercises in the Exercises tab first.",
@@ -220,7 +226,8 @@ private fun PickerRow(
             Text(
                 text = buildList {
                     if (exercise.isBodyweight) add("BW")
-                    add("${exercise.targetSets}×${exercise.repRangeMin}–${exercise.repRangeMax}")
+                    if (exercise.isUnilateral) add("Unilateral")
+                    add("${exercise.targetSets}×${exercise.repRangeMin}–${exercise.repRangeMax}${if (exercise.isUnilateral) "/side" else ""}")
                     val secondaries = exercise.secondaryMuscles.sortedBy { it.ordinal }
                         .joinToString(", ") { it.displayName }
                     if (secondaries.isNotEmpty()) add(secondaries)

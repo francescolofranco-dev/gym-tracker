@@ -50,6 +50,7 @@ import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
+import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.screens.sessions.convertFromKg
 import dev.francescolofranco.gymtracker.ui.screens.sessions.formatSessionDate
 import dev.francescolofranco.gymtracker.ui.screens.sessions.formatWeightNumber
@@ -70,6 +71,11 @@ fun ExerciseDetailScreen(
     val content = (loadableContent as? Loadable.Ready)?.value
     val exercise = content?.exercise
     var showEdit by remember { mutableStateOf(false) }
+
+    (loadableContent as? Loadable.Error)?.let {
+        ErrorPane(it.message, viewModel::retry)
+        return
+    }
 
     Scaffold(
         topBar = {
@@ -111,6 +117,9 @@ fun ExerciseDetailScreen(
         }
         val progress = content.progress
         val unit = content.unit
+        val recordsBySession = remember(progress, ex.isBodyweight) {
+            detectPersonalRecords(progress, ex.isBodyweight)
+        }
 
         // Pair each session with the most recent *earlier* session that has a value for the headline
         // metric, so the per-row delta bridges over any zero-load session instead of vanishing, then
@@ -135,6 +144,15 @@ fun ExerciseDetailScreen(
         ) {
             item { Header(exercise = ex) }
             item { ProgressSection(points = progress, isBodyweight = ex.isBodyweight, unit = unit) }
+            if (progress.isNotEmpty()) {
+                item {
+                    PersonalRecordsCard(
+                        summary = personalRecordSummary(progress),
+                        isBodyweight = ex.isBodyweight,
+                        unit = unit,
+                    )
+                }
+            }
             item {
                 Text(
                     text = "History",
@@ -151,6 +169,7 @@ fun ExerciseDetailScreen(
                         previous = previous,
                         isBodyweight = ex.isBodyweight,
                         unit = unit,
+                        records = recordsBySession[point.sessionId].orEmpty(),
                         onClick = { onOpenSession(point.sessionId) },
                     )
                     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
@@ -200,6 +219,7 @@ private fun Header(exercise: ExerciseEntity) {
             text = buildList {
                 add("${exercise.targetSets}×${exercise.repRangeMin}–${exercise.repRangeMax}")
                 if (exercise.isBodyweight) add("Bodyweight")
+                if (exercise.isUnilateral) add("Unilateral · sets per side")
                 if (exercise.deletedAt != null) add("Deleted")
             }.joinToString(" · "),
             style = MaterialTheme.typography.bodySmall,
@@ -280,7 +300,10 @@ private fun ProgressSection(
                 )
             }
             else -> {
-                TrendLineChart(values = series.map { displayValue(it, metric, unit) })
+                TrendLineChart(
+                    values = series.map { displayValue(it, metric, unit) },
+                    contentDescription = "${metric.label} trend",
+                )
             }
         }
     }
@@ -324,6 +347,7 @@ private fun HistoryRow(
     previous: SessionProgressPoint?,
     isBodyweight: Boolean,
     unit: WeightUnit,
+    records: Set<PersonalRecordType>,
     onClick: () -> Unit,
 ) {
     val headline = headlineMetric(isBodyweight)
@@ -348,6 +372,13 @@ private fun HistoryRow(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
+            if (records.isNotEmpty()) {
+                Text(
+                    text = records.joinToString(" · ") { it.shortLabel },
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+                    color = VolumeGreen,
+                )
+            }
         }
         val value = point.valueFor(headline)
         if (value != null) {
@@ -359,6 +390,45 @@ private fun HistoryRow(
                 DeltaLabel(current = value, previous = previous?.valueFor(headline))
             }
         }
+    }
+}
+
+@Composable
+private fun PersonalRecordsCard(
+    summary: PersonalRecordSummary,
+    isBodyweight: Boolean,
+    unit: WeightUnit,
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text("Personal records", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
+        if (isBodyweight) {
+            RecordLine("Best set", "${summary.bestReps} reps")
+        } else {
+            summary.bestE1rmKg?.let {
+                RecordLine("Estimated 1RM", formatMetricValue(it, ProgressMetric.Est1Rm, unit))
+            }
+            RecordLine("Session volume", formatMetricValue(summary.bestVolumeKg, ProgressMetric.Volume, unit))
+        }
+        Text(
+            "PR badges in history mark sessions that beat an earlier result; the first session establishes the baseline.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun RecordLine(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        Text(value, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
     }
 }
 

@@ -14,6 +14,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 
 /**
  * Lightweight Compose-Canvas line chart for a per-session progress series. A hand-rolled chart
@@ -30,6 +32,7 @@ fun TrendLineChart(
     values: List<Double>,
     modifier: Modifier = Modifier,
     height: Dp = 160.dp,
+    contentDescription: String = "Progress trend chart",
 ) {
     val line = MaterialTheme.colorScheme.primary
     val fill = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
@@ -39,6 +42,11 @@ fun TrendLineChart(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
+            .semantics {
+                this.contentDescription = if (values.isEmpty()) contentDescription else {
+                    "$contentDescription. ${values.size} points, from ${values.first()} to ${values.last()}."
+                }
+            }
             .padding(horizontal = 8.dp, vertical = 8.dp),
     ) {
         Canvas(modifier = Modifier.fillMaxWidth().height(height)) {

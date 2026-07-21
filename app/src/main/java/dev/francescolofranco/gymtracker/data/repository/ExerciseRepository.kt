@@ -29,6 +29,7 @@ class ExerciseRepository @Inject constructor(
         repRangeMin: Int,
         repRangeMax: Int,
         isBodyweight: Boolean,
+        isUnilateral: Boolean,
     ): Long = dao.insert(
         ExerciseEntity(
             name = name.trim(),
@@ -38,6 +39,7 @@ class ExerciseRepository @Inject constructor(
             repRangeMin = repRangeMin,
             repRangeMax = repRangeMax,
             isBodyweight = isBodyweight,
+            isUnilateral = isUnilateral,
             createdAt = Instant.now(),
         )
     )
@@ -60,6 +62,7 @@ class ExerciseRepository @Inject constructor(
         repRangeMin: Int,
         repRangeMax: Int,
         isBodyweight: Boolean,
+        isUnilateral: Boolean,
     ) {
         val current = dao.byId(id) ?: return
         dao.update(
@@ -71,6 +74,7 @@ class ExerciseRepository @Inject constructor(
                 repRangeMin = repRangeMin,
                 repRangeMax = repRangeMax,
                 isBodyweight = isBodyweight,
+                isUnilateral = isUnilateral,
             ),
         )
     }

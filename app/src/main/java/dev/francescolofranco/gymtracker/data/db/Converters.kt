@@ -1,6 +1,7 @@
 package dev.francescolofranco.gymtracker.data.db
 
 import androidx.room.TypeConverter
+import dev.francescolofranco.gymtracker.domain.ExerciseSide
 import dev.francescolofranco.gymtracker.domain.Muscle
 import java.time.Instant
 
@@ -22,4 +23,11 @@ class Converters {
         else s.split(",").mapNotNull { token ->
             runCatching { Muscle.valueOf(token) }.getOrNull()
         }.toSet()
+
+    @TypeConverter
+    fun exerciseSideToString(side: ExerciseSide?): String = (side ?: ExerciseSide.BOTH).name
+
+    @TypeConverter
+    fun stringToExerciseSide(value: String?): ExerciseSide =
+        runCatching { ExerciseSide.valueOf(value.orEmpty()) }.getOrDefault(ExerciseSide.BOTH)
 }

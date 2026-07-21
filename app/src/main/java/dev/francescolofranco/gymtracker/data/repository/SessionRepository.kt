@@ -7,8 +7,10 @@ import dev.francescolofranco.gymtracker.data.db.entities.SessionEntity
 import dev.francescolofranco.gymtracker.data.db.entities.SessionExerciseEntity
 import dev.francescolofranco.gymtracker.data.db.entities.SetLogEntity
 import dev.francescolofranco.gymtracker.data.db.projections.ExerciseWithRecency
+import dev.francescolofranco.gymtracker.data.db.projections.ExerciseSetRow
 import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetail
 import dev.francescolofranco.gymtracker.data.db.projections.SessionSummary
+import dev.francescolofranco.gymtracker.domain.ExerciseSide
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 import javax.inject.Inject
@@ -34,6 +36,9 @@ class SessionRepository @Inject constructor(
     fun observePickerExercises(): Flow<List<ExerciseWithRecency>> =
         exerciseDao.observeActiveByRecency()
 
+    fun observeExerciseSetHistory(exerciseId: Long): Flow<List<ExerciseSetRow>> =
+        exerciseDao.observeSetHistory(exerciseId)
+
     suspend fun activeSession(): SessionEntity? = sessionDao.activeSession()
 
     /**
@@ -54,6 +59,11 @@ class SessionRepository @Inject constructor(
     }
 
     suspend fun endSession(id: Long, at: Instant = Instant.now()) = sessionDao.end(id, at)
+
+    suspend fun updateSessionTiming(id: Long, start: Instant, end: Instant) {
+        require(!end.isBefore(start)) { "Session end cannot be before its start." }
+        sessionDao.updateTiming(id, start, end)
+    }
 
     /**
      * Promote a draft session to an accepted (real) one. Until the session has [acceptedAt],
@@ -98,13 +108,21 @@ class SessionRepository @Inject constructor(
         )
         // Planned sets stay null (reps/kg) until the user taps ✓. The UI reads
         // `lastSessionSets` separately to suggest stepper values.
+        val sides = if (exercise.isUnilateral) {
+            listOf(ExerciseSide.LEFT, ExerciseSide.RIGHT)
+        } else {
+            listOf(ExerciseSide.BOTH)
+        }
         for (i in 1..exercise.targetSets) {
-            setLogDao.upsert(
-                SetLogEntity(
-                    sessionExerciseId = sessionExerciseId,
-                    setNumber = i,
+            sides.forEach { side ->
+                setLogDao.upsert(
+                    SetLogEntity(
+                        sessionExerciseId = sessionExerciseId,
+                        setNumber = i,
+                        side = side,
+                    )
                 )
-            )
+            }
         }
         return sessionExerciseId
     }
@@ -135,12 +153,22 @@ class SessionRepository @Inject constructor(
     suspend fun lastLoggedSetBefore(
         exerciseId: Long,
         setNumber: Int,
+        side: ExerciseSide,
         beforeStartedAt: Instant,
-    ): SetLogEntity? = setLogDao.lastLoggedSetBefore(
-        exerciseId = exerciseId,
-        setNumber = setNumber,
-        beforeStartedAtEpochMs = beforeStartedAt.toEpochMilli(),
-    )
+    ): SetLogEntity? {
+        // Exercises created before unilateral tracking have historical rows stored as BOTH.
+        // When the user later marks one unilateral, let each new side inherit that old row
+        // until a side-specific value exists. Bilateral rows never borrow one arbitrary side.
+        historyLookupSides(side).forEach { candidateSide ->
+            setLogDao.lastLoggedSetBefore(
+                exerciseId = exerciseId,
+                setNumber = setNumber,
+                side = candidateSide,
+                beforeStartedAtEpochMs = beforeStartedAt.toEpochMilli(),
+            )?.let { return it }
+        }
+        return null
+    }
 
     suspend fun removeSessionExercise(sessionExerciseId: Long) =
         sessionDao.removeExercise(sessionExerciseId)
@@ -228,4 +256,11 @@ class SessionRepository @Inject constructor(
         val current = setLogDao.byId(setLogId) ?: return
         setLogDao.update(current.copy(isSkipped = skipped))
     }
+}
+
+/** Side-specific history first, then legacy bilateral history as a compatibility fallback. */
+internal fun historyLookupSides(side: ExerciseSide): List<ExerciseSide> = when (side) {
+    ExerciseSide.BOTH -> listOf(ExerciseSide.BOTH)
+    ExerciseSide.LEFT -> listOf(ExerciseSide.LEFT, ExerciseSide.BOTH)
+    ExerciseSide.RIGHT -> listOf(ExerciseSide.RIGHT, ExerciseSide.BOTH)
 }

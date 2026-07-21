@@ -26,3 +26,10 @@ enum class Muscle(val displayName: String) {
 enum class WeightUnit { KG, LBS }
 
 enum class WeekMode { ROLLING_7, MON_SUN }
+
+/** Which side performed a set. Bilateral exercises use [BOTH]. */
+enum class ExerciseSide(val shortLabel: String, val displayName: String) {
+    BOTH("", "Both sides"),
+    LEFT("L", "Left"),
+    RIGHT("R", "Right"),
+}

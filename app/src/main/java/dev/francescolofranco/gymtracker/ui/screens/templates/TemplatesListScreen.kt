@@ -39,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.TemplateEntity
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
+import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,6 +73,7 @@ fun TemplatesListScreen(
     ) { padding ->
         when (val current = items) {
             Loadable.Loading -> LoadingPane(modifier = Modifier.padding(padding))
+            is Loadable.Error -> ErrorPane(current.message, viewModel::retry, Modifier.padding(padding))
             is Loadable.Ready -> {
                 if (current.value.isEmpty()) {
                     Box(

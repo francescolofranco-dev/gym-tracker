@@ -9,9 +9,14 @@ import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetai
 import dev.francescolofranco.gymtracker.data.prefs.UserPrefs
 import dev.francescolofranco.gymtracker.data.repository.SessionRepository
 import dev.francescolofranco.gymtracker.domain.WeightUnit
+import dev.francescolofranco.gymtracker.domain.ExerciseSide
 import dev.francescolofranco.gymtracker.service.TimerController
 import dev.francescolofranco.gymtracker.ui.components.Loadable
+import dev.francescolofranco.gymtracker.ui.components.RetryableViewModel
 import dev.francescolofranco.gymtracker.ui.nav.SessionRoutes
+import dev.francescolofranco.gymtracker.ui.screens.exercises.aggregateSessions
+import dev.francescolofranco.gymtracker.ui.screens.exercises.detectPersonalRecords
+import dev.francescolofranco.gymtracker.ui.screens.exercises.PersonalRecordType
 import dev.francescolofranco.gymtracker.work.IdleSessionScheduler
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -19,6 +24,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -28,7 +36,12 @@ data class SetHints(
     val byExerciseId: Map<Long, List<HintRow>> = emptyMap(),
 )
 
-data class HintRow(val setNumber: Int, val reps: Int?, val kg: Double?)
+data class HintRow(
+    val setNumber: Int,
+    val side: ExerciseSide,
+    val reps: Int?,
+    val kg: Double?,
+)
 
 data class ActiveSessionContent(
     val session: SessionEntity?,
@@ -44,7 +57,7 @@ class ActiveSessionViewModel @Inject constructor(
     private val idleScheduler: IdleSessionScheduler,
     private val timer: TimerController,
     userPrefs: UserPrefs,
-) : ViewModel() {
+) : RetryableViewModel() {
 
     private val sessionId: Long = checkNotNull(savedState.get<Long>(SessionRoutes.ACTIVE_ARG))
 
@@ -66,12 +79,8 @@ class ActiveSessionViewModel @Inject constructor(
         userPrefs.unit,
         userPrefs.keepScreenOnDuringSession,
     ) { session, details, unit, keepScreenOn ->
-        Loadable.Ready(ActiveSessionContent(session, details, unit, keepScreenOn))
-    }.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5_000),
-        Loadable.Loading,
-    )
+        ActiveSessionContent(session, details, unit, keepScreenOn)
+    }.asLoadableState(viewModelScope)
 
     /**
      * Anchor hints to the LAST COMPLETED session preceding this one (not the global latest,
@@ -92,15 +101,36 @@ class ActiveSessionViewModel @Inject constructor(
         val byId = HashMap<Long, List<HintRow>>()
         items.forEach { d ->
             if (byId[d.exercise.id] == null) {
-                byId[d.exercise.id] = (1..d.exercise.targetSets).mapNotNull { setNumber ->
-                    repo.lastLoggedSetBefore(d.exercise.id, setNumber, anchor)?.let {
-                        HintRow(setNumber, it.reps, it.kg)
+                byId[d.exercise.id] = d.setLogs
+                    .distinctBy { it.setNumber to it.side }
+                    .mapNotNull { current ->
+                    repo.lastLoggedSetBefore(d.exercise.id, current.setNumber, current.side, anchor)?.let {
+                        HintRow(current.setNumber, current.side, it.reps, it.kg)
                     }
                 }
             }
         }
         SetHints(byId)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SetHints())
+
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val personalRecords: StateFlow<Map<Long, Set<PersonalRecordType>>> = details
+        .flatMapLatest { items ->
+            val unique = items.distinctBy { it.exercise.id }
+            if (unique.isEmpty()) {
+                flowOf(emptyMap())
+            } else {
+                combine(unique.map { detail ->
+                    repo.observeExerciseSetHistory(detail.exercise.id).map { rows -> detail to rows }
+                }) { histories ->
+                    histories.associate { (detail, rows) ->
+                        val points = aggregateSessions(rows)
+                        detail.exercise.id to detectPersonalRecords(points, detail.exercise.isBodyweight)
+                            .getOrElse(sessionId) { emptySet() }
+                    }
+                }
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     private val _exitRequested = MutableStateFlow(false)
     val exitRequested: StateFlow<Boolean> = _exitRequested.asStateFlow()
@@ -194,8 +224,7 @@ class ActiveSessionViewModel @Inject constructor(
     }
 
     fun endSession() = viewModelScope.launch {
-        val ended = withContext(Dispatchers.Default) { repo.lastActivityAt(sessionId) ?: java.time.Instant.now() }
-        repo.endSession(sessionId, ended)
+        repo.endSession(sessionId, java.time.Instant.now())
         idleScheduler.cancel(sessionId)
         // Tear the timer notification down — no session means nothing to display.
         timer.stop()

@@ -25,7 +25,7 @@ import dev.francescolofranco.gymtracker.data.db.entities.TemplateExerciseEntity
         TemplateEntity::class,
         TemplateExerciseEntity::class,
     ],
-    version = 3,
+    version = 4,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -90,6 +90,14 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE session ADD COLUMN acceptedAt INTEGER")
                 db.execSQL("UPDATE session SET acceptedAt = startedAt")
+            }
+        }
+
+        /** v3 → v4: unilateral exercise metadata plus a side on every set log. */
+        val MIGRATION_3_4 = object : Migration(3, 4) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE exercise ADD COLUMN isUnilateral INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE set_log ADD COLUMN side TEXT NOT NULL DEFAULT 'BOTH'")
             }
         }
     }

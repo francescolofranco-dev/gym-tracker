@@ -1,6 +1,7 @@
 package dev.francescolofranco.gymtracker.ui.screens.exercises
 
 import dev.francescolofranco.gymtracker.data.db.projections.ExerciseSetRow
+import dev.francescolofranco.gymtracker.domain.ExerciseSide
 import java.time.Instant
 
 /**
@@ -26,7 +27,12 @@ data class SessionProgressPoint(
     /** Most reps in any single set this session — the bodyweight headline. */
     val bestReps: Int,
     val totalReps: Int,
+    /** Best reps at each exact load and side, so unilateral PRs compare left with left. */
+    val bestRepsByLoadAndSide: Map<LoadSideKey, Int>,
+    val bestRepsBySide: Map<ExerciseSide, Int>,
 )
+
+data class LoadSideKey(val kg: Double, val side: ExerciseSide)
 
 /**
  * Collapse the ordered set stream into one point per session, preserving ascending date order
@@ -48,13 +54,18 @@ fun aggregateSessions(rows: List<ExerciseSetRow>): List<SessionProgressPoint> {
         var bestE1rm: Double? = null
         var topSetKg: Double? = null
         var topSetReps: Int? = null
+        val bestRepsByLoadAndSide = HashMap<LoadSideKey, Int>()
+        val bestRepsBySide = HashMap<ExerciseSide, Int>()
 
         sessionRows.forEach { r ->
             val kg = r.kg
             volumeKg += r.reps * (kg ?: 0.0)
             totalReps += r.reps
             if (r.reps > bestReps) bestReps = r.reps
+            bestRepsBySide[r.side] = maxOf(bestRepsBySide[r.side] ?: 0, r.reps)
             if (kg != null && kg > 0.0) {
+                val key = LoadSideKey(kg, r.side)
+                bestRepsByLoadAndSide[key] = maxOf(bestRepsByLoadAndSide[key] ?: 0, r.reps)
                 val e1rm = epley1Rm(kg, r.reps)
                 val current = bestE1rm
                 if (current == null || e1rm > current) {
@@ -75,6 +86,8 @@ fun aggregateSessions(rows: List<ExerciseSetRow>): List<SessionProgressPoint> {
             topSetReps = topSetReps,
             bestReps = bestReps,
             totalReps = totalReps,
+            bestRepsByLoadAndSide = bestRepsByLoadAndSide,
+            bestRepsBySide = bestRepsBySide,
         )
     }
 }
@@ -112,6 +125,71 @@ fun SessionProgressPoint.valueFor(metric: ProgressMetric): Double? = when (metri
 enum class OverloadTrend { Progressing, Holding, Regressing, NotEnoughData }
 
 data class TrendResult(val trend: OverloadTrend, val percentChange: Double?, val sessions: Int)
+
+enum class PersonalRecordType(val shortLabel: String, val description: String) {
+    ESTIMATED_1RM("1RM PR", "Best estimated one-rep max"),
+    REPS_AT_WEIGHT("Rep PR", "Most reps at the same weight"),
+    SESSION_VOLUME("Volume PR", "Most exercise tonnage in one session"),
+    BODYWEIGHT_REPS("Rep PR", "Most reps in one bodyweight set"),
+}
+
+data class PersonalRecordSummary(
+    val bestE1rmKg: Double?,
+    val bestVolumeKg: Double,
+    val bestReps: Int,
+)
+
+/** Record badges earned chronologically; the first session establishes a baseline, not a PR. */
+fun detectPersonalRecords(
+    points: List<SessionProgressPoint>,
+    isBodyweight: Boolean,
+): Map<Long, Set<PersonalRecordType>> {
+    var bestE1rm = 0.0
+    var bestVolume = 0.0
+    val bestRepsByLoadAndSide = HashMap<LoadSideKey, Int>()
+    val bestBodyweightRepsBySide = HashMap<ExerciseSide, Int>()
+    val result = LinkedHashMap<Long, Set<PersonalRecordType>>()
+
+    points.forEachIndexed { index, point ->
+        val records = linkedSetOf<PersonalRecordType>()
+        if (index > 0) {
+            if (!isBodyweight && point.bestE1rmKg != null && point.bestE1rmKg > bestE1rm) {
+                records += PersonalRecordType.ESTIMATED_1RM
+            }
+            if (point.volumeKg > 0.0 && point.volumeKg > bestVolume) {
+                records += PersonalRecordType.SESSION_VOLUME
+            }
+            if (isBodyweight && point.bestRepsBySide.any { (side, reps) ->
+                    bestBodyweightRepsBySide[side]?.let { reps > it } == true
+                }
+            ) {
+                records += PersonalRecordType.BODYWEIGHT_REPS
+            }
+            if (!isBodyweight && point.bestRepsByLoadAndSide.any { (key, reps) ->
+                    bestRepsByLoadAndSide[key]?.let { reps > it } == true
+                }
+            ) {
+                records += PersonalRecordType.REPS_AT_WEIGHT
+            }
+        }
+        result[point.sessionId] = records
+        bestE1rm = maxOf(bestE1rm, point.bestE1rmKg ?: 0.0)
+        bestVolume = maxOf(bestVolume, point.volumeKg)
+        point.bestRepsByLoadAndSide.forEach { (key, reps) ->
+            bestRepsByLoadAndSide[key] = maxOf(bestRepsByLoadAndSide[key] ?: 0, reps)
+        }
+        point.bestRepsBySide.forEach { (side, reps) ->
+            bestBodyweightRepsBySide[side] = maxOf(bestBodyweightRepsBySide[side] ?: 0, reps)
+        }
+    }
+    return result
+}
+
+fun personalRecordSummary(points: List<SessionProgressPoint>): PersonalRecordSummary = PersonalRecordSummary(
+    bestE1rmKg = points.mapNotNull { it.bestE1rmKg }.maxOrNull(),
+    bestVolumeKg = points.maxOfOrNull { it.volumeKg } ?: 0.0,
+    bestReps = points.maxOfOrNull { it.bestReps } ?: 0,
+)
 
 /** ±0.5% per session counts as "holding steady" rather than a real trend. */
 private const val TREND_DEADBAND = 0.005

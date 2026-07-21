@@ -25,6 +25,8 @@ data class ExerciseEntity(
     val repRangeMin: Int,
     val repRangeMax: Int,
     val isBodyweight: Boolean,
+    /** Target sets are interpreted per side when this is true. */
+    val isUnilateral: Boolean = false,
     val createdAt: Instant,
     val deletedAt: Instant? = null,
 )

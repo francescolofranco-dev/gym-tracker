@@ -11,6 +11,7 @@ data class ExerciseFormState(
     val repRangeMin: Int = 8,
     val repRangeMax: Int = 12,
     val isBodyweight: Boolean = false,
+    val isUnilateral: Boolean = false,
 ) {
     val isValid: Boolean
         get() = name.isNotBlank() &&
@@ -35,4 +36,5 @@ fun ExerciseEntity.toFormState(): ExerciseFormState = ExerciseFormState(
     repRangeMin = repRangeMin,
     repRangeMax = repRangeMax,
     isBodyweight = isBodyweight,
+    isUnilateral = isUnilateral,
 )

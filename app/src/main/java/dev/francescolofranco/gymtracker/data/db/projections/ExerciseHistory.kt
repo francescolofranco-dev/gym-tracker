@@ -1,5 +1,6 @@
 package dev.francescolofranco.gymtracker.data.db.projections
 
+import dev.francescolofranco.gymtracker.domain.ExerciseSide
 import java.time.Instant
 
 /**
@@ -14,4 +15,5 @@ data class ExerciseSetRow(
     val reps: Int,
     val kg: Double?,
     val setNumber: Int,
+    val side: ExerciseSide = ExerciseSide.BOTH,
 )

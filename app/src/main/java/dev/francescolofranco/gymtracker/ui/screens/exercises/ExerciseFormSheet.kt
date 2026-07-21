@@ -73,6 +73,22 @@ fun ExerciseFormSheet(
                 Text("Bodyweight exercise")
             }
 
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Switch(
+                    checked = state.isUnilateral,
+                    onCheckedChange = { state = state.copy(isUnilateral = it) },
+                )
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text("Unilateral exercise")
+                    Text(
+                        "Logs left and right separately; target sets apply per side.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+
             SectionLabel("Primary muscles (up to ${ExerciseFormState.MAX_PRIMARY_MUSCLES})")
             MuscleChips(
                 selected = { it in state.primaryMuscles },
@@ -111,7 +127,7 @@ fun ExerciseFormSheet(
             )
 
             StepperRow(
-                label = "Target sets",
+                label = if (state.isUnilateral) "Target sets per side" else "Target sets",
                 value = state.targetSets,
                 min = 1,
                 max = ExerciseFormState.MAX_SETS,
@@ -189,4 +205,3 @@ private fun StepperRow(
         )
     }
 }
-

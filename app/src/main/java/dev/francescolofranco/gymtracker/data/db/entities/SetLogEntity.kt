@@ -4,6 +4,7 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
+import dev.francescolofranco.gymtracker.domain.ExerciseSide
 import java.time.Instant
 
 @Entity(
@@ -22,6 +23,7 @@ data class SetLogEntity(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
     val sessionExerciseId: Long,
     val setNumber: Int,
+    val side: ExerciseSide = ExerciseSide.BOTH,
     val reps: Int? = null,
     val kg: Double? = null,
     val isSkipped: Boolean = false,

@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Update
 import dev.francescolofranco.gymtracker.data.db.entities.SetLogEntity
+import dev.francescolofranco.gymtracker.domain.ExerciseSide
 import kotlinx.coroutines.flow.Flow
 
 @Dao
@@ -59,7 +60,7 @@ interface SetLogDao {
               ORDER BY s.startedAt DESC
               LIMIT 1
           )
-        ORDER BY sl.setNumber ASC
+        ORDER BY sl.setNumber ASC, sl.side ASC
         LIMIT :limit
         """
     )
@@ -93,7 +94,7 @@ interface SetLogDao {
               ORDER BY s.startedAt DESC
               LIMIT 1
           )
-        ORDER BY sl.setNumber ASC
+        ORDER BY sl.setNumber ASC, sl.side ASC
         LIMIT :limit
         """
     )
@@ -121,6 +122,7 @@ interface SetLogDao {
         JOIN session s ON s.id = se.sessionId
         WHERE se.exerciseId = :exerciseId
           AND sl.setNumber = :setNumber
+          AND sl.side = :side
           AND sl.reps IS NOT NULL
           AND sl.isSkipped = 0
           AND s.startedAt < :beforeStartedAtEpochMs
@@ -132,6 +134,7 @@ interface SetLogDao {
     suspend fun lastLoggedSetBefore(
         exerciseId: Long,
         setNumber: Int,
+        side: ExerciseSide,
         beforeStartedAtEpochMs: Long,
     ): SetLogEntity?
 }
