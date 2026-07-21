@@ -1,5 +1,13 @@
 package dev.francescolofranco.gymtracker.ui.components
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
@@ -29,6 +37,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
@@ -37,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 
 /**
  * Big-target stepper. Tap +/- once to step; press-and-hold to scrub fast.
@@ -98,10 +108,16 @@ fun NumberStepper(
                 .semantics { contentDescription = "Value $valueLabel" },
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = valueLabel,
-                style = MaterialTheme.typography.titleLarge
-            )
+            AnimatedContent(
+                targetState = valueLabel,
+                transitionSpec = {
+                    fadeIn(tween(GymMotion.Quick, easing = GymMotion.EmphasizedEasing))
+                        .togetherWith(fadeOut(tween(GymMotion.Quick / 2, easing = GymMotion.ExitEasing)))
+                },
+                label = "stepper value",
+            ) { animatedValue ->
+                Text(text = animatedValue, style = MaterialTheme.typography.titleLarge)
+            }
         }
 
         StepperButton(
@@ -133,6 +149,11 @@ private fun StepperButton(
     // fix in commit dd7d579).
     val currentOnTap by rememberUpdatedState(onTap)
     val currentOnHoldStep by rememberUpdatedState(onHoldStep)
+    val pressScale by animateFloatAsState(
+        targetValue = if (pressed) 0.88f else 1f,
+        animationSpec = spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMedium),
+        label = "stepper press",
+    )
 
     LaunchedEffect(pressed) {
         if (pressed) {
@@ -148,6 +169,10 @@ private fun StepperButton(
     Box(
         modifier = Modifier
             .size(48.dp)
+            .graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+            }
             .clip(CircleShape)
             .background(
                 if (enabled) MaterialTheme.colorScheme.primaryContainer

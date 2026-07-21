@@ -38,6 +38,7 @@ import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.domain.Muscle
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
+import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 
 @Composable
@@ -156,6 +157,11 @@ fun ExercisePickerSheet(
                                                 onPick(e)
                                             }
                                         },
+                                        modifier = Modifier.animateItem(
+                                            fadeInSpec = GymMotion.ItemFadeIn,
+                                            placementSpec = GymMotion.ItemPlacement,
+                                            fadeOutSpec = GymMotion.ItemFadeOut,
+                                        ),
                                     )
                                 }
                             }
@@ -212,9 +218,10 @@ private fun PickerRow(
     exercise: ExerciseEntity,
     alreadyAdded: Boolean,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(enabled = !alreadyAdded, onClick = onClick)
             .alpha(if (alreadyAdded) 0.45f else 1f)

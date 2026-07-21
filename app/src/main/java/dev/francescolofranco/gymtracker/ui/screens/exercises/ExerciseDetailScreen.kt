@@ -50,6 +50,7 @@ import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
+import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.screens.sessions.convertFromKg
 import dev.francescolofranco.gymtracker.ui.screens.sessions.formatSessionDate
@@ -164,15 +165,23 @@ fun ExerciseDetailScreen(
                 item { EmptyHistory() }
             } else {
                 items(items = historyRows, key = { it.first.sessionId }) { (point, previous) ->
-                    HistoryRow(
-                        point = point,
-                        previous = previous,
-                        isBodyweight = ex.isBodyweight,
-                        unit = unit,
-                        records = recordsBySession[point.sessionId].orEmpty(),
-                        onClick = { onOpenSession(point.sessionId) },
-                    )
-                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
+                    Column(
+                        modifier = Modifier.animateItem(
+                            fadeInSpec = GymMotion.ItemFadeIn,
+                            placementSpec = GymMotion.ItemPlacement,
+                            fadeOutSpec = GymMotion.ItemFadeOut,
+                        ),
+                    ) {
+                        HistoryRow(
+                            point = point,
+                            previous = previous,
+                            isBodyweight = ex.isBodyweight,
+                            unit = unit,
+                            records = recordsBySession[point.sessionId].orEmpty(),
+                            onClick = { onOpenSession(point.sessionId) },
+                        )
+                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
+                    }
                 }
             }
         }

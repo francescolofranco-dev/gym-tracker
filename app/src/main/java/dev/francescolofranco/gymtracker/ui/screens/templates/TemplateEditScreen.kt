@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
+import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.screens.sessions.ExercisePickerSheet
 
@@ -127,7 +128,13 @@ fun TemplateEditScreen(
                     contentPadding = PaddingValues(bottom = 16.dp),
                 ) {
                     items(items = state.exercises, key = { it.id }) { e ->
-                        Column(modifier = Modifier.animateItem()) {
+                        Column(
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = GymMotion.ItemFadeIn,
+                                placementSpec = GymMotion.ItemPlacement,
+                                fadeOutSpec = GymMotion.ItemFadeOut,
+                            ),
+                        ) {
                             TemplateExerciseRow(
                                 exercise = e,
                                 isFirst = state.exercises.first().id == e.id,

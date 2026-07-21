@@ -1,11 +1,15 @@
 package dev.francescolofranco.gymtracker.ui.screens.sessions
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -66,6 +70,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -74,6 +79,7 @@ import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetai
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
+import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.screens.exercises.PersonalRecordType
 import kotlinx.coroutines.launch
@@ -187,8 +193,12 @@ fun ActiveSessionScreen(
             AnimatedContent(
                 targetState = isDraft,
                 transitionSpec = {
-                    fadeIn(animationSpec = tween(140)) togetherWith
-                        fadeOut(animationSpec = tween(100))
+                    ((fadeIn(tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing)) +
+                        slideInVertically(tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing)) { it / 3 })
+                        .togetherWith(
+                            fadeOut(tween(GymMotion.Quick, easing = GymMotion.ExitEasing)) +
+                                slideOutVertically(tween(GymMotion.Quick, easing = GymMotion.ExitEasing)) { -it / 4 },
+                        )) using SizeTransform(clip = false)
                 },
                 label = "session-header",
             ) { draft ->
@@ -221,7 +231,11 @@ fun ActiveSessionScreen(
                 }
                 itemsIndexed(items = details, key = { _, d -> d.sessionExercise.id }) { index, detail ->
                     ExerciseCard(
-                        modifier = Modifier.animateItem(),
+                        modifier = Modifier.animateItem(
+                            fadeInSpec = GymMotion.ItemFadeIn,
+                            placementSpec = GymMotion.ItemPlacement,
+                            fadeOutSpec = GymMotion.ItemFadeOut,
+                        ),
                         detail = detail,
                         unit = unit,
                         hints = hints.byExerciseId[detail.exercise.id] ?: emptyList(),
@@ -386,6 +400,8 @@ private fun exerciseCountLabel(count: Int): String =
 private fun sessionProgressLabel(progressPct: Int, exerciseCount: Int): String =
     if (exerciseCount == 0) exerciseCountLabel(0) else "$progressPct% · ${exerciseCountLabel(exerciseCount)}"
 
+private enum class ExerciseBadge { None, FirstTime, Complete }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExerciseCard(
@@ -417,13 +433,16 @@ fun ExerciseCard(
     // the exercise is done without shouting — matches the SetIndex / CheckButton green.
     val isComplete = !detail.sessionExercise.isSkipped &&
         plannedSets > 0 && loggedSets >= plannedSets
-    // Completed exercises get a calm green outline + a "Done" tag rather than a heavy green fill
-    // wash, which read as too loud over the grey set rows.
-    val cardBorder = if (isComplete) {
-        BorderStroke(1.5.dp, dev.francescolofranco.gymtracker.ui.theme.VolumeGreen)
-    } else {
-        null
-    }
+    val borderWidth by animateDpAsState(
+        targetValue = if (isComplete) 1.5.dp else 0.dp,
+        animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
+        label = "exercise completion border",
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (isComplete) dev.francescolofranco.gymtracker.ui.theme.VolumeGreen else Color.Transparent,
+        animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
+        label = "exercise completion color",
+    )
 
     var menuExpanded by remember { mutableStateOf(false) }
 
@@ -432,13 +451,7 @@ fun ExerciseCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer)
-            .then(
-                if (cardBorder != null) {
-                    Modifier.border(cardBorder, RoundedCornerShape(16.dp))
-                } else {
-                    Modifier
-                },
-            )
+            .border(borderWidth, borderColor, RoundedCornerShape(16.dp))
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
@@ -454,12 +467,30 @@ fun ExerciseCard(
                     // before. The badge gives the user a heads-up that there's no historical
                     // reference (so the dash sub-labels on the kg/reps chips are expected,
                     // not a glitch).
-                    if (isComplete) {
-                        Spacer(Modifier.width(8.dp))
-                        CompletedBadge()
-                    } else if (hints.isEmpty()) {
-                        Spacer(Modifier.width(8.dp))
-                        FirstTimeBadge()
+                    AnimatedContent(
+                        targetState = when {
+                            isComplete -> ExerciseBadge.Complete
+                            hints.isEmpty() -> ExerciseBadge.FirstTime
+                            else -> ExerciseBadge.None
+                        },
+                        transitionSpec = {
+                            (fadeIn(tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing))
+                                .togetherWith(fadeOut(tween(GymMotion.Quick, easing = GymMotion.ExitEasing)))
+                                ) using SizeTransform(clip = false)
+                        },
+                        label = "exercise badge",
+                    ) { badge ->
+                        when (badge) {
+                            ExerciseBadge.Complete -> Row {
+                                Spacer(Modifier.width(8.dp))
+                                CompletedBadge()
+                            }
+                            ExerciseBadge.FirstTime -> Row {
+                                Spacer(Modifier.width(8.dp))
+                                FirstTimeBadge()
+                            }
+                            ExerciseBadge.None -> Unit
+                        }
                     }
                     if (personalRecords.isNotEmpty()) {
                         Spacer(Modifier.width(8.dp))

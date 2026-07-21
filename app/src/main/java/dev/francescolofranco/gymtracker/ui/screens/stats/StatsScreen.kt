@@ -1,5 +1,16 @@
 package dev.francescolofranco.gymtracker.ui.screens.stats
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -45,6 +56,7 @@ import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
+import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.screens.sessions.convertFromKg
 import dev.francescolofranco.gymtracker.ui.screens.sessions.formatWeightNumber
 import dev.francescolofranco.gymtracker.ui.screens.sessions.label
@@ -73,26 +85,65 @@ fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
         contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        item {
+        item(key = "range") {
             HeaderControls(
                 period = state.period,
                 onPeriodChange = viewModel::setPeriod,
                 onExplain = { showExplanation = true },
-                modifier = Modifier.padding(horizontal = 16.dp),
+                modifier = Modifier
+                    .animateItem(
+                        fadeInSpec = GymMotion.ItemFadeIn,
+                        placementSpec = GymMotion.ItemPlacement,
+                        fadeOutSpec = GymMotion.ItemFadeOut,
+                    )
+                    .padding(horizontal = 16.dp),
             )
         }
-        item { KpiStrip(state, Modifier.padding(horizontal = 16.dp)) }
-        item { WhatChangedCard(state, Modifier.padding(horizontal = 16.dp)) }
-        item {
+        item(key = "kpis") {
+            KpiStrip(
+                state,
+                Modifier.animateItem(
+                    fadeInSpec = GymMotion.ItemFadeIn,
+                    placementSpec = GymMotion.ItemPlacement,
+                    fadeOutSpec = GymMotion.ItemFadeOut,
+                ).padding(horizontal = 16.dp),
+            )
+        }
+        item(key = "changes") {
+            WhatChangedCard(
+                state,
+                Modifier.animateItem(
+                    fadeInSpec = GymMotion.ItemFadeIn,
+                    placementSpec = GymMotion.ItemPlacement,
+                    fadeOutSpec = GymMotion.ItemFadeOut,
+                ).padding(horizontal = 16.dp),
+            )
+        }
+        item(key = "coverage") {
             MuscleCoverageCard(
                 state = state,
                 showAll = showAllMuscles,
                 onToggleShowAll = { showAllMuscles = !showAllMuscles },
                 onMuscleClick = viewModel::selectMuscle,
-                modifier = Modifier.padding(horizontal = 16.dp),
+                modifier = Modifier
+                    .animateItem(
+                        fadeInSpec = GymMotion.ItemFadeIn,
+                        placementSpec = GymMotion.ItemPlacement,
+                        fadeOutSpec = GymMotion.ItemFadeOut,
+                    )
+                    .padding(horizontal = 16.dp),
             )
         }
-        item { ExerciseProgressCard(state, Modifier.padding(horizontal = 16.dp)) }
+        item(key = "progress") {
+            ExerciseProgressCard(
+                state,
+                Modifier.animateItem(
+                    fadeInSpec = GymMotion.ItemFadeIn,
+                    placementSpec = GymMotion.ItemPlacement,
+                    fadeOutSpec = GymMotion.ItemFadeOut,
+                ).padding(horizontal = 16.dp),
+            )
+        }
     }
 
     selectedMuscle?.let { muscle ->
@@ -180,11 +231,24 @@ private fun KpiStrip(state: StatsUiState, modifier: Modifier = Modifier) {
 @Composable
 private fun Kpi(label: String, value: String, delta: SignedValue, modifier: Modifier = Modifier) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = value,
-            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-            maxLines = 1,
-        )
+        AnimatedContent(
+            targetState = value,
+            transitionSpec = {
+                (fadeIn(tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing)) +
+                    slideInVertically(tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing)) { it / 3 })
+                    .togetherWith(
+                        fadeOut(tween(GymMotion.Quick, easing = GymMotion.ExitEasing)) +
+                            slideOutVertically(tween(GymMotion.Quick, easing = GymMotion.ExitEasing)) { -it / 3 },
+                    )
+            },
+            label = "stat-$label",
+        ) { animatedValue ->
+            Text(
+                text = animatedValue,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                maxLines = 1,
+            )
+        }
         Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
         ChangeLabel(delta.text, delta.direction, Modifier.padding(top = 2.dp))
     }
@@ -289,6 +353,11 @@ private fun MuscleCoverageCard(
 private fun WeeklyMuscleRow(row: CoverageRow, onClick: () -> Unit) {
     val delta = row.currentWeekly - row.previousWeekly
     val fraction = (row.currentWeekly / Muscle.WEEKLY_MAX).coerceIn(0.0, 1.0).toFloat()
+    val animatedFraction by animateFloatAsState(
+        targetValue = fraction,
+        animationSpec = tween(GymMotion.Emphasized, easing = GymMotion.EmphasizedEasing),
+        label = "muscle coverage",
+    )
     val color = volumeColor(row.currentWeekly)
     Column(
         modifier = Modifier
@@ -320,7 +389,7 @@ private fun WeeklyMuscleRow(row: CoverageRow, onClick: () -> Unit) {
         ) {
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(fraction)
+                    .fillMaxWidth(animatedFraction)
                     .height(5.dp)
                     .clip(RoundedCornerShape(3.dp))
                     .background(color),
@@ -447,6 +516,12 @@ private fun StatsCard(
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceContainer)
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = 0.9f,
+                    stiffness = Spring.StiffnessMediumLow,
+                ),
+            )
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
         content = content,

@@ -39,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.TemplateEntity
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
+import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -103,7 +104,13 @@ fun TemplatesListScreen(
                         contentPadding = PaddingValues(bottom = 96.dp),
                     ) {
                         items(items = current.value, key = { it.id }) { template ->
-                            Column(modifier = Modifier.animateItem()) {
+                            Column(
+                                modifier = Modifier.animateItem(
+                                    fadeInSpec = GymMotion.ItemFadeIn,
+                                    placementSpec = GymMotion.ItemPlacement,
+                                    fadeOutSpec = GymMotion.ItemFadeOut,
+                                ),
+                            ) {
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()

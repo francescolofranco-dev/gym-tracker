@@ -1,5 +1,11 @@
 package dev.francescolofranco.gymtracker.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.CircularProgressIndicator
@@ -31,6 +37,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 
 /** Distinguishes "not loaded yet" from a real empty or missing database result. */
 sealed interface Loadable<out T> {
@@ -72,7 +79,21 @@ fun LoadingPane(
     }
 
     Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-        if (showSpinner) CircularProgressIndicator()
+        AnimatedVisibility(
+            visible = showSpinner,
+            enter = fadeIn(tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing)) +
+                scaleIn(
+                    initialScale = 0.86f,
+                    animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
+                ),
+            exit = fadeOut(tween(GymMotion.Quick, easing = GymMotion.ExitEasing)) +
+                scaleOut(
+                    targetScale = 0.92f,
+                    animationSpec = tween(GymMotion.Quick, easing = GymMotion.ExitEasing),
+                ),
+        ) {
+            CircularProgressIndicator()
+        }
     }
 }
 

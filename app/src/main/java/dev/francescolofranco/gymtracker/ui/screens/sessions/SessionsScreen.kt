@@ -2,6 +2,12 @@ package dev.francescolofranco.gymtracker.ui.screens.sessions
 
 import android.Manifest
 import android.os.Build
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.core.tween
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -54,6 +60,7 @@ import dev.francescolofranco.gymtracker.domain.workoutDuration
 import dev.francescolofranco.gymtracker.domain.workoutStartedAt
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
+import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import kotlinx.coroutines.delay
 import java.time.Duration
@@ -143,12 +150,20 @@ fun SessionsScreen(
                 ) {
                     // Only surface a "Session in progress" banner once the user has actually
                     // started. Drafts stay invisible here; the user re-enters via Start.
-                    active?.takeIf { it.acceptedAt != null }?.let { session ->
-                        ActiveSessionBanner(
-                            session = session,
-                            onResume = { onOpenActive(session.id) },
-                            onEnd = { confirmEnd = true },
-                        )
+                    AnimatedVisibility(
+                        visible = active?.acceptedAt != null,
+                        enter = fadeIn(tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing)) +
+                            expandVertically(tween(GymMotion.Emphasized, easing = GymMotion.EmphasizedEasing)),
+                        exit = fadeOut(tween(GymMotion.Quick, easing = GymMotion.ExitEasing)) +
+                            shrinkVertically(tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing)),
+                    ) {
+                        active?.let { session ->
+                            ActiveSessionBanner(
+                                session = session,
+                                onResume = { onOpenActive(session.id) },
+                                onEnd = { confirmEnd = true },
+                            )
+                        }
                     }
 
                     if (past.isEmpty() && active == null) {
@@ -172,6 +187,11 @@ fun SessionsScreen(
                                         summary = summary,
                                         unit = unit,
                                         onClick = { onOpenDetail(summary.session.id) },
+                                        modifier = Modifier.animateItem(
+                                            fadeInSpec = GymMotion.ItemFadeIn,
+                                            placementSpec = GymMotion.ItemPlacement,
+                                            fadeOutSpec = GymMotion.ItemFadeOut,
+                                        ),
                                     )
                                     HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
                                 }
@@ -185,13 +205,21 @@ fun SessionsScreen(
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        if (active == null && suggestion != null) {
-                            SuggestionBanner(
-                                template = suggestion,
-                                onUseTemplate = {
-                                    startWithPermission { viewModel.startWithTemplate(suggestion.id) }
-                                },
-                            )
+                        AnimatedVisibility(
+                            visible = active == null && suggestion != null,
+                            enter = fadeIn(tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing)) +
+                                expandVertically(tween(GymMotion.Emphasized, easing = GymMotion.EmphasizedEasing)),
+                            exit = fadeOut(tween(GymMotion.Quick, easing = GymMotion.ExitEasing)) +
+                                shrinkVertically(tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing)),
+                        ) {
+                            suggestion?.let { template ->
+                                SuggestionBanner(
+                                    template = template,
+                                    onUseTemplate = {
+                                        startWithPermission { viewModel.startWithTemplate(template.id) }
+                                    },
+                                )
+                            }
                         }
                         Button(
                             onClick = { startWithPermission { viewModel.startBlankSession() } },
@@ -303,13 +331,18 @@ private fun ActiveSessionBanner(
 }
 
 @Composable
-private fun PastSessionRow(summary: SessionSummary, unit: WeightUnit, onClick: () -> Unit) {
+private fun PastSessionRow(
+    summary: SessionSummary,
+    unit: WeightUnit,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val ended = summary.session.endedAt
     val duration = if (ended != null) summary.session.workoutDuration() else Duration.ZERO
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),

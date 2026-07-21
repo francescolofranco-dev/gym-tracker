@@ -45,6 +45,7 @@ import dev.francescolofranco.gymtracker.domain.workoutDuration
 import dev.francescolofranco.gymtracker.domain.workoutStartedAt
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
+import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import kotlinx.coroutines.launch
 import java.time.Duration
@@ -159,7 +160,11 @@ fun SessionDetailScreen(
                 }
                 itemsIndexed(items = details, key = { _, d -> d.sessionExercise.id }) { index, detail ->
                     ExerciseCard(
-                        modifier = Modifier.animateItem(),
+                        modifier = Modifier.animateItem(
+                            fadeInSpec = GymMotion.ItemFadeIn,
+                            placementSpec = GymMotion.ItemPlacement,
+                            fadeOutSpec = GymMotion.ItemFadeOut,
+                        ),
                         detail = detail,
                         unit = unit,
                         hints = hints.byExerciseId[detail.exercise.id] ?: emptyList(),

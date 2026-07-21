@@ -71,6 +71,7 @@ import dev.francescolofranco.gymtracker.data.backup.drive.DriveSnapshot
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
+import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import java.time.Duration
 import java.time.Instant
@@ -212,7 +213,13 @@ fun SettingsScreen(
             }
             if (driveState.connected) {
                 item(key = "drive_backup_now") {
-                    Column(modifier = Modifier.animateItem()) {
+                    Column(
+                        modifier = Modifier.animateItem(
+                            fadeInSpec = GymMotion.ItemFadeIn,
+                            placementSpec = GymMotion.ItemPlacement,
+                            fadeOutSpec = GymMotion.ItemFadeOut,
+                        ),
+                    ) {
                         SettingsRow(
                             icon = Icons.Filled.CloudSync,
                             title = "Backup now",
@@ -227,7 +234,11 @@ fun SettingsScreen(
                     item(key = "drive_empty") {
                         Column(
                             modifier = Modifier
-                                .animateItem()
+                                .animateItem(
+                                    fadeInSpec = GymMotion.ItemFadeIn,
+                                    placementSpec = GymMotion.ItemPlacement,
+                                    fadeOutSpec = GymMotion.ItemFadeOut,
+                                )
                                 .padding(horizontal = 16.dp, vertical = 8.dp),
                         ) {
                             Text(
@@ -244,12 +255,22 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.labelLarge,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             modifier = Modifier
-                                .animateItem()
+                                .animateItem(
+                                    fadeInSpec = GymMotion.ItemFadeIn,
+                                    placementSpec = GymMotion.ItemPlacement,
+                                    fadeOutSpec = GymMotion.ItemFadeOut,
+                                )
                                 .padding(horizontal = 16.dp, vertical = 8.dp),
                         )
                     }
                     items(items = driveState.snapshots, key = { "drive_snapshot_${it.id}" }) { snap ->
-                        Column(modifier = Modifier.animateItem()) {
+                        Column(
+                            modifier = Modifier.animateItem(
+                                fadeInSpec = GymMotion.ItemFadeIn,
+                                placementSpec = GymMotion.ItemPlacement,
+                                fadeOutSpec = GymMotion.ItemFadeOut,
+                            ),
+                        ) {
                             SnapshotRow(
                                 snapshot = snap,
                                 onClick = { driveViewModel.inspectRestore(snap) },
@@ -262,10 +283,22 @@ fun SettingsScreen(
             }
 
             item(key = "about_header") {
-                Column(modifier = Modifier.animateItem()) { SectionHeader("About") }
+                Column(
+                    modifier = Modifier.animateItem(
+                        fadeInSpec = GymMotion.ItemFadeIn,
+                        placementSpec = GymMotion.ItemPlacement,
+                        fadeOutSpec = GymMotion.ItemFadeOut,
+                    ),
+                ) { SectionHeader("About") }
             }
             item(key = "about_row") {
-                Column(modifier = Modifier.animateItem()) { AboutRow() }
+                Column(
+                    modifier = Modifier.animateItem(
+                        fadeInSpec = GymMotion.ItemFadeIn,
+                        placementSpec = GymMotion.ItemPlacement,
+                        fadeOutSpec = GymMotion.ItemFadeOut,
+                    ),
+                ) { AboutRow() }
             }
         }
     }
