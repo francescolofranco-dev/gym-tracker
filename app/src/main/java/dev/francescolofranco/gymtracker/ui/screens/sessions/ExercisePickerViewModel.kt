@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.francescolofranco.gymtracker.data.db.projections.ExerciseWithRecency
 import dev.francescolofranco.gymtracker.data.repository.SessionRepository
 import dev.francescolofranco.gymtracker.ui.components.Loadable
+import dev.francescolofranco.gymtracker.ui.components.RetryableViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -15,9 +16,8 @@ import javax.inject.Inject
 @HiltViewModel
 class ExercisePickerViewModel @Inject constructor(
     repo: SessionRepository,
-) : ViewModel() {
+) : RetryableViewModel() {
 
     val rows: StateFlow<Loadable<List<ExerciseWithRecency>>> = repo.observePickerExercises()
-        .map { Loadable.Ready(it) }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), Loadable.Loading)
+        .asLoadableState(viewModelScope)
 }

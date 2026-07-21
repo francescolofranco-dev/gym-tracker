@@ -35,6 +35,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
+import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -77,6 +78,7 @@ fun ExercisesScreen(
     ) { padding ->
         when (val current = grouped) {
             Loadable.Loading -> LoadingPane(modifier = Modifier.padding(padding))
+            is Loadable.Error -> ErrorPane(current.message, viewModel::retry, Modifier.padding(padding))
             is Loadable.Ready -> {
                 if (current.value.isEmpty()) {
                     EmptyState(

@@ -43,6 +43,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
@@ -62,7 +68,7 @@ import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
 // Shared column geometry so the header labels and every set row line up into a strict grid.
-private val ColIndexWidth = 24.dp
+private val ColIndexWidth = 40.dp
 private val ColCheckWidth = 52.dp
 private const val ColWeightWeight = 1f
 private const val ColRepsWeight = 1.3f
@@ -191,7 +197,7 @@ fun SetRow(
         // # column
         Cell(modifier = Modifier.width(ColIndexWidth), captionText = null, horizontalAlignment = Alignment.Start) {
             Text(
-                text = "${log.setNumber}",
+                text = if (log.side.shortLabel.isBlank()) "${log.setNumber}" else "${log.setNumber} ${log.side.shortLabel}",
                 style = MaterialTheme.typography.titleMedium.asNumber(),
                 color = indexColor,
             )
@@ -375,7 +381,13 @@ private fun WeightValue(
                     }
                 }
             }
-            .semantics { contentDescription = "Weight $number $unit, tap to edit" },
+            .semantics {
+                contentDescription = "Weight $number $unit"
+                if (enabled && onClick != null) {
+                    role = Role.Button
+                    this.onClick("Edit weight") { onClick.invoke(); true }
+                }
+            },
     ) {
         Text(
             text = number,
@@ -416,7 +428,13 @@ private fun RepsValue(reps: Int, onTap: (() -> Unit)?, enabled: Boolean) {
                     }
                 }
             }
-            .semantics { contentDescription = "Reps $reps, tap to edit" },
+            .semantics {
+                contentDescription = "Reps $reps"
+                if (enabled && onTap != null) {
+                    role = Role.Button
+                    this.onClick("Edit reps") { onTap.invoke(); true }
+                }
+            },
     )
 }
 
@@ -453,7 +471,7 @@ private fun GhostStepper(
 
     Box(
         modifier = Modifier
-            .size(40.dp)
+            .size(48.dp)
             .pointerInput(enabled) {
                 if (!enabled) return@pointerInput
                 awaitEachGesture {
@@ -515,7 +533,21 @@ private fun CheckSquare(
             .background(bg)
             .then(clickModifier)
             .semantics {
-                contentDescription = if (isLogged) "Logged (long-press to skip)" else "Mark logged"
+                role = Role.Checkbox
+                contentDescription = "Set status"
+                stateDescription = when {
+                    isSkipped -> "Skipped"
+                    isLogged -> "Logged"
+                    else -> "Not logged"
+                }
+                if (editable) {
+                    customActions = listOf(
+                        CustomAccessibilityAction(if (isSkipped) "Unskip set" else "Skip set") {
+                            onLongPress()
+                            true
+                        },
+                    )
+                }
             },
         contentAlignment = Alignment.Center,
     ) {
