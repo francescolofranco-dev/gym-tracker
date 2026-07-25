@@ -400,8 +400,6 @@ private fun exerciseCountLabel(count: Int): String =
 private fun sessionProgressLabel(progressPct: Int, exerciseCount: Int): String =
     if (exerciseCount == 0) exerciseCountLabel(0) else "$progressPct% · ${exerciseCountLabel(exerciseCount)}"
 
-private enum class ExerciseBadge { None, FirstTime, Complete }
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExerciseCard(
@@ -467,29 +465,14 @@ fun ExerciseCard(
                     // before. The badge gives the user a heads-up that there's no historical
                     // reference (so the dash sub-labels on the kg/reps chips are expected,
                     // not a glitch).
-                    AnimatedContent(
-                        targetState = when {
-                            isComplete -> ExerciseBadge.Complete
-                            hints.isEmpty() -> ExerciseBadge.FirstTime
-                            else -> ExerciseBadge.None
-                        },
-                        transitionSpec = {
-                            (fadeIn(tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing))
-                                .togetherWith(fadeOut(tween(GymMotion.Quick, easing = GymMotion.ExitEasing)))
-                                ) using SizeTransform(clip = false)
-                        },
-                        label = "exercise badge",
-                    ) { badge ->
-                        when (badge) {
-                            ExerciseBadge.Complete -> Row {
-                                Spacer(Modifier.width(8.dp))
-                                CompletedBadge()
-                            }
-                            ExerciseBadge.FirstTime -> Row {
-                                Spacer(Modifier.width(8.dp))
-                                FirstTimeBadge()
-                            }
-                            ExerciseBadge.None -> Unit
+                    when {
+                        isComplete -> Row {
+                            Spacer(Modifier.width(8.dp))
+                            CompletedBadge()
+                        }
+                        hints.isEmpty() -> Row {
+                            Spacer(Modifier.width(8.dp))
+                            FirstTimeBadge()
                         }
                     }
                     if (personalRecords.isNotEmpty()) {

@@ -14,9 +14,13 @@ import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.RetryableViewModel
 import dev.francescolofranco.gymtracker.ui.nav.SessionRoutes
 import dev.francescolofranco.gymtracker.work.IdleSessionScheduler
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flowOn
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -39,15 +43,6 @@ class SessionDetailViewModel @Inject constructor(
 
     private val sessionId: Long = checkNotNull(savedState.get<Long>(SessionRoutes.DETAIL_ARG))
 
-    val session: StateFlow<SessionEntity?> = repo.observeSession(sessionId)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
-
-    val details: StateFlow<List<SessionExerciseDetail>> = repo.observeExerciseDetails(sessionId)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    val unit: StateFlow<WeightUnit> = userPrefs.unit
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WeightUnit.KG)
-
     val content: StateFlow<Loadable<SessionDetailContent>> = combine(
         repo.observeSession(sessionId),
         repo.observeExerciseDetails(sessionId),
@@ -56,35 +51,49 @@ class SessionDetailViewModel @Inject constructor(
         SessionDetailContent(session, details, unit)
     }.asLoadableState(viewModelScope)
 
+    val details: StateFlow<List<SessionExerciseDetail>> = content
+        .map { (it as? Loadable.Ready)?.value?.details.orEmpty() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     /**
      * Past-session deltas compare against the session immediately BEFORE the one being viewed,
      * not the globally-latest. Anchor the hint query to this session's [startedAt] so the
      * percentage on a 3-month-old workout reflects the user's progress at that time.
      *
-     * observeAllSummaries() is folded in as a coarse trigger so deleting another past session
-     * (which could have been THIS view's anchor) refreshes the deltas to point at the
-     * next-most-recent one.
+     * The lightweight session-table observer refreshes the anchor after another session is
+     * deleted, without re-running this lookup on every set edit.
      */
+    private val hintRequest = content
+        .map { loadable ->
+            val ready = (loadable as? Loadable.Ready)?.value
+            ready?.session?.startedAt to ready?.details.orEmpty()
+                .sortedBy { it.exercise.id }
+                .map { detail ->
+                    detail.exercise.id to detail.setLogs
+                        .map { it.setNumber to it.side }
+                        .distinct()
+                        .sortedWith(compareBy({ it.first }, { it.second.ordinal }))
+                }
+        }
+        .distinctUntilChanged()
+
     val hints: StateFlow<SetHints> = combine(
-        session,
-        details,
-        repo.observeAllSummaries(),
-    ) { s, items, _ ->
-        val anchor = s?.startedAt ?: return@combine SetHints()
+        hintRequest,
+        repo.observeAllSessions(),
+    ) { (anchor, exercises), _ ->
+        anchor ?: return@combine SetHints()
         val byId = HashMap<Long, List<HintRow>>()
-        items.forEach { d ->
-            if (byId[d.exercise.id] == null) {
-                byId[d.exercise.id] = d.setLogs
-                    .distinctBy { it.setNumber to it.side }
-                    .mapNotNull { current ->
-                    repo.lastLoggedSetBefore(d.exercise.id, current.setNumber, current.side, anchor)?.let {
-                        HintRow(current.setNumber, current.side, it.reps, it.kg)
-                    }
+        exercises.forEach { (exerciseId, sets) ->
+            byId[exerciseId] = sets.mapNotNull { (setNumber, side) ->
+                repo.lastLoggedSetBefore(exerciseId, setNumber, side, anchor)?.let {
+                    HintRow(setNumber, side, it.reps, it.kg)
                 }
             }
         }
         SetHints(byId)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SetHints())
+    }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SetHints())
 
     fun logSet(setLogId: Long, reps: Int, kg: Double) = viewModelScope.launch {
         repo.logSet(setLogId, reps = reps, kg = kg)

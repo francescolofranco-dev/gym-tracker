@@ -1,12 +1,9 @@
 package dev.francescolofranco.gymtracker.ui
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.tween
@@ -27,7 +24,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -72,18 +68,9 @@ fun GymApp() {
             restoreState = true
         }
     }
-    val chromeEnter = fadeIn(tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing)) +
-        expandVertically(tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing))
-    val chromeExit = fadeOut(tween(GymMotion.Quick, easing = GymMotion.ExitEasing)) +
-        shrinkVertically(tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing))
-
     Scaffold(
         topBar = {
-            AnimatedVisibility(
-                visible = selectedTop != null,
-                enter = chromeEnter,
-                exit = chromeExit,
-            ) {
+            if (selectedTop != null) {
                 TopAppBar(
                     title = {
                         Text(
@@ -95,19 +82,7 @@ fun GymApp() {
             }
         },
         bottomBar = {
-            AnimatedVisibility(
-                visible = selectedTop != null,
-                enter = fadeIn(tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing)) +
-                    expandVertically(
-                        animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
-                        expandFrom = Alignment.Bottom,
-                    ),
-                exit = fadeOut(tween(GymMotion.Quick, easing = GymMotion.ExitEasing)) +
-                    shrinkVertically(
-                        animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
-                        shrinkTowards = Alignment.Bottom,
-                    ),
-            ) {
+            if (selectedTop != null) {
                 NavigationBar {
                     TopDestination.entries.forEach { destination ->
                         NavigationBarItem(
@@ -133,60 +108,36 @@ fun GymApp() {
                 modifier = Modifier.fillMaxSize(),
                 enterTransition = {
                     if (initialState.destination.route.isTopLevel() && targetState.destination.route.isTopLevel()) {
-                        val direction = topLevelDirection(initialState.destination.route, targetState.destination.route)
-                        fadeIn(
-                            tween(GymMotion.Standard, delayMillis = 35, easing = GymMotion.EmphasizedEasing),
-                        ) + slideInHorizontally(
-                            tween(GymMotion.Emphasized, easing = GymMotion.EmphasizedEasing),
-                        ) { width -> direction * width / 14 } + scaleIn(
-                            initialScale = 0.985f,
-                            animationSpec = tween(GymMotion.Emphasized, easing = GymMotion.EmphasizedEasing),
-                        )
+                        EnterTransition.None
                     } else {
                         fadeIn(
-                            tween(GymMotion.Standard, delayMillis = 45, easing = GymMotion.EmphasizedEasing),
+                            tween(GymMotion.Quick, easing = GymMotion.EmphasizedEasing),
                         ) + slideInHorizontally(
-                            tween(GymMotion.Emphasized, easing = GymMotion.EmphasizedEasing),
-                        ) { it / 7 } + scaleIn(
-                            initialScale = 0.98f,
-                            animationSpec = tween(GymMotion.Emphasized, easing = GymMotion.EmphasizedEasing),
-                        )
+                            tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
+                        ) { it / 8 }
                     }
                 },
                 exitTransition = {
                     if (initialState.destination.route.isTopLevel() && targetState.destination.route.isTopLevel()) {
-                        val direction = topLevelDirection(initialState.destination.route, targetState.destination.route)
-                        fadeOut(tween(GymMotion.Quick, easing = GymMotion.ExitEasing)) +
-                            slideOutHorizontally(
-                                tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
-                            ) { width -> -direction * width / 20 }
+                        ExitTransition.None
                     } else {
                         fadeOut(tween(GymMotion.Quick, easing = GymMotion.ExitEasing)) +
                             slideOutHorizontally(
-                                tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
-                            ) { -it / 12 } + scaleOut(
-                                targetScale = 0.99f,
-                                animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
-                            )
+                                tween(GymMotion.Quick, easing = GymMotion.ExitEasing),
+                            ) { -it / 16 }
                     }
                 },
                 popEnterTransition = {
-                    fadeIn(tween(GymMotion.Standard, delayMillis = 35, easing = GymMotion.EmphasizedEasing)) +
+                    fadeIn(tween(GymMotion.Quick, easing = GymMotion.EmphasizedEasing)) +
                         slideInHorizontally(
-                            tween(GymMotion.Emphasized, easing = GymMotion.EmphasizedEasing),
-                        ) { -it / 9 } + scaleIn(
-                            initialScale = 0.99f,
-                            animationSpec = tween(GymMotion.Emphasized, easing = GymMotion.EmphasizedEasing),
-                        )
+                            tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
+                        ) { -it / 8 }
                 },
                 popExitTransition = {
                     fadeOut(tween(GymMotion.Quick, easing = GymMotion.ExitEasing)) +
                         slideOutHorizontally(
-                            tween(GymMotion.Emphasized, easing = GymMotion.EmphasizedEasing),
-                        ) { it / 7 } + scaleOut(
-                            targetScale = 0.98f,
-                            animationSpec = tween(GymMotion.Emphasized, easing = GymMotion.EmphasizedEasing),
-                        )
+                            tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
+                        ) { it / 8 }
                 },
             ) {
                 composable(TopDestination.Sessions.route) {
@@ -252,9 +203,3 @@ fun GymApp() {
 }
 
 private fun String?.isTopLevel(): Boolean = TopDestination.entries.any { it.route == this }
-
-private fun topLevelDirection(initial: String?, target: String?): Int {
-    val from = TopDestination.entries.indexOfFirst { it.route == initial }
-    val to = TopDestination.entries.indexOfFirst { it.route == target }
-    return if (from >= 0 && to >= 0 && to < from) -1 else 1
-}

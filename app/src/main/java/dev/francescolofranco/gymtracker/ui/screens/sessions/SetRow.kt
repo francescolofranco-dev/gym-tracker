@@ -1,13 +1,6 @@
 package dev.francescolofranco.gymtracker.ui.screens.sessions
 
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -47,7 +40,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
@@ -162,7 +154,6 @@ fun SetRow(
 
     val displayKg = convertFromKg(kgInternal, state.unit)
     val belowRange = isLogged && log.reps < state.targetReps.first
-    val rowAlpha = if (isSkipped) 0.45f else 1f
     val isActiveSet = state.isActive && !isLogged && !isSkipped
 
     // Deltas vs the matching set last session. Weight always renders ("-" when no reference);
@@ -181,11 +172,6 @@ fun SetRow(
         belowRange -> VolumeBlue
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
-    val animatedRowAlpha by animateFloatAsState(
-        targetValue = rowAlpha,
-        animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
-        label = "set row alpha",
-    )
     val animatedIndexColor by animateColorAsState(
         targetValue = indexColor,
         animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
@@ -211,7 +197,7 @@ fun SetRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .alpha(animatedRowAlpha)
+            .then(if (isSkipped) Modifier.alpha(0.45f) else Modifier)
             .padding(horizontal = 4.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -410,7 +396,7 @@ private fun WeightValue(
                 }
             },
     ) {
-        AnimatedNumber(number)
+        NumberValue(number)
         Spacer(Modifier.width(2.dp))
         Text(
             text = unit,
@@ -448,28 +434,19 @@ private fun RepsValue(reps: Int, onTap: (() -> Unit)?, enabled: Boolean) {
                 }
             },
     ) {
-        AnimatedNumber(reps.toString())
+        NumberValue(reps.toString())
     }
 }
 
 @Composable
-private fun AnimatedNumber(value: String) {
-    AnimatedContent(
-        targetState = value,
-        transitionSpec = {
-            fadeIn(tween(GymMotion.Quick, easing = GymMotion.EmphasizedEasing))
-                .togetherWith(fadeOut(tween(GymMotion.Quick / 2, easing = GymMotion.ExitEasing)))
-        },
-        label = "number change",
-    ) { animatedValue ->
-        Text(
-            text = animatedValue,
-            style = MaterialTheme.typography.titleLarge.asNumber(),
-            color = MaterialTheme.colorScheme.onSurface,
-            maxLines = 1,
-            textAlign = TextAlign.Center,
-        )
-    }
+private fun NumberValue(value: String) {
+    Text(
+        text = value,
+        style = MaterialTheme.typography.titleLarge.asNumber(),
+        color = MaterialTheme.colorScheme.onSurface,
+        maxLines = 1,
+        textAlign = TextAlign.Center,
+    )
 }
 
 /**
@@ -492,12 +469,6 @@ private fun GhostStepper(
     // observes live state (otherwise repeat taps recompute the same value and look stuck).
     val currentOnTap by rememberUpdatedState(onTap)
     val currentOnHoldStep by rememberUpdatedState(onHoldStep)
-    val pressScale by animateFloatAsState(
-        targetValue = if (pressed) 0.84f else 1f,
-        animationSpec = spring(dampingRatio = 0.72f, stiffness = Spring.StiffnessMedium),
-        label = "stepper press",
-    )
-
     LaunchedEffect(pressed) {
         if (pressed) {
             delay(400.milliseconds)
@@ -511,10 +482,6 @@ private fun GhostStepper(
     Box(
         modifier = Modifier
             .size(48.dp)
-            .graphicsLayer {
-                scaleX = pressScale
-                scaleY = pressScale
-            }
             .pointerInput(enabled) {
                 if (!enabled) return@pointerInput
                 awaitEachGesture {
@@ -574,11 +541,6 @@ private fun CheckSquare(
         animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
         label = "set status icon",
     )
-    val checkScale by animateFloatAsState(
-        targetValue = if (isLogged) 1f else 0.78f,
-        animationSpec = spring(dampingRatio = 0.68f, stiffness = Spring.StiffnessMedium),
-        label = "set check",
-    )
     val clickModifier = if (editable) {
         Modifier.combinedClickable(onClick = onTap, onLongClick = onLongPress)
     } else {
@@ -613,12 +575,7 @@ private fun CheckSquare(
             imageVector = Icons.Filled.Check,
             contentDescription = null,
             tint = animatedTint,
-            modifier = Modifier
-                .size(22.dp)
-                .graphicsLayer {
-                    scaleX = checkScale
-                    scaleY = checkScale
-                },
+            modifier = Modifier.size(22.dp),
         )
     }
 }

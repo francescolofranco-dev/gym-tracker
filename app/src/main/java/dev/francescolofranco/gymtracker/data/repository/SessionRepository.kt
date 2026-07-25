@@ -26,6 +26,9 @@ class SessionRepository @Inject constructor(
 
     fun observeAllSummaries(): Flow<List<SessionSummary>> = sessionDao.observeAllSummaries()
 
+    /** Lightweight session-table invalidation without re-aggregating every logged set. */
+    fun observeAllSessions(): Flow<List<SessionEntity>> = sessionDao.observeAll()
+
     fun observeActive(): Flow<SessionEntity?> = sessionDao.observeActive()
 
     fun observeSession(id: Long): Flow<SessionEntity?> = sessionDao.observeById(id)

@@ -4,7 +4,6 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
 import androidx.compose.ui.unit.IntOffset
 
 /**
@@ -20,15 +19,14 @@ object GymMotion {
     val EmphasizedEasing = CubicBezierEasing(0.2f, 0f, 0f, 1f)
     val ExitEasing = CubicBezierEasing(0.4f, 0f, 1f, 1f)
 
-    val ItemFadeIn: FiniteAnimationSpec<Float> = tween(
-        durationMillis = Standard,
-        delayMillis = 35,
-        easing = EmphasizedEasing,
-    )
-    val ItemFadeOut: FiniteAnimationSpec<Float> = tween(
-        durationMillis = Quick,
-        easing = ExitEasing,
-    )
+    /*
+     * Lazy-list item fades allocate an alpha layer for every visible item. That is especially
+     * costly for session exercise cards, which already contain several interactive set rows.
+     * Keep placement motion for actual insert/reorder operations, but do not animate every item
+     * merely because it entered the viewport.
+     */
+    val ItemFadeIn: FiniteAnimationSpec<Float>? = null
+    val ItemFadeOut: FiniteAnimationSpec<Float>? = null
     val ItemPlacement: FiniteAnimationSpec<IntOffset> = spring(
         dampingRatio = 0.88f,
         stiffness = Spring.StiffnessMediumLow,

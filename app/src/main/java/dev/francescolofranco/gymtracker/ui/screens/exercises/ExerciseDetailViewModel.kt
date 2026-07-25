@@ -11,9 +11,11 @@ import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.RetryableViewModel
 import dev.francescolofranco.gymtracker.ui.nav.ExerciseRoutes
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -43,7 +45,9 @@ class ExerciseDetailViewModel @Inject constructor(
         userPrefs.unit,
     ) { exercise, rows, unit ->
         ExerciseDetailContent(exercise, aggregateSessions(rows), unit)
-    }.asLoadableState(viewModelScope)
+    }
+        .flowOn(Dispatchers.Default)
+        .asLoadableState(viewModelScope)
 
     /**
      * Save the edited form back into the exercise. Stats queries join through the exercise

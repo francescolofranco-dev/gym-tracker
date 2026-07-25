@@ -24,7 +24,9 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -61,18 +63,6 @@ class ActiveSessionViewModel @Inject constructor(
 
     private val sessionId: Long = checkNotNull(savedState.get<Long>(SessionRoutes.ACTIVE_ARG))
 
-    val session: StateFlow<SessionEntity?> = repo.observeSession(sessionId)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
-
-    val details: StateFlow<List<SessionExerciseDetail>> = repo.observeExerciseDetails(sessionId)
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
-
-    val unit: StateFlow<WeightUnit> = userPrefs.unit
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), WeightUnit.KG)
-
-    val keepScreenOn: StateFlow<Boolean> = userPrefs.keepScreenOnDuringSession
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
-
     val content: StateFlow<Loadable<ActiveSessionContent>> = combine(
         repo.observeSession(sessionId),
         repo.observeExerciseDetails(sessionId),
@@ -82,55 +72,82 @@ class ActiveSessionViewModel @Inject constructor(
         ActiveSessionContent(session, details, unit, keepScreenOn)
     }.asLoadableState(viewModelScope)
 
+    /*
+     * Derive supporting state from the already-shared content flow. Previously these properties
+     * opened Room/DataStore observers in addition to [content], so every set update could execute
+     * the same relation query twice while the session was rendering.
+     */
+    val details: StateFlow<List<SessionExerciseDetail>> = content
+        .map { (it as? Loadable.Ready)?.value?.details.orEmpty() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
     /**
      * Anchor hints to the LAST COMPLETED session preceding this one (not the global latest,
      * which was the source of the "% always resets to 0" bug — once we logged a set in the
      * active session, the previous-session lookup picked us as our own anchor).
      *
-     * Combining in [observeAllSummaries] (as a coarse trigger) makes the flow re-emit when
-     * any session is added, completed, or deleted. That's how the spec's "if I delete the most
-     * recent session, hints should fall back to the next one" requirement is met without
-     * plumbing a dedicated invalidation channel.
+     * The lightweight session-table observer makes the flow re-emit when a session is added,
+     * completed, or deleted, without re-running this lookup on every set edit.
      */
+    private val hintRequest = content
+        .map { loadable ->
+            val ready = (loadable as? Loadable.Ready)?.value
+            ready?.session?.startedAt to ready?.details.orEmpty()
+                .sortedBy { it.exercise.id }
+                .map { detail ->
+                    detail.exercise.id to detail.setLogs
+                        .map { it.setNumber to it.side }
+                        .distinct()
+                        .sortedWith(compareBy({ it.first }, { it.second.ordinal }))
+                }
+        }
+        .distinctUntilChanged()
+
     val hints: StateFlow<SetHints> = combine(
-        session,
-        details,
-        repo.observeAllSummaries(),
-    ) { s, items, _ ->
-        val anchor = s?.startedAt ?: return@combine SetHints()
+        hintRequest,
+        repo.observeAllSessions(),
+    ) { (anchor, exercises), _ ->
+        anchor ?: return@combine SetHints()
         val byId = HashMap<Long, List<HintRow>>()
-        items.forEach { d ->
-            if (byId[d.exercise.id] == null) {
-                byId[d.exercise.id] = d.setLogs
-                    .distinctBy { it.setNumber to it.side }
-                    .mapNotNull { current ->
-                    repo.lastLoggedSetBefore(d.exercise.id, current.setNumber, current.side, anchor)?.let {
-                        HintRow(current.setNumber, current.side, it.reps, it.kg)
-                    }
+        exercises.forEach { (exerciseId, sets) ->
+            byId[exerciseId] = sets.mapNotNull { (setNumber, side) ->
+                repo.lastLoggedSetBefore(exerciseId, setNumber, side, anchor)?.let {
+                    HintRow(setNumber, side, it.reps, it.kg)
                 }
             }
         }
         SetHints(byId)
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SetHints())
+    }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SetHints())
 
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     val personalRecords: StateFlow<Map<Long, Set<PersonalRecordType>>> = details
-        .flatMapLatest { items ->
-            val unique = items.distinctBy { it.exercise.id }
-            if (unique.isEmpty()) {
+        .map { items ->
+            items
+                .distinctBy { it.exercise.id }
+                .map { it.exercise.id to it.exercise.isBodyweight }
+        }
+        .distinctUntilChanged()
+        .flatMapLatest { exercises ->
+            if (exercises.isEmpty()) {
                 flowOf(emptyMap())
             } else {
-                combine(unique.map { detail ->
-                    repo.observeExerciseSetHistory(detail.exercise.id).map { rows -> detail to rows }
+                combine(exercises.map { (exerciseId, isBodyweight) ->
+                    repo.observeExerciseSetHistory(exerciseId).map { rows ->
+                        Triple(exerciseId, isBodyweight, rows)
+                    }
                 }) { histories ->
-                    histories.associate { (detail, rows) ->
+                    histories.associate { (exerciseId, isBodyweight, rows) ->
                         val points = aggregateSessions(rows)
-                        detail.exercise.id to detectPersonalRecords(points, detail.exercise.isBodyweight)
+                        exerciseId to detectPersonalRecords(points, isBodyweight)
                             .getOrElse(sessionId) { emptySet() }
                     }
                 }
             }
-        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
+        }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
     private val _exitRequested = MutableStateFlow(false)
     val exitRequested: StateFlow<Boolean> = _exitRequested.asStateFlow()

@@ -13,6 +13,7 @@ import dev.francescolofranco.gymtracker.domain.workoutDuration
 import dev.francescolofranco.gymtracker.domain.workoutStartedAt
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.RetryableViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import java.time.Duration
 import java.time.Instant
@@ -88,7 +90,10 @@ class StatsViewModel @Inject constructor(
             exerciseProgress = computeExerciseProgress(data.rows, data.previousRows),
             personalRecords = personalRecordActivity(data.historyRows, data.currentRange),
         )
-    }.debounce(24L).asLoadableState(viewModelScope)
+    }
+        .flowOn(Dispatchers.Default)
+        .debounce(24L)
+        .asLoadableState(viewModelScope)
 
     fun selectMuscle(muscle: Muscle?) {
         _selectedMuscle.value = muscle
