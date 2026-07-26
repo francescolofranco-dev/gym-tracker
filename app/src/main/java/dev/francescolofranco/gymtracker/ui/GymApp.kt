@@ -50,16 +50,15 @@ fun GymApp() {
     val nav = rememberNavController()
     val currentEntry by nav.currentBackStackEntryAsState()
     val selectedTop = TopDestination.entries.firstOrNull { it.route == currentEntry?.destination?.route }
-    val fadeThroughEnter = fadeIn(
+    val crossfadeEnter = fadeIn(
         animationSpec = tween(
-            durationMillis = 70,
-            delayMillis = 30,
+            durationMillis = 140,
             easing = GymMotion.EmphasizedEasing,
         ),
     )
-    val fadeThroughExit = fadeOut(
+    val crossfadeExit = fadeOut(
         animationSpec = tween(
-            durationMillis = 30,
+            durationMillis = 90,
             easing = GymMotion.ExitEasing,
         ),
     )
@@ -110,13 +109,12 @@ fun GymApp() {
                 navController = nav,
                 startDestination = TopDestination.Sessions.route,
                 modifier = Modifier.fillMaxSize(),
-                // A 100 ms fade-through masks the hard destination cut. The outgoing screen is
-                // gone after 30 ms, giving the incoming destination the remaining 70 ms to appear
-                // without any translation, scale, or animated layout work.
-                enterTransition = { fadeThroughEnter },
-                exitTransition = { fadeThroughExit },
-                popEnterTransition = { fadeThroughEnter },
-                popExitTransition = { fadeThroughExit },
+                // A short overlapping crossfade is visible enough to bridge the destination cut,
+                // while avoiding translation, scale, or animated layout work.
+                enterTransition = { crossfadeEnter },
+                exitTransition = { crossfadeExit },
+                popEnterTransition = { crossfadeEnter },
+                popExitTransition = { crossfadeExit },
             ) {
                 composable(TopDestination.Sessions.route) {
                     SessionsScreen(
