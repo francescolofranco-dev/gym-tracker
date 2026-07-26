@@ -83,6 +83,7 @@ import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.screens.exercises.PersonalRecordType
+import dev.francescolofranco.gymtracker.ui.theme.VolumeGreen
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -398,6 +399,18 @@ private fun exerciseCountLabel(count: Int): String =
 private fun sessionProgressLabel(progressPct: Int, exerciseCount: Int): String =
     if (exerciseCount == 0) exerciseCountLabel(0) else "$progressPct% · ${exerciseCountLabel(exerciseCount)}"
 
+@Composable
+private fun Modifier.completionRail(isComplete: Boolean): Modifier {
+    val surface = MaterialTheme.colorScheme.surfaceContainer
+    return if (isComplete) {
+        background(VolumeGreen)
+            .padding(start = 3.dp)
+            .background(surface)
+    } else {
+        background(surface)
+    }
+}
+
 /**
  * Adds one exercise as granular lazy items. A whole [ExerciseCard] used to be one very tall lazy
  * item, so crossing an exercise boundary forced Compose to create its header and every set row in
@@ -462,7 +475,7 @@ internal fun LazyListScope.exerciseSection(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .completionRail(isComplete)
                     .padding(horizontal = 12.dp),
             ) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -492,7 +505,7 @@ internal fun LazyListScope.exerciseSection(
                             Modifier
                         },
                     )
-                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .completionRail(isComplete)
                     .padding(horizontal = 12.dp),
             ) {
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
@@ -556,7 +569,7 @@ private fun ExerciseSectionHeader(
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .completionRail(isComplete)
             .padding(start = 12.dp, top = 10.dp, bottom = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
