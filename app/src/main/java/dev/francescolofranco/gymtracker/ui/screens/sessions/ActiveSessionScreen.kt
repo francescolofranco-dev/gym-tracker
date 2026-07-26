@@ -25,7 +25,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -222,20 +223,17 @@ fun ActiveSessionScreen(
                 // Extra bottom space so the last set's ✓ scrolls clear of the FAB instead of
                 // being permanently obscured by it.
                 contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 96.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 session?.notes?.takeIf { it.isNotBlank() }?.let { notes ->
-                    item {
+                    item(key = "session-notes", contentType = "session-notes") {
                         SessionNotesPreview(notes = notes, onEdit = { sessionNotesEditor = true })
                     }
+                    item(key = "session-notes-gap", contentType = "gap") {
+                        Spacer(Modifier.height(12.dp))
+                    }
                 }
-                itemsIndexed(items = details, key = { _, d -> d.sessionExercise.id }) { index, detail ->
-                    ExerciseCard(
-                        modifier = Modifier.animateItem(
-                            fadeInSpec = GymMotion.ItemFadeIn,
-                            placementSpec = GymMotion.ItemPlacement,
-                            fadeOutSpec = GymMotion.ItemFadeOut,
-                        ),
+                details.forEachIndexed { index, detail ->
+                    exerciseSection(
                         detail = detail,
                         unit = unit,
                         hints = hints.byExerciseId[detail.exercise.id] ?: emptyList(),
@@ -399,6 +397,274 @@ private fun exerciseCountLabel(count: Int): String =
 
 private fun sessionProgressLabel(progressPct: Int, exerciseCount: Int): String =
     if (exerciseCount == 0) exerciseCountLabel(0) else "$progressPct% · ${exerciseCountLabel(exerciseCount)}"
+
+/**
+ * Adds one exercise as granular lazy items. A whole [ExerciseCard] used to be one very tall lazy
+ * item, so crossing an exercise boundary forced Compose to create its header and every set row in
+ * a single frame. Keeping each set as its own keyed item spreads that work across prefetch frames.
+ */
+internal fun LazyListScope.exerciseSection(
+    detail: SessionExerciseDetail,
+    unit: WeightUnit,
+    hints: List<HintRow>,
+    personalRecords: Set<PersonalRecordType> = emptySet(),
+    editable: Boolean,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    onCommitSet: (setLogId: Long, reps: Int, kg: Double) -> Unit,
+    onUncommitSet: (setLogId: Long) -> Unit,
+    onDraftSet: (setLogId: Long, reps: Int?, kg: Double?, kgFromExplicitEntry: Boolean) -> Unit,
+    onToggleSetSkipped: (setLogId: Long, currentlySkipped: Boolean) -> Unit,
+    onSkipExercise: (skipped: Boolean) -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
+    onEditExerciseNotes: () -> Unit,
+    onRemoveExercise: () -> Unit,
+    onOpenExerciseStats: () -> Unit,
+) {
+    val exercise = detail.exercise
+    val sets = detail.setLogs.sortedWith(compareBy({ it.setNumber }, { it.side.ordinal }))
+    val loggedSets = sets.count { it.loggedAt != null && it.reps != null && !it.isSkipped }
+    val plannedSets = sets.count { !it.isSkipped }
+    val incomplete = !detail.sessionExercise.isSkipped && loggedSets < plannedSets
+    val isComplete = !detail.sessionExercise.isSkipped &&
+        plannedSets > 0 && loggedSets >= plannedSets
+    val sectionId = detail.sessionExercise.id
+
+    item(
+        key = "exercise-$sectionId-header",
+        contentType = "exercise-header",
+    ) {
+        ExerciseSectionHeader(
+            detail = detail,
+            hints = hints,
+            personalRecords = personalRecords,
+            isComplete = isComplete,
+            incomplete = incomplete,
+            hasSets = sets.isNotEmpty(),
+            editable = editable,
+            canMoveUp = canMoveUp,
+            canMoveDown = canMoveDown,
+            onSkipExercise = onSkipExercise,
+            onMoveUp = onMoveUp,
+            onMoveDown = onMoveDown,
+            onEditExerciseNotes = onEditExerciseNotes,
+            onRemoveExercise = onRemoveExercise,
+            onOpenExerciseStats = onOpenExerciseStats,
+        )
+    }
+
+    if (sets.isNotEmpty()) {
+        item(
+            key = "exercise-$sectionId-columns",
+            contentType = "set-columns",
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .padding(horizontal = 12.dp),
+            ) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                SetTableHeader()
+            }
+        }
+
+        val activeSetId = if (editable) {
+            sets.firstOrNull { !it.isSkipped && !(it.loggedAt != null && it.reps != null) }?.id
+        } else {
+            null
+        }
+        items(
+            items = sets,
+            key = { "set-${it.id}" },
+            contentType = { if (it.id == sets.last().id) "set-row-last" else "set-row" },
+        ) { log ->
+            val hint = hints.firstOrNull { it.setNumber == log.setNumber && it.side == log.side }
+            val isLast = log.id == sets.last().id
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .then(
+                        if (isLast) {
+                            Modifier.clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp))
+                        } else {
+                            Modifier
+                        },
+                    )
+                    .background(MaterialTheme.colorScheme.surfaceContainer)
+                    .padding(horizontal = 12.dp),
+            ) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                SetRow(
+                    state = SetRowState(
+                        log = log,
+                        targetReps = exercise.repRangeMin..exercise.repRangeMax,
+                        isBodyweight = exercise.isBodyweight,
+                        unit = unit,
+                        hintReps = hint?.reps,
+                        hintKg = hint?.kg,
+                        isActive = log.id == activeSetId,
+                    ),
+                    onCommit = { reps, kg -> onCommitSet(log.id, reps, kg) },
+                    onUncommit = { onUncommitSet(log.id) },
+                    onDraft = { reps, kg, kgExplicit -> onDraftSet(log.id, reps, kg, kgExplicit) },
+                    onSkipToggle = { onToggleSetSkipped(log.id, log.isSkipped) },
+                    editable = editable,
+                )
+                if (isLast) Spacer(Modifier.height(4.dp))
+            }
+        }
+    }
+
+    item(
+        key = "exercise-$sectionId-gap",
+        contentType = "gap",
+    ) {
+        Spacer(Modifier.height(12.dp))
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ExerciseSectionHeader(
+    detail: SessionExerciseDetail,
+    hints: List<HintRow>,
+    personalRecords: Set<PersonalRecordType>,
+    isComplete: Boolean,
+    incomplete: Boolean,
+    hasSets: Boolean,
+    editable: Boolean,
+    canMoveUp: Boolean,
+    canMoveDown: Boolean,
+    onSkipExercise: (skipped: Boolean) -> Unit,
+    onMoveUp: () -> Unit,
+    onMoveDown: () -> Unit,
+    onEditExerciseNotes: () -> Unit,
+    onRemoveExercise: () -> Unit,
+    onOpenExerciseStats: () -> Unit,
+) {
+    val exercise = detail.exercise
+    var menuExpanded by remember { mutableStateOf(false) }
+    val shape = if (hasSets) {
+        RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+    } else {
+        RoundedCornerShape(16.dp)
+    }
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .padding(start = 12.dp, top = 10.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = exercise.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                when {
+                    isComplete -> Row {
+                        Spacer(Modifier.width(8.dp))
+                        CompletedBadge()
+                    }
+                    hints.isEmpty() -> Row {
+                        Spacer(Modifier.width(8.dp))
+                        FirstTimeBadge()
+                    }
+                }
+                if (personalRecords.isNotEmpty()) {
+                    Spacer(Modifier.width(8.dp))
+                    PersonalRecordBadge(personalRecords)
+                }
+                val note = detail.sessionExercise.notes?.takeIf { it.isNotBlank() }
+                if (note != null) {
+                    Spacer(Modifier.width(8.dp))
+                    NoteIndicator(note = note, onEdit = onEditExerciseNotes)
+                }
+            }
+            Text(
+                text = buildList {
+                    add(exercise.primaryMuscles.sortedBy { it.ordinal }.joinToString(" + ") { it.displayName })
+                    if (exercise.isBodyweight) add("BW")
+                    add(
+                        "${exercise.targetSets}×${exercise.repRangeMin}–${exercise.repRangeMax}" +
+                            if (exercise.isUnilateral) "/side" else "",
+                    )
+                    if (detail.sessionExercise.isSkipped) add("Skipped")
+                    else if (incomplete) add("Incomplete")
+                }.joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        IconButton(onClick = onOpenExerciseStats) {
+            Icon(Icons.Filled.BarChart, contentDescription = "Exercise stats")
+        }
+        Box {
+            IconButton(onClick = { menuExpanded = true }) {
+                Icon(Icons.Filled.MoreVert, contentDescription = "Exercise options")
+            }
+            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                DropdownMenuItem(
+                    text = { Text("View stats") },
+                    leadingIcon = { Icon(Icons.Filled.BarChart, contentDescription = null) },
+                    onClick = {
+                        menuExpanded = false
+                        onOpenExerciseStats()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text("Move up") },
+                    leadingIcon = { Icon(Icons.Filled.ArrowUpward, contentDescription = null) },
+                    enabled = canMoveUp,
+                    onClick = {
+                        menuExpanded = false
+                        onMoveUp()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text("Move down") },
+                    leadingIcon = { Icon(Icons.Filled.ArrowDownward, contentDescription = null) },
+                    enabled = canMoveDown,
+                    onClick = {
+                        menuExpanded = false
+                        onMoveDown()
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(if (detail.sessionExercise.isSkipped) "Unskip" else "Skip exercise") },
+                    leadingIcon = { Icon(Icons.Filled.NotInterested, contentDescription = null) },
+                    onClick = {
+                        menuExpanded = false
+                        onSkipExercise(!detail.sessionExercise.isSkipped)
+                    },
+                )
+                DropdownMenuItem(
+                    text = { Text(if (detail.sessionExercise.notes.isNullOrBlank()) "Add note" else "Edit note") },
+                    leadingIcon = { Icon(Icons.Filled.EditNote, contentDescription = null) },
+                    onClick = {
+                        menuExpanded = false
+                        onEditExerciseNotes()
+                    },
+                )
+                if (editable) {
+                    DropdownMenuItem(
+                        text = { Text("Remove from session") },
+                        onClick = {
+                            menuExpanded = false
+                            onRemoveExercise()
+                        },
+                    )
+                }
+            }
+        }
+    }
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

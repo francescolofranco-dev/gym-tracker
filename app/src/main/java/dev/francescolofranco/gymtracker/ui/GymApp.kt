@@ -2,11 +2,6 @@ package dev.francescolofranco.gymtracker.ui
 
 import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
@@ -19,11 +14,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -34,7 +25,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.nav.ExerciseRoutes
 import dev.francescolofranco.gymtracker.ui.nav.SessionRoutes
 import dev.francescolofranco.gymtracker.ui.nav.TemplateRoutes
@@ -56,10 +46,6 @@ fun GymApp() {
     val nav = rememberNavController()
     val currentEntry by nav.currentBackStackEntryAsState()
     val selectedTop = TopDestination.entries.firstOrNull { it.route == currentEntry?.destination?.route }
-    var lastTop by remember { mutableStateOf(TopDestination.Sessions) }
-    LaunchedEffect(selectedTop) {
-        if (selectedTop != null) lastTop = selectedTop
-    }
 
     val navigateToTop: (TopDestination) -> Unit = { destination ->
         nav.navigate(destination.route) {
@@ -86,7 +72,7 @@ fun GymApp() {
                 NavigationBar {
                     TopDestination.entries.forEach { destination ->
                         NavigationBarItem(
-                            selected = destination == lastTop,
+                            selected = destination == selectedTop,
                             onClick = { navigateToTop(destination) },
                             icon = { Icon(destination.icon, contentDescription = null) },
                             label = { Text(stringResource(destination.labelRes)) },
@@ -106,39 +92,13 @@ fun GymApp() {
                 navController = nav,
                 startDestination = TopDestination.Sessions.route,
                 modifier = Modifier.fillMaxSize(),
-                enterTransition = {
-                    if (initialState.destination.route.isTopLevel() && targetState.destination.route.isTopLevel()) {
-                        EnterTransition.None
-                    } else {
-                        fadeIn(
-                            tween(GymMotion.Quick, easing = GymMotion.EmphasizedEasing),
-                        ) + slideInHorizontally(
-                            tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
-                        ) { it / 8 }
-                    }
-                },
-                exitTransition = {
-                    if (initialState.destination.route.isTopLevel() && targetState.destination.route.isTopLevel()) {
-                        ExitTransition.None
-                    } else {
-                        fadeOut(tween(GymMotion.Quick, easing = GymMotion.ExitEasing)) +
-                            slideOutHorizontally(
-                                tween(GymMotion.Quick, easing = GymMotion.ExitEasing),
-                            ) { -it / 16 }
-                    }
-                },
-                popEnterTransition = {
-                    fadeIn(tween(GymMotion.Quick, easing = GymMotion.EmphasizedEasing)) +
-                        slideInHorizontally(
-                            tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
-                        ) { -it / 8 }
-                },
-                popExitTransition = {
-                    fadeOut(tween(GymMotion.Quick, easing = GymMotion.ExitEasing)) +
-                        slideOutHorizontally(
-                            tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
-                        ) { it / 8 }
-                },
+                // Never render two complete destinations in the same frame. The session and
+                // stats screens are intentionally dense; overlapping them during a transition
+                // is more expensive than an instant Material-style destination change.
+                enterTransition = { EnterTransition.None },
+                exitTransition = { ExitTransition.None },
+                popEnterTransition = { EnterTransition.None },
+                popExitTransition = { ExitTransition.None },
             ) {
                 composable(TopDestination.Sessions.route) {
                     SessionsScreen(
@@ -201,5 +161,3 @@ fun GymApp() {
 
     DriveRestorePrompt()
 }
-
-private fun String?.isTopLevel(): Boolean = TopDestination.entries.any { it.route == this }

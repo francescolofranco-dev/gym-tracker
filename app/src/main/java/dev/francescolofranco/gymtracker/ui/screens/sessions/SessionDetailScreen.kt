@@ -4,12 +4,12 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -45,7 +45,6 @@ import dev.francescolofranco.gymtracker.domain.workoutDuration
 import dev.francescolofranco.gymtracker.domain.workoutStartedAt
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
-import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import kotlinx.coroutines.launch
 import java.time.Duration
@@ -140,10 +139,9 @@ fun SessionDetailScreen(
                     .fillMaxSize()
                     .padding(padding),
                 contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 session?.notes?.takeIf { it.isNotBlank() }?.let { notes ->
-                    item {
+                    item(key = "session-notes", contentType = "session-notes") {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -157,14 +155,12 @@ fun SessionDetailScreen(
                             Text(text = notes, style = MaterialTheme.typography.bodyMedium)
                         }
                     }
+                    item(key = "session-notes-gap", contentType = "gap") {
+                        Spacer(Modifier.height(12.dp))
+                    }
                 }
-                itemsIndexed(items = details, key = { _, d -> d.sessionExercise.id }) { index, detail ->
-                    ExerciseCard(
-                        modifier = Modifier.animateItem(
-                            fadeInSpec = GymMotion.ItemFadeIn,
-                            placementSpec = GymMotion.ItemPlacement,
-                            fadeOutSpec = GymMotion.ItemFadeOut,
-                        ),
+                details.forEachIndexed { index, detail ->
+                    exerciseSection(
                         detail = detail,
                         unit = unit,
                         hints = hints.byExerciseId[detail.exercise.id] ?: emptyList(),

@@ -32,6 +32,13 @@ android {
                 "proguard-rules.pro"
             )
         }
+        create("benchmark") {
+            // Installable on top of the normal debug app (same application id + debug key), but
+            // runs the optimized, non-debuggable release code path used for honest frame testing.
+            initWith(getByName("release"))
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += "release"
+        }
     }
 
     compileOptions {
@@ -84,6 +91,7 @@ dependencies {
     implementation(libs.datastore.preferences)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.work.runtime.ktx)
+    implementation(libs.androidx.profileinstaller)
 
     implementation(libs.play.services.auth)
     implementation(libs.okhttp)
