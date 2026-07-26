@@ -1,13 +1,16 @@
 package dev.francescolofranco.gymtracker.ui
 
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -25,6 +28,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.nav.ExerciseRoutes
 import dev.francescolofranco.gymtracker.ui.nav.SessionRoutes
 import dev.francescolofranco.gymtracker.ui.nav.TemplateRoutes
@@ -46,6 +50,19 @@ fun GymApp() {
     val nav = rememberNavController()
     val currentEntry by nav.currentBackStackEntryAsState()
     val selectedTop = TopDestination.entries.firstOrNull { it.route == currentEntry?.destination?.route }
+    val fadeThroughEnter = fadeIn(
+        animationSpec = tween(
+            durationMillis = 70,
+            delayMillis = 30,
+            easing = GymMotion.EmphasizedEasing,
+        ),
+    )
+    val fadeThroughExit = fadeOut(
+        animationSpec = tween(
+            durationMillis = 30,
+            easing = GymMotion.ExitEasing,
+        ),
+    )
 
     val navigateToTop: (TopDestination) -> Unit = { destination ->
         nav.navigate(destination.route) {
@@ -85,6 +102,7 @@ fun GymApp() {
         Box(
             modifier = Modifier
                 .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
                 .padding(padding)
                 .consumeWindowInsets(padding),
         ) {
@@ -92,13 +110,13 @@ fun GymApp() {
                 navController = nav,
                 startDestination = TopDestination.Sessions.route,
                 modifier = Modifier.fillMaxSize(),
-                // Never render two complete destinations in the same frame. The session and
-                // stats screens are intentionally dense; overlapping them during a transition
-                // is more expensive than an instant Material-style destination change.
-                enterTransition = { EnterTransition.None },
-                exitTransition = { ExitTransition.None },
-                popEnterTransition = { EnterTransition.None },
-                popExitTransition = { ExitTransition.None },
+                // A 100 ms fade-through masks the hard destination cut. The outgoing screen is
+                // gone after 30 ms, giving the incoming destination the remaining 70 ms to appear
+                // without any translation, scale, or animated layout work.
+                enterTransition = { fadeThroughEnter },
+                exitTransition = { fadeThroughExit },
+                popEnterTransition = { fadeThroughEnter },
+                popExitTransition = { fadeThroughExit },
             ) {
                 composable(TopDestination.Sessions.route) {
                     SessionsScreen(
