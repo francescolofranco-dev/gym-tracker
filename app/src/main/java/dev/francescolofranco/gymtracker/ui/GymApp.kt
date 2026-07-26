@@ -17,7 +17,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -25,7 +24,6 @@ import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
@@ -48,17 +46,16 @@ import dev.francescolofranco.gymtracker.ui.screens.templates.TemplatesListScreen
 @Composable
 fun GymApp() {
     val nav = rememberNavController()
-    val currentEntry by nav.currentBackStackEntryAsState()
-    val selectedTop = TopDestination.entries.firstOrNull { it.route == currentEntry?.destination?.route }
-    val crossfadeEnter = fadeIn(
+    val fadeThroughEnter = fadeIn(
         animationSpec = tween(
-            durationMillis = 140,
+            durationMillis = 100,
+            delayMillis = 80,
             easing = GymMotion.EmphasizedEasing,
         ),
     )
-    val crossfadeExit = fadeOut(
+    val fadeThroughExit = fadeOut(
         animationSpec = tween(
-            durationMillis = 90,
+            durationMillis = 80,
             easing = GymMotion.ExitEasing,
         ),
     )
@@ -70,64 +67,44 @@ fun GymApp() {
             restoreState = true
         }
     }
-    Scaffold(
-        topBar = {
-            if (selectedTop != null) {
-                TopAppBar(
-                    title = {
-                        Text(
-                            text = stringResource(dev.francescolofranco.gymtracker.R.string.app_name),
-                            fontWeight = FontWeight.SemiBold,
-                        )
-                    },
-                )
-            }
-        },
-        bottomBar = {
-            if (selectedTop != null) {
-                NavigationBar {
-                    TopDestination.entries.forEach { destination ->
-                        NavigationBarItem(
-                            selected = destination == selectedTop,
-                            onClick = { navigateToTop(destination) },
-                            icon = { Icon(destination.icon, contentDescription = null) },
-                            label = { Text(stringResource(destination.labelRes)) },
-                        )
-                    }
-                }
-            }
-        },
-    ) { padding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
-                .padding(padding)
-                .consumeWindowInsets(padding),
-        ) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background),
+    ) {
             NavHost(
                 navController = nav,
                 startDestination = TopDestination.Sessions.route,
                 modifier = Modifier.fillMaxSize(),
-                // A short overlapping crossfade is visible enough to bridge the destination cut,
-                // while avoiding translation, scale, or animated layout work.
-                enterTransition = { crossfadeEnter },
-                exitTransition = { crossfadeExit },
-                popEnterTransition = { crossfadeEnter },
-                popExitTransition = { crossfadeExit },
+                // Sequential fade-through: the outgoing destination reaches alpha 0 before the
+                // incoming one starts. The two layouts are never visible at the same time.
+                enterTransition = { fadeThroughEnter },
+                exitTransition = { fadeThroughExit },
+                popEnterTransition = { fadeThroughEnter },
+                popExitTransition = { fadeThroughExit },
             ) {
                 composable(TopDestination.Sessions.route) {
-                    SessionsScreen(
-                        onOpenActive = { id -> nav.navigate(SessionRoutes.active(id)) },
-                        onOpenDetail = { id -> nav.navigate(SessionRoutes.detail(id)) },
-                    )
+                    TopLevelScaffold(TopDestination.Sessions, navigateToTop) {
+                        SessionsScreen(
+                            onOpenActive = { id -> nav.navigate(SessionRoutes.active(id)) },
+                            onOpenDetail = { id -> nav.navigate(SessionRoutes.detail(id)) },
+                        )
+                    }
                 }
                 composable(TopDestination.Exercises.route) {
-                    ExercisesScreen(onOpenDetail = { id -> nav.navigate(ExerciseRoutes.detail(id)) })
+                    TopLevelScaffold(TopDestination.Exercises, navigateToTop) {
+                        ExercisesScreen(onOpenDetail = { id -> nav.navigate(ExerciseRoutes.detail(id)) })
+                    }
                 }
-                composable(TopDestination.Stats.route) { StatsScreen() }
+                composable(TopDestination.Stats.route) {
+                    TopLevelScaffold(TopDestination.Stats, navigateToTop) {
+                        StatsScreen()
+                    }
+                }
                 composable(TopDestination.Settings.route) {
-                    SettingsScreen(onOpenTemplates = { nav.navigate(TemplateRoutes.LIST) })
+                    TopLevelScaffold(TopDestination.Settings, navigateToTop) {
+                        SettingsScreen(onOpenTemplates = { nav.navigate(TemplateRoutes.LIST) })
+                    }
                 }
 
                 composable(TemplateRoutes.LIST) {
@@ -171,9 +148,50 @@ fun GymApp() {
                         onOpenExerciseStats = { exerciseId -> nav.navigate(ExerciseRoutes.detail(exerciseId)) },
                     )
                 }
-            }
         }
     }
 
     DriveRestorePrompt()
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TopLevelScaffold(
+    selected: TopDestination,
+    onNavigate: (TopDestination) -> Unit,
+    content: @Composable () -> Unit,
+) {
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = stringResource(dev.francescolofranco.gymtracker.R.string.app_name),
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                },
+            )
+        },
+        bottomBar = {
+            NavigationBar {
+                TopDestination.entries.forEach { destination ->
+                    NavigationBarItem(
+                        selected = destination == selected,
+                        onClick = { onNavigate(destination) },
+                        icon = { Icon(destination.icon, contentDescription = null) },
+                        label = { Text(stringResource(destination.labelRes)) },
+                    )
+                }
+            }
+        },
+    ) { padding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .consumeWindowInsets(padding),
+        ) {
+            content()
+        }
+    }
 }
