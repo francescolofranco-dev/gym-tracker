@@ -16,6 +16,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -574,32 +576,14 @@ private fun ExerciseSectionHeader(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = exercise.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f, fill = false),
-                )
-                when {
-                    isComplete -> Row {
-                        Spacer(Modifier.width(8.dp))
-                        CompletedBadge()
-                    }
-                    hints.isEmpty() -> Row {
-                        Spacer(Modifier.width(8.dp))
-                        FirstTimeBadge()
-                    }
-                }
-                if (personalRecords.isNotEmpty()) {
-                    Spacer(Modifier.width(8.dp))
-                    PersonalRecordBadge(personalRecords)
-                }
-                val note = detail.sessionExercise.notes?.takeIf { it.isNotBlank() }
-                if (note != null) {
-                    Spacer(Modifier.width(8.dp))
-                    NoteIndicator(note = note, onEdit = onEditExerciseNotes)
-                }
-            }
+            ExerciseNameAndBadges(
+                name = exercise.name,
+                isComplete = isComplete,
+                isFirstTime = hints.isEmpty(),
+                personalRecords = personalRecords,
+                note = detail.sessionExercise.notes?.takeIf { it.isNotBlank() },
+                onEditNote = onEditExerciseNotes,
+            )
             Text(
                 text = buildList {
                     add(exercise.primaryMuscles.sortedBy { it.ordinal }.joinToString(" + ") { it.displayName })
@@ -734,38 +718,14 @@ fun ExerciseCard(
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = exercise.name,
-                        style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
-                    // "First time" — empty hints means this exercise has never been logged
-                    // before. The badge gives the user a heads-up that there's no historical
-                    // reference (so the dash sub-labels on the kg/reps chips are expected,
-                    // not a glitch).
-                    when {
-                        isComplete -> Row {
-                            Spacer(Modifier.width(8.dp))
-                            CompletedBadge()
-                        }
-                        hints.isEmpty() -> Row {
-                            Spacer(Modifier.width(8.dp))
-                            FirstTimeBadge()
-                        }
-                    }
-                    if (personalRecords.isNotEmpty()) {
-                        Spacer(Modifier.width(8.dp))
-                        PersonalRecordBadge(personalRecords)
-                    }
-                    // Note flag — its own slot so it can sit alongside the Completed/First-time
-                    // badge. Tapping it reveals the note; editing routes through the overflow menu.
-                    val note = detail.sessionExercise.notes?.takeIf { it.isNotBlank() }
-                    if (note != null) {
-                        Spacer(Modifier.width(8.dp))
-                        NoteIndicator(note = note, onEdit = onEditExerciseNotes)
-                    }
-                }
+                ExerciseNameAndBadges(
+                    name = exercise.name,
+                    isComplete = isComplete,
+                    isFirstTime = hints.isEmpty(),
+                    personalRecords = personalRecords,
+                    note = detail.sessionExercise.notes?.takeIf { it.isNotBlank() },
+                    onEditNote = onEditExerciseNotes,
+                )
                 Text(
                     text = buildList {
                         add(exercise.primaryMuscles.sortedBy { it.ordinal }.joinToString(" + ") { it.displayName })
@@ -884,6 +844,44 @@ fun ExerciseCard(
                     editable = editable,
                 )
             }
+        }
+    }
+}
+
+/**
+ * Keeps an exercise name readable when completion, record, and note badges all appear together.
+ * A [Row] with a weighted name allowed the badges to consume nearly all of the name's width,
+ * causing short names such as "Lat Pullover" to wrap one character per line. A [FlowRow] keeps
+ * the normal inline layout when it fits and wraps badges to a new line when it does not.
+ */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ExerciseNameAndBadges(
+    name: String,
+    isComplete: Boolean,
+    isFirstTime: Boolean,
+    personalRecords: Set<PersonalRecordType>,
+    note: String?,
+    onEditNote: () -> Unit,
+) {
+    FlowRow(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = name,
+            style = MaterialTheme.typography.titleMedium,
+        )
+        when {
+            isComplete -> CompletedBadge()
+            isFirstTime -> FirstTimeBadge()
+        }
+        if (personalRecords.isNotEmpty()) {
+            PersonalRecordBadge(personalRecords)
+        }
+        if (note != null) {
+            NoteIndicator(note = note, onEdit = onEditNote)
         }
     }
 }
