@@ -92,8 +92,49 @@ interface SessionDao {
     @Query("UPDATE session_exercise SET isSkipped = :skipped WHERE id = :id")
     suspend fun setExerciseSkipped(id: Long, skipped: Boolean)
 
-    @Query("UPDATE session_exercise SET notes = :notes WHERE id = :id")
-    suspend fun updateExerciseNotes(id: Long, notes: String?)
+    @Query(
+        """
+        UPDATE session_exercise
+        SET notes = :notes,
+            isNotePinned = :isPinned,
+            noteCarryForward = :carryForward
+        WHERE id = :id
+        """,
+    )
+    suspend fun updateExerciseNote(
+        id: Long,
+        notes: String?,
+        isPinned: Boolean,
+        carryForward: Boolean,
+    )
+
+    /**
+     * Most recent completed occurrence of an exercise before it is added to [targetSessionId].
+     *
+     * Looking at the latest occurrence even when it has no eligible note is intentional: a
+     * consumed or explicitly cleared note must prevent an older note from resurfacing later.
+     */
+    @Query(
+        """
+        SELECT se.* FROM session_exercise se
+        JOIN session s ON s.id = se.sessionId
+        JOIN session target ON target.id = :targetSessionId
+        WHERE se.exerciseId = :exerciseId
+          AND se.sessionId != :targetSessionId
+          AND s.acceptedAt IS NOT NULL
+          AND s.endedAt IS NOT NULL
+          AND (
+              s.startedAt < target.startedAt OR
+              (s.startedAt = target.startedAt AND s.id < target.id)
+          )
+        ORDER BY s.startedAt DESC, s.id DESC, se.id DESC
+        LIMIT 1
+        """,
+    )
+    suspend fun latestExerciseOccurrence(
+        exerciseId: Long,
+        targetSessionId: Long,
+    ): SessionExerciseEntity?
 
     @Query("DELETE FROM session_exercise WHERE id = :id")
     suspend fun removeExercise(id: Long)

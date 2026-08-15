@@ -40,6 +40,7 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NotInterested
@@ -305,12 +306,13 @@ fun ActiveSessionScreen(
     }
 
     exerciseNotesTarget?.let { target ->
-        NotesDialog(
+        ExerciseNoteDialog(
             title = "${target.exercise.name} note",
             initial = target.sessionExercise.notes.orEmpty(),
+            initiallyPinned = target.sessionExercise.isNotePinned,
             onCancel = { exerciseNotesTarget = null },
-            onConfirm = {
-                viewModel.setExerciseNotes(target.sessionExercise.id, it)
+            onConfirm = { notes, isPinned ->
+                viewModel.setExerciseNote(target.sessionExercise.id, notes, isPinned)
                 exerciseNotesTarget = null
             },
         )
@@ -582,6 +584,8 @@ private fun ExerciseSectionHeader(
                 isFirstTime = hints.isEmpty(),
                 personalRecords = personalRecords,
                 note = detail.sessionExercise.notes?.takeIf { it.isNotBlank() },
+                isNotePinned = detail.sessionExercise.isNotePinned,
+                isNoteCarried = !detail.sessionExercise.noteCarryForward,
                 onEditNote = onEditExerciseNotes,
             )
             Text(
@@ -642,7 +646,15 @@ private fun ExerciseSectionHeader(
                     },
                 )
                 DropdownMenuItem(
-                    text = { Text(if (detail.sessionExercise.notes.isNullOrBlank()) "Add note" else "Edit note") },
+                    text = {
+                        Text(
+                            when {
+                                detail.sessionExercise.notes.isNullOrBlank() -> "Add note"
+                                detail.sessionExercise.isNotePinned -> "Edit pinned note"
+                                else -> "Edit note"
+                            },
+                        )
+                    },
                     leadingIcon = { Icon(Icons.Filled.EditNote, contentDescription = null) },
                     onClick = {
                         menuExpanded = false
@@ -724,6 +736,8 @@ fun ExerciseCard(
                     isFirstTime = hints.isEmpty(),
                     personalRecords = personalRecords,
                     note = detail.sessionExercise.notes?.takeIf { it.isNotBlank() },
+                    isNotePinned = detail.sessionExercise.isNotePinned,
+                    isNoteCarried = !detail.sessionExercise.noteCarryForward,
                     onEditNote = onEditExerciseNotes,
                 )
                 Text(
@@ -788,7 +802,15 @@ fun ExerciseCard(
                         },
                     )
                     DropdownMenuItem(
-                        text = { Text(if (detail.sessionExercise.notes.isNullOrBlank()) "Add note" else "Edit note") },
+                        text = {
+                            Text(
+                                when {
+                                    detail.sessionExercise.notes.isNullOrBlank() -> "Add note"
+                                    detail.sessionExercise.isNotePinned -> "Edit pinned note"
+                                    else -> "Edit note"
+                                },
+                            )
+                        },
                         leadingIcon = { Icon(Icons.Filled.EditNote, contentDescription = null) },
                         onClick = {
                             menuExpanded = false
@@ -862,6 +884,8 @@ private fun ExerciseNameAndBadges(
     isFirstTime: Boolean,
     personalRecords: Set<PersonalRecordType>,
     note: String?,
+    isNotePinned: Boolean,
+    isNoteCarried: Boolean,
     onEditNote: () -> Unit,
 ) {
     FlowRow(
@@ -881,7 +905,12 @@ private fun ExerciseNameAndBadges(
             PersonalRecordBadge(personalRecords)
         }
         if (note != null) {
-            NoteIndicator(note = note, onEdit = onEditNote)
+            NoteIndicator(
+                note = note,
+                isPinned = isNotePinned,
+                isCarried = isNoteCarried,
+                onEdit = onEditNote,
+            )
         }
     }
 }
@@ -945,14 +974,24 @@ private fun PersonalRecordBadge(records: Set<PersonalRecordType>) {
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun NoteIndicator(note: String, onEdit: () -> Unit) {
+private fun NoteIndicator(
+    note: String,
+    isPinned: Boolean,
+    isCarried: Boolean,
+    onEdit: () -> Unit,
+) {
+    val label = when {
+        isPinned -> "Pinned note"
+        isCarried -> "From last session"
+        else -> "Note"
+    }
     val tooltipState = rememberTooltipState(isPersistent = true)
     val scope = rememberCoroutineScope()
     TooltipBox(
         positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
         tooltip = {
             RichTooltip(
-                title = { Text("Note") },
+                title = { Text(label) },
                 action = {
                     TextButton(
                         onClick = {
@@ -973,10 +1012,10 @@ private fun NoteIndicator(note: String, onEdit: () -> Unit) {
                 .padding(horizontal = 6.dp, vertical = 2.dp),
         ) {
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.Notes,
+                imageVector = if (isPinned) Icons.Filled.PushPin else Icons.AutoMirrored.Filled.Notes,
                 // Carry the note text in the description so screen readers can read it directly:
                 // the tooltip's content lives in a popup that isn't part of this anchor's semantics.
-                contentDescription = "Note: $note",
+                contentDescription = "$label: $note",
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.size(16.dp),
             )

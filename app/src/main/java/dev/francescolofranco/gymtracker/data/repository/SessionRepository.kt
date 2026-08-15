@@ -102,11 +102,22 @@ class SessionRepository @Inject constructor(
         val exercise = exerciseDao.byId(exerciseId)
             ?: error("Exercise $exerciseId not found")
         val order = sessionDao.nextOrderInSession(sessionId)
+        val note = noteForNextSession(
+            sessionDao.latestExerciseOccurrence(
+                exerciseId = exerciseId,
+                targetSessionId = sessionId,
+            ),
+        )
         val sessionExerciseId = sessionDao.insertExercise(
             SessionExerciseEntity(
                 sessionId = sessionId,
                 exerciseId = exerciseId,
                 orderInSession = order,
+                notes = note?.text,
+                isNotePinned = note?.isPinned == true,
+                // A normal note has now reached its one subsequent session. A pinned note keeps
+                // travelling until the user unpins it.
+                noteCarryForward = note?.carryForward == true,
             )
         )
         // Planned sets stay null (reps/kg) until the user taps ✓. The UI reads
@@ -187,8 +198,20 @@ class SessionRepository @Inject constructor(
     suspend fun setSessionExerciseSkipped(sessionExerciseId: Long, skipped: Boolean) =
         sessionDao.setExerciseSkipped(sessionExerciseId, skipped)
 
-    suspend fun updateSessionExerciseNotes(sessionExerciseId: Long, notes: String?) =
-        sessionDao.updateExerciseNotes(sessionExerciseId, notes)
+    suspend fun updateSessionExerciseNote(
+        sessionExerciseId: Long,
+        notes: String?,
+        isPinned: Boolean,
+    ) {
+        val current = sessionDao.sessionExerciseById(sessionExerciseId) ?: return
+        val state = savedExerciseNote(current, notes, isPinned)
+        sessionDao.updateExerciseNote(
+            id = sessionExerciseId,
+            notes = state.text,
+            isPinned = state.isPinned,
+            carryForward = state.carryForward,
+        )
+    }
 
     /**
      * Revert a logged set back to "planned" while keeping the reps/kg the user had entered.
@@ -266,4 +289,47 @@ internal fun historyLookupSides(side: ExerciseSide): List<ExerciseSide> = when (
     ExerciseSide.BOTH -> listOf(ExerciseSide.BOTH)
     ExerciseSide.LEFT -> listOf(ExerciseSide.LEFT, ExerciseSide.BOTH)
     ExerciseSide.RIGHT -> listOf(ExerciseSide.RIGHT, ExerciseSide.BOTH)
+}
+
+internal data class ExerciseNoteState(
+    val text: String?,
+    val isPinned: Boolean,
+    val carryForward: Boolean,
+)
+
+/**
+ * Normalise editor input and resolve its next-session lifetime. An unchanged Save preserves the
+ * current lifetime, so simply reading a carried note cannot renew it indefinitely. Any actual
+ * edit makes an unpinned note relevant for one more occurrence; unpinning follows that same rule.
+ */
+internal fun savedExerciseNote(
+    current: SessionExerciseEntity,
+    notes: String?,
+    isPinned: Boolean,
+): ExerciseNoteState {
+    val text = notes?.trim()?.takeIf { it.isNotEmpty() }
+    val pinned = text != null && isPinned
+    val carryForward = when {
+        text == null -> false
+        pinned -> true
+        text == current.notes && !current.isNotePinned -> current.noteCarryForward
+        else -> true
+    }
+    return ExerciseNoteState(
+        text = text,
+        isPinned = pinned,
+        carryForward = carryForward,
+    )
+}
+
+/** Resolve the previous occurrence's note without letting an expired note reappear. */
+internal fun noteForNextSession(previous: SessionExerciseEntity?): ExerciseNoteState? {
+    previous ?: return null
+    val text = previous.notes?.takeIf { it.isNotBlank() } ?: return null
+    if (!previous.isNotePinned && !previous.noteCarryForward) return null
+    return ExerciseNoteState(
+        text = text,
+        isPinned = previous.isNotePinned,
+        carryForward = previous.isNotePinned,
+    )
 }

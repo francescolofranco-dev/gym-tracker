@@ -192,14 +192,26 @@ private fun JSONObject.parseSession(): SessionEntity {
     )
 }
 
-private fun JSONObject.parseSessionExercise(): SessionExerciseEntity = SessionExerciseEntity(
-    id = getLong("id"),
-    sessionId = getLong("sessionId"),
-    exerciseId = getLong("exerciseId"),
-    orderInSession = getInt("orderInSession"),
-    notes = optStringOrNull("notes"),
-    isSkipped = getBoolean("isSkipped"),
-)
+private fun JSONObject.parseSessionExercise(): SessionExerciseEntity {
+    val notes = optStringOrNull("notes")
+    val isPinned = notes != null && optBoolean("isNotePinned", false)
+    // Backups from before the lifecycle field existed treat their notes as freshly written so
+    // the latest one remains useful in the next exercise occurrence after a restore.
+    val carryForward = notes != null && (
+        isPinned ||
+            if (has("noteCarryForward")) optBoolean("noteCarryForward", false) else true
+        )
+    return SessionExerciseEntity(
+        id = getLong("id"),
+        sessionId = getLong("sessionId"),
+        exerciseId = getLong("exerciseId"),
+        orderInSession = getInt("orderInSession"),
+        notes = notes,
+        isNotePinned = isPinned,
+        noteCarryForward = carryForward,
+        isSkipped = getBoolean("isSkipped"),
+    )
+}
 
 private fun JSONObject.parseSetLog(): SetLogEntity = SetLogEntity(
     id = getLong("id"),

@@ -5,7 +5,8 @@ Android workout tracker for logging gym sessions, sets, reps, weight, notes, and
 ## Features
 
 - Start blank sessions or reusable template-based workouts.
-- Track sets with reps, weight, skipped sets, exercise notes, and session notes.
+- Track sets with reps, weight, skipped sets, session notes, and exercise notes that carry into
+  the next workout or stay pinned until you unpin them.
 - Support unilateral exercises with separate left/right sets and per-side planning.
 - Resume active sessions with an accurate workout timer, plus editable session timing.
 - Review past sessions by month with duration, sets, exercises, and volume.

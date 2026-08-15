@@ -25,7 +25,7 @@ import dev.francescolofranco.gymtracker.data.db.entities.TemplateExerciseEntity
         TemplateEntity::class,
         TemplateExerciseEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -98,6 +98,31 @@ abstract class AppDatabase : RoomDatabase() {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE exercise ADD COLUMN isUnilateral INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE set_log ADD COLUMN side TEXT NOT NULL DEFAULT 'BOTH'")
+            }
+        }
+
+        /**
+         * v4 → v5: exercise notes gain an explicit one-session carry lifecycle and an
+         * indefinite pinned state. Existing non-blank notes are eligible to appear once in the
+         * next occurrence so upgrading does not silently strand the user's latest instruction.
+         */
+        val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE session_exercise " +
+                        "ADD COLUMN isNotePinned INTEGER NOT NULL DEFAULT 0",
+                )
+                db.execSQL(
+                    "ALTER TABLE session_exercise " +
+                        "ADD COLUMN noteCarryForward INTEGER NOT NULL DEFAULT 0",
+                )
+                db.execSQL(
+                    """
+                    UPDATE session_exercise
+                    SET noteCarryForward = 1
+                    WHERE notes IS NOT NULL AND TRIM(notes) != ''
+                    """.trimIndent(),
+                )
             }
         }
     }

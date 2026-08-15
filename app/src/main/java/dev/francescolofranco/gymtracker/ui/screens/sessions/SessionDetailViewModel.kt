@@ -137,8 +137,12 @@ class SessionDetailViewModel @Inject constructor(
         repo.swapSessionExerciseOrder(targetId, ordered[neighborIdx])
     }
 
-    fun setExerciseNotes(sessionExerciseId: Long, notes: String?) = viewModelScope.launch {
-        repo.updateSessionExerciseNotes(sessionExerciseId, notes?.ifBlank { null })
+    fun setExerciseNote(
+        sessionExerciseId: Long,
+        notes: String?,
+        isPinned: Boolean,
+    ) = viewModelScope.launch {
+        repo.updateSessionExerciseNote(sessionExerciseId, notes, isPinned)
     }
 
     fun setSessionNotes(notes: String?) = viewModelScope.launch {

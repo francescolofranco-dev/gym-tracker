@@ -178,8 +178,12 @@ class ActiveSessionViewModel @Inject constructor(
         repo.setSessionExerciseSkipped(sessionExerciseId, skipped)
     }
 
-    fun setExerciseNotes(sessionExerciseId: Long, notes: String?) = viewModelScope.launch {
-        repo.updateSessionExerciseNotes(sessionExerciseId, notes?.ifBlank { null })
+    fun setExerciseNote(
+        sessionExerciseId: Long,
+        notes: String?,
+        isPinned: Boolean,
+    ) = viewModelScope.launch {
+        repo.updateSessionExerciseNote(sessionExerciseId, notes, isPinned)
     }
 
     fun setSessionNotes(notes: String?) = viewModelScope.launch {
