@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -21,10 +22,13 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -35,11 +39,15 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
+import dev.francescolofranco.gymtracker.data.db.projections.ExerciseWithRecency
 import dev.francescolofranco.gymtracker.domain.Muscle
+import dev.francescolofranco.gymtracker.ui.components.ErrorPane
+import dev.francescolofranco.gymtracker.ui.components.ExerciseSearchField
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
+import dev.francescolofranco.gymtracker.ui.components.matchesExerciseQuery
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
-import dev.francescolofranco.gymtracker.ui.components.ErrorPane
+import kotlinx.coroutines.launch
 
 @Composable
 fun ExercisePickerSheet(
@@ -52,11 +60,35 @@ fun ExercisePickerSheet(
     val rowState by viewModel.rows.collectAsStateWithLifecycle()
     val rows = (rowState as? Loadable.Ready)?.value.orEmpty()
     var pickedIds by remember { mutableStateOf(emptySet<Long>()) }
-    var filter by remember { mutableStateOf<PickerFilter>(PickerFilter.All) }
+    var filterKey by rememberSaveable { mutableStateOf(PickerFilter.All.saveKey()) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    val filter = restorePickerFilter(filterKey)
+    val exerciseListState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
 
-    val availableMuscles = remember(rows) {
-        rows.flatMap { it.exercise.primaryMuscles }
-            .distinct()
+    fun updateSearchQuery(query: String) {
+        if (query == searchQuery) return
+        searchQuery = query
+        scope.launch { exerciseListState.scrollToItem(0) }
+    }
+
+    fun updateFilter(newFilter: PickerFilter) {
+        if (newFilter == filter) return
+        filterKey = newFilter.saveKey()
+        scope.launch { exerciseListState.scrollToItem(0) }
+    }
+
+    fun resetSearchAndFilter() {
+        searchQuery = ""
+        filterKey = PickerFilter.All.saveKey()
+        scope.launch { exerciseListState.scrollToItem(0) }
+    }
+
+    val availableMuscles = remember(rows, filter) {
+        buildSet {
+            rows.forEach { addAll(it.exercise.primaryMuscles) }
+            if (filter is PickerFilter.ByMuscle) add(filter.muscle)
+        }
             .sortedBy { it.ordinal }
     }
     // Snapshot recency when the picker receives its first result. Adding an exercise to the active
@@ -64,18 +96,8 @@ fun ExercisePickerSheet(
     val recentIds = remember(rows.isNotEmpty()) {
         rows.filter { it.lastUsedAt != null }.take(10).map { it.exercise.id }
     }
-    val visibleExercises = remember(rows, filter, recentIds) {
-        when (val selected = filter) {
-            PickerFilter.All -> rows.map { it.exercise }.sortedBy { it.name.lowercase() }
-            PickerFilter.Recent -> recentIds.mapNotNull { id ->
-                rows.firstOrNull { it.exercise.id == id }?.exercise
-            }
-            is PickerFilter.ByMuscle -> rows.asSequence()
-                .map { it.exercise }
-                .filter { selected.muscle in it.primaryMuscles }
-                .sortedBy { it.name.lowercase() }
-                .toList()
-        }
+    val visibleExercises = remember(rows, filter, recentIds, searchQuery) {
+        filterPickerExercises(rows, filter, recentIds, searchQuery)
     }
 
     // Keep the picker open while several exercises are added. It is intentionally dismissed only
@@ -124,21 +146,32 @@ fun ExercisePickerSheet(
                             modifier = Modifier.padding(vertical = 24.dp, horizontal = 4.dp),
                         )
                     } else {
+                        ExerciseSearchField(
+                            query = searchQuery,
+                            onQueryChange = ::updateSearchQuery,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp, end = 8.dp),
+                        )
+
                         ExerciseFilters(
                             filter = filter,
                             availableMuscles = availableMuscles,
-                            onFilter = { filter = it },
+                            onFilter = ::updateFilter,
                         )
 
                         if (visibleExercises.isEmpty()) {
-                            Text(
-                                text = "No recently used exercises yet.",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(vertical = 24.dp, horizontal = 4.dp),
+                            PickerNoSearchResults(
+                                query = searchQuery,
+                                filter = filter,
+                                onReset = ::resetSearchAndFilter,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
                             )
                         } else {
                             LazyColumn(
+                                state = exerciseListState,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .weight(1f),
@@ -169,6 +202,46 @@ fun ExercisePickerSheet(
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PickerNoSearchResults(
+    query: String,
+    filter: PickerFilter,
+    onReset: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.padding(vertical = 24.dp, horizontal = 4.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = when {
+                query.isBlank() && filter is PickerFilter.ByMuscle ->
+                    "No ${filter.muscle.displayName} exercises."
+                query.isBlank() && filter == PickerFilter.Recent ->
+                    "No recently used exercises yet."
+                query.isBlank() -> "No exercises in this filter."
+                filter == PickerFilter.Recent ->
+                    "No recent exercises match \"${query.trim()}\""
+                filter is PickerFilter.ByMuscle ->
+                    "No ${filter.muscle.displayName} exercises match \"${query.trim()}\""
+                else -> "No exercises match \"${query.trim()}\""
+            },
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        TextButton(onClick = onReset) {
+            Text(
+                when {
+                    query.isNotBlank() && filter == PickerFilter.All -> "Clear search"
+                    query.isBlank() -> "Show all exercises"
+                    else -> "Clear search and filter"
+                },
+            )
         }
     }
 }
@@ -207,10 +280,45 @@ private fun ExerciseFilters(
     }
 }
 
-private sealed interface PickerFilter {
+internal sealed interface PickerFilter {
     data object All : PickerFilter
     data object Recent : PickerFilter
     data class ByMuscle(val muscle: Muscle) : PickerFilter
+}
+
+internal fun PickerFilter.saveKey(): String = when (this) {
+    PickerFilter.All -> "all"
+    PickerFilter.Recent -> "recent"
+    is PickerFilter.ByMuscle -> "muscle:${muscle.name}"
+}
+
+internal fun restorePickerFilter(key: String): PickerFilter = when {
+    key == "recent" -> PickerFilter.Recent
+    key.startsWith("muscle:") -> Muscle.entries
+        .firstOrNull { it.name == key.substringAfter("muscle:") }
+        ?.let { PickerFilter.ByMuscle(it) }
+        ?: PickerFilter.All
+    else -> PickerFilter.All
+}
+
+internal fun filterPickerExercises(
+    rows: List<ExerciseWithRecency>,
+    filter: PickerFilter,
+    recentIds: List<Long>,
+    query: String,
+): List<ExerciseEntity> {
+    val filtered = when (filter) {
+        PickerFilter.All -> rows.map { it.exercise }.sortedBy { it.name.lowercase() }
+        PickerFilter.Recent -> recentIds.mapNotNull { id ->
+            rows.firstOrNull { it.exercise.id == id }?.exercise
+        }
+        is PickerFilter.ByMuscle -> rows.asSequence()
+            .map { it.exercise }
+            .filter { filter.muscle in it.primaryMuscles }
+            .sortedBy { it.name.lowercase() }
+            .toList()
+    }
+    return filtered.filter { it.matchesExerciseQuery(query) }
 }
 
 @Composable
@@ -232,6 +340,9 @@ private fun PickerRow(
             Text(text = exercise.name, style = MaterialTheme.typography.titleMedium)
             Text(
                 text = buildList {
+                    val primaries = exercise.primaryMuscles.sortedBy { it.ordinal }
+                        .joinToString(" + ") { it.displayName }
+                    if (primaries.isNotEmpty()) add(primaries)
                     if (exercise.isBodyweight) add("BW")
                     if (exercise.isUnilateral) add("Unilateral")
                     add("${exercise.targetSets}×${exercise.repRangeMin}–${exercise.repRangeMax}${if (exercise.isUnilateral) "/side" else ""}")
@@ -246,7 +357,7 @@ private fun PickerRow(
         if (alreadyAdded) {
             Icon(
                 imageVector = Icons.Filled.Check,
-                contentDescription = "Already in session",
+                contentDescription = "Already selected",
                 tint = MaterialTheme.colorScheme.primary,
             )
         }

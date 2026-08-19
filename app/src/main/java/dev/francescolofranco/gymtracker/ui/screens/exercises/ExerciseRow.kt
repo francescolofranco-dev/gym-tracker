@@ -24,6 +24,7 @@ fun ExerciseRow(
     exercise: ExerciseEntity,
     onTap: () -> Unit,
     onDeleteRequest: () -> Unit,
+    showPrimaryMuscles: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -45,7 +46,7 @@ fun ExerciseRow(
                 style = MaterialTheme.typography.titleMedium,
             )
             Text(
-                text = exercise.summaryLine(),
+                text = exercise.summaryLine(showPrimaryMuscles),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
@@ -60,10 +61,13 @@ fun ExerciseRow(
     }
 }
 
-private fun ExerciseEntity.summaryLine(): String {
+private fun ExerciseEntity.summaryLine(showPrimaryMuscles: Boolean): String {
     val sets = "${targetSets}×${repRangeMin}–${repRangeMax}${if (isUnilateral) "/side" else ""}"
     val secondaries = secondaryMuscles.joinToString(", ") { it.displayName }
     val parts = mutableListOf<String>()
+    if (showPrimaryMuscles) {
+        parts += primaryMuscles.sortedBy { it.ordinal }.joinToString(" + ") { it.displayName }
+    }
     if (isBodyweight) parts += "BW"
     if (isUnilateral) parts += "Unilateral"
     parts += sets

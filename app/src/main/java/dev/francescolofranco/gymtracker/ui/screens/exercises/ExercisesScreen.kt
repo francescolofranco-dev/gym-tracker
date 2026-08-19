@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -21,11 +22,13 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -33,10 +36,12 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
-import dev.francescolofranco.gymtracker.ui.motion.GymMotion
+import dev.francescolofranco.gymtracker.ui.components.ErrorPane
+import dev.francescolofranco.gymtracker.ui.components.ExerciseSearchField
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
-import dev.francescolofranco.gymtracker.ui.components.ErrorPane
+import dev.francescolofranco.gymtracker.ui.components.matchesExerciseQuery
+import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -52,6 +57,14 @@ fun ExercisesScreen(
     val scope = rememberCoroutineScope()
 
     var deleteConfirmTarget by remember { mutableStateOf<ExerciseEntity?>(null) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    val exerciseListState = rememberLazyListState()
+
+    fun updateSearchQuery(query: String) {
+        if (query == searchQuery) return
+        searchQuery = query
+        scope.launch { exerciseListState.scrollToItem(0) }
+    }
 
     fun deleteWithUndo(target: ExerciseEntity) {
         viewModel.softDelete(target.id)
@@ -89,30 +102,69 @@ fun ExercisesScreen(
                             .padding(24.dp),
                     )
                 } else {
-                    LazyColumn(
+                    val matchingGroups = remember(current.value, searchQuery) {
+                        if (searchQuery.isBlank()) {
+                            current.value
+                        } else {
+                            current.value
+                                .mapValues { (_, exercises) ->
+                                    exercises.filter { it.matchesExerciseQuery(searchQuery) }
+                                }
+                                .filterValues { it.isNotEmpty() }
+                        }
+                    }
+
+                    Column(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(padding),
-                        contentPadding = PaddingValues(bottom = 96.dp),
                     ) {
-                        current.value.forEach { (muscle, items) ->
-                            stickyHeader(key = "header-${muscle.name}") {
-                                SectionHeader(text = muscle.displayName)
-                            }
-                            items(
-                                items = items,
-                                key = { it.id },
-                            ) { exercise ->
-                                ExerciseRow(
-                                    modifier = Modifier.animateItem(
-                                        fadeInSpec = GymMotion.ItemFadeIn,
-                                        placementSpec = GymMotion.ItemPlacement,
-                                        fadeOutSpec = GymMotion.ItemFadeOut,
-                                    ),
-                                    exercise = exercise,
-                                    onTap = { onOpenDetail(exercise.id) },
-                                    onDeleteRequest = { deleteConfirmTarget = exercise },
-                                )
+                        ExerciseSearchField(
+                            query = searchQuery,
+                            onQueryChange = ::updateSearchQuery,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                        )
+
+                        if (matchingGroups.isEmpty()) {
+                            NoSearchResults(
+                                query = searchQuery,
+                                onClear = { updateSearchQuery("") },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f)
+                                    .padding(24.dp),
+                            )
+                        } else {
+                            LazyColumn(
+                                state = exerciseListState,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f),
+                                contentPadding = PaddingValues(bottom = 96.dp),
+                            ) {
+                                matchingGroups.forEach { (muscle, items) ->
+                                    stickyHeader(key = "header-${muscle.name}") {
+                                        SectionHeader(text = muscle.displayName)
+                                    }
+                                    items(
+                                        items = items,
+                                        key = { it.id },
+                                    ) { exercise ->
+                                        ExerciseRow(
+                                            modifier = Modifier.animateItem(
+                                                fadeInSpec = GymMotion.ItemFadeIn,
+                                                placementSpec = GymMotion.ItemPlacement,
+                                                fadeOutSpec = GymMotion.ItemFadeOut,
+                                            ),
+                                            exercise = exercise,
+                                            showPrimaryMuscles = searchQuery.isNotBlank(),
+                                            onTap = { onOpenDetail(exercise.id) },
+                                            onDeleteRequest = { deleteConfirmTarget = exercise },
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -155,6 +207,32 @@ fun ExercisesScreen(
                 androidx.compose.material3.TextButton(onClick = { deleteConfirmTarget = null }) { Text("Cancel") }
             },
         )
+    }
+}
+
+@Composable
+private fun NoSearchResults(
+    query: String,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text(
+            text = "No exercises match \"${query.trim()}\"",
+            style = MaterialTheme.typography.titleMedium,
+        )
+        Text(
+            text = "Try another name or muscle.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        TextButton(onClick = onClear) {
+            Text("Clear search")
+        }
     }
 }
 
