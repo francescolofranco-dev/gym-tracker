@@ -4,6 +4,7 @@ enum class Muscle(val displayName: String) {
     CHEST("Chest"),
     LATS("Back (Lats)"),
     UPPER_BACK_TRAPS("Back (Upper / Traps)"),
+    LOWER_BACK("Back (Lower)"),
     FRONT_DELTS("Shoulders (Front)"),
     SIDE_DELTS("Shoulders (Side)"),
     REAR_DELTS("Shoulders (Rear)"),
