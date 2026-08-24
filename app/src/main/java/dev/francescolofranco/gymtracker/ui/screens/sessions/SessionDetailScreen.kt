@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
@@ -23,6 +24,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -76,6 +78,12 @@ fun SessionDetailScreen(
     var deleteStage by remember { mutableStateOf(DeleteStage.None) }
     var timingEditor by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
+    val shareText = remember(session, details, unit) {
+        session
+            ?.takeIf { it.endedAt != null }
+            ?.let { buildSessionShareText(it, details, unit) }
+    }
 
     Scaffold(
         topBar = {
@@ -118,6 +126,19 @@ fun SessionDetailScreen(
                     }
                 },
             )
+        },
+        bottomBar = {
+            if (shareText != null) {
+                Surface(tonalElevation = 3.dp) {
+                    WhatsAppShareButton(
+                        onClick = { shareSessionOnWhatsApp(context, shareText) },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                    )
+                }
+            }
         },
     ) { padding ->
         if (content == null) {

@@ -61,7 +61,9 @@ class SessionRepository @Inject constructor(
         return sessionId
     }
 
-    suspend fun endSession(id: Long, at: Instant = Instant.now()) = sessionDao.end(id, at)
+    /** Returns whether the ended session was accepted (as opposed to a setup-only draft). */
+    suspend fun endSession(id: Long, at: Instant = Instant.now()): Boolean =
+        sessionDao.endAndReturnWasAccepted(id, at)
 
     suspend fun updateSessionTiming(id: Long, start: Instant, end: Instant) {
         require(!end.isBefore(start)) { "Session end cannot be before its start." }

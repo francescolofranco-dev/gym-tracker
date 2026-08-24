@@ -74,6 +74,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun SessionsScreen(
     onOpenActive: (Long) -> Unit,
+    onOpenCompleted: (Long) -> Unit,
     onOpenDetail: (Long) -> Unit,
     viewModel: SessionsViewModel = hiltViewModel(),
 ) {
@@ -110,6 +111,7 @@ fun SessionsScreen(
         viewModel.events.collect { event ->
             when (event) {
                 is SessionsViewModel.Event.OpenActive -> onOpenActive(event.sessionId)
+                is SessionsViewModel.Event.OpenCompleted -> onOpenCompleted(event.sessionId)
             }
         }
     }

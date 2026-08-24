@@ -19,16 +19,16 @@ import dev.francescolofranco.gymtracker.ui.screens.exercises.detectPersonalRecor
 import dev.francescolofranco.gymtracker.ui.screens.exercises.PersonalRecordType
 import dev.francescolofranco.gymtracker.work.IdleSessionScheduler
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -149,8 +149,10 @@ class ActiveSessionViewModel @Inject constructor(
         .flowOn(Dispatchers.Default)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyMap())
 
-    private val _exitRequested = MutableStateFlow(false)
-    val exitRequested: StateFlow<Boolean> = _exitRequested.asStateFlow()
+    // A buffered channel keeps a completed-end event across a brief collector gap (for example,
+    // activity recreation) while still delivering it only once.
+    private val _events = Channel<Event>(Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
 
     fun addExercise(exerciseId: Long) = viewModelScope.launch {
         repo.addExerciseToSession(sessionId, exerciseId)
@@ -245,10 +247,17 @@ class ActiveSessionViewModel @Inject constructor(
     }
 
     fun endSession() = viewModelScope.launch {
-        repo.endSession(sessionId, java.time.Instant.now())
+        val wasAccepted = repo.endSession(sessionId, java.time.Instant.now())
         idleScheduler.cancel(sessionId)
         // Tear the timer notification down — no session means nothing to display.
         timer.stop()
-        _exitRequested.value = true
+        // Drafts keep the previous quiet exit behaviour. Real workouts get a dedicated
+        // completion destination that can be shared and revisited safely after rotation.
+        _events.send(if (wasAccepted) Event.OpenCompleted(sessionId) else Event.Exit)
+    }
+
+    sealed interface Event {
+        data object Exit : Event
+        data class OpenCompleted(val sessionId: Long) : Event
     }
 }

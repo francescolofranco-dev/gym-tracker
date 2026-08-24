@@ -35,6 +35,7 @@ import dev.francescolofranco.gymtracker.ui.screens.exercises.ExerciseDetailScree
 import dev.francescolofranco.gymtracker.ui.screens.exercises.ExercisesScreen
 import dev.francescolofranco.gymtracker.ui.screens.restore.DriveRestorePrompt
 import dev.francescolofranco.gymtracker.ui.screens.sessions.ActiveSessionScreen
+import dev.francescolofranco.gymtracker.ui.screens.sessions.SessionCompletedScreen
 import dev.francescolofranco.gymtracker.ui.screens.sessions.SessionDetailScreen
 import dev.francescolofranco.gymtracker.ui.screens.sessions.SessionsScreen
 import dev.francescolofranco.gymtracker.ui.screens.settings.SettingsScreen
@@ -87,6 +88,7 @@ fun GymApp() {
                     TopLevelScaffold(TopDestination.Sessions, navigateToTop) {
                         SessionsScreen(
                             onOpenActive = { id -> nav.navigate(SessionRoutes.active(id)) },
+                            onOpenCompleted = { id -> nav.navigate(SessionRoutes.complete(id)) },
                             onOpenDetail = { id -> nav.navigate(SessionRoutes.detail(id)) },
                         )
                     }
@@ -136,8 +138,20 @@ fun GymApp() {
                     val id = entry.arguments?.getLong(SessionRoutes.ACTIVE_ARG) ?: return@composable
                     ActiveSessionScreen(
                         onExit = { nav.popBackStack() },
+                        onCompleted = { sessionId ->
+                            nav.navigate(SessionRoutes.complete(sessionId)) {
+                                popUpTo(SessionRoutes.ACTIVE) { inclusive = true }
+                                launchSingleTop = true
+                            }
+                        },
                         onOpenExerciseStats = { exerciseId -> nav.navigate(ExerciseRoutes.detail(exerciseId)) },
                     )
+                }
+                composable(
+                    route = SessionRoutes.COMPLETE,
+                    arguments = listOf(navArgument(SessionRoutes.COMPLETE_ARG) { type = NavType.LongType }),
+                ) {
+                    SessionCompletedScreen(onDone = { nav.popBackStack() })
                 }
                 composable(
                     route = SessionRoutes.DETAIL,

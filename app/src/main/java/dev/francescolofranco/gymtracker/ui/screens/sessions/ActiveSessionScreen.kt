@@ -93,6 +93,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun ActiveSessionScreen(
     onExit: () -> Unit,
+    onCompleted: (Long) -> Unit,
     onOpenExerciseStats: (Long) -> Unit,
     viewModel: ActiveSessionViewModel = hiltViewModel(),
 ) {
@@ -103,7 +104,6 @@ fun ActiveSessionScreen(
     val unit = content?.unit ?: WeightUnit.KG
     val hints by viewModel.hints.collectAsStateWithLifecycle()
     val personalRecords by viewModel.personalRecords.collectAsStateWithLifecycle()
-    val exitRequested by viewModel.exitRequested.collectAsStateWithLifecycle()
     val keepScreenOn = content?.keepScreenOn ?: false
 
     (loadableContent as? Loadable.Error)?.let {
@@ -116,8 +116,13 @@ fun ActiveSessionScreen(
     var sessionNotesEditor by remember { mutableStateOf(false) }
     var exerciseNotesTarget by remember { mutableStateOf<SessionExerciseDetail?>(null) }
 
-    LaunchedEffect(exitRequested) {
-        if (exitRequested) onExit()
+    LaunchedEffect(viewModel) {
+        viewModel.events.collect { event ->
+            when (event) {
+                ActiveSessionViewModel.Event.Exit -> onExit()
+                is ActiveSessionViewModel.Event.OpenCompleted -> onCompleted(event.sessionId)
+            }
+        }
     }
 
     // Honour the "keep screen on during session" pref. Adds the FLAG_KEEP_SCREEN_ON window

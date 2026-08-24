@@ -15,13 +15,13 @@ import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.RetryableViewModel
 import dev.francescolofranco.gymtracker.work.IdleSessionScheduler
 import kotlinx.coroutines.FlowPreview
-import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -53,8 +53,10 @@ class SessionsViewModel @Inject constructor(
     }.debounce(24L)
         .asLoadableState(viewModelScope)
 
-    private val _events = MutableSharedFlow<Event>(extraBufferCapacity = 1)
-    val events = _events.asSharedFlow()
+    // Unlike a replay=0 SharedFlow, the channel retains navigation events while the Activity is
+    // briefly being recreated, without replaying them after they have been handled.
+    private val _events = Channel<Event>(Channel.BUFFERED)
+    val events = _events.receiveAsFlow()
 
     fun startBlankSession() = startWithTemplate(templateId = null)
 
@@ -66,7 +68,7 @@ class SessionsViewModel @Inject constructor(
         // the user lands. The first set check-off later flips state to Running. Resuming an
         // existing session keeps whatever timer state was previously running.
         if (existing == null) timer.stop()
-        _events.emit(Event.OpenActive(id))
+        _events.send(Event.OpenActive(id))
     }
 
     /**
@@ -79,9 +81,11 @@ class SessionsViewModel @Inject constructor(
         repo.endSession(current.id, java.time.Instant.now())
         idleScheduler.cancel(current.id)
         timer.stop()
+        _events.send(Event.OpenCompleted(current.id))
     }
 
     sealed interface Event {
         data class OpenActive(val sessionId: Long) : Event
+        data class OpenCompleted(val sessionId: Long) : Event
     }
 }

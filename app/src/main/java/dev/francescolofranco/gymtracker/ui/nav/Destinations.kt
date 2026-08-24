@@ -21,10 +21,13 @@ enum class TopDestination(
 object SessionRoutes {
     const val ACTIVE_ARG = "sessionId"
     const val ACTIVE = "session/active/{$ACTIVE_ARG}"
+    const val COMPLETE_ARG = "sessionId"
+    const val COMPLETE = "session/complete/{$COMPLETE_ARG}"
     const val DETAIL_ARG = "sessionId"
     const val DETAIL = "session/detail/{$DETAIL_ARG}"
 
     fun active(sessionId: Long) = "session/active/$sessionId"
+    fun complete(sessionId: Long) = "session/complete/$sessionId"
     fun detail(sessionId: Long) = "session/detail/$sessionId"
 }
 

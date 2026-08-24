@@ -63,6 +63,14 @@ interface SessionDao {
     @Query("UPDATE session SET endedAt = :at WHERE id = :id")
     suspend fun end(id: Long, at: Instant = Instant.now())
 
+    /** Ends the row and returns whether it had already been promoted from draft status. */
+    @Transaction
+    suspend fun endAndReturnWasAccepted(id: Long, at: Instant = Instant.now()): Boolean {
+        val wasAccepted = byId(id)?.acceptedAt != null
+        end(id, at)
+        return wasAccepted
+    }
+
     @Query("UPDATE session SET startedAt = :start, acceptedAt = :start, endedAt = :end WHERE id = :id")
     suspend fun updateTiming(id: Long, start: Instant, end: Instant)
 
