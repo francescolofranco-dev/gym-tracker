@@ -23,7 +23,6 @@ import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -188,29 +187,6 @@ private fun CompletedSessionContent(
                             modifier = Modifier.weight(1f),
                         )
                     }
-                    if (summary.volumeKg > 0.0) {
-                        HorizontalDivider(
-                            modifier = Modifier.padding(horizontal = 16.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant,
-                        )
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                        ) {
-                            Text(
-                                text = formatTotalVolume(summary.volumeKg, unit),
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.SemiBold,
-                            )
-                            Text(
-                                text = "Total volume",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
                 }
             }
             if (summary.exercises.isNotEmpty()) {
@@ -242,11 +218,18 @@ private fun CompletedSessionContent(
                                         modifier = Modifier.weight(1f),
                                     )
                                     Spacer(Modifier.width(12.dp))
-                                    Text(
-                                        text = "${exercise.setCount} ${if (exercise.setCount == 1) "set" else "sets"}",
-                                        style = MaterialTheme.typography.labelLarge,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    )
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text(
+                                            text = exercise.firstSetWeightLabel(unit),
+                                            style = MaterialTheme.typography.titleSmall,
+                                            fontWeight = FontWeight.SemiBold,
+                                        )
+                                        Text(
+                                            text = "${exercise.setCount} ${if (exercise.setCount == 1) "set" else "sets"}",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
                                 }
                             }
                             if (summary.exercises.size > 5) {

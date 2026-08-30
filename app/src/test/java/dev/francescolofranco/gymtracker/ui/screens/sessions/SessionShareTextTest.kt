@@ -66,9 +66,9 @@ class SessionShareTextTest {
             """
             Workout complete! 💪
             23 Aug 2026 · 1h 5m
-            1 exercise · 2 sets · 1880 kg volume
+            1 exercise · 2 sets
 
-            • Bench press — 2 sets · 1880 kg
+            • Bench press — 2 sets · 100 kg
 
             Tracked with Gym Tracker
             """.trimIndent(),
@@ -95,11 +95,11 @@ class SessionShareTextTest {
 
         assertEquals(1, summary.exerciseCount)
         assertEquals(1, summary.setCount)
-        assertEquals(0.0, summary.volumeKg, 0.0)
+        assertEquals("BW", summary.exercises.single().firstSetWeightLabel(WeightUnit.KG))
     }
 
     @Test
-    fun `share text converts weighted volume to the preferred unit`() {
+    fun `share text converts the first completed set weight to the preferred unit`() {
         val session = SessionEntity(
             startedAt = Instant.EPOCH,
             acceptedAt = Instant.EPOCH,
@@ -110,6 +110,7 @@ class SessionShareTextTest {
                 id = 1,
                 name = "Deadlift",
                 sets = listOf(
+                    set(id = 2, sessionExerciseId = 1, reps = 8, kg = 110.0, completed = true),
                     set(id = 1, sessionExerciseId = 1, reps = 10, kg = 100.0, completed = true),
                 ),
             ),
@@ -123,9 +124,27 @@ class SessionShareTextTest {
             locale = Locale.ENGLISH,
         )
 
-        assertTrue(text.contains("2205 lbs volume"))
-        assertTrue(text.contains("• Deadlift — 1 set · 2205 lbs"))
+        assertTrue(text.contains("• Deadlift — 2 sets · 220.462 lbs"))
+        assertFalse(text.contains("volume"))
         assertFalse(text.contains("kg"))
+    }
+
+    @Test
+    fun `bodyweight exercise reports added load from its first set`() {
+        val summary = summarizeFinishedSession(
+            listOf(
+                detail(
+                    id = 1,
+                    name = "Pull-up",
+                    bodyweight = true,
+                    sets = listOf(
+                        set(id = 1, sessionExerciseId = 1, reps = 6, kg = 10.0, completed = true),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals("BW +10 kg", summary.exercises.single().firstSetWeightLabel(WeightUnit.KG))
     }
 
     @Test

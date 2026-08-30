@@ -13,7 +13,8 @@ import java.util.Locale
 data class SessionShareExercise(
     val name: String,
     val setCount: Int,
-    val volumeKg: Double,
+    val firstSetKg: Double?,
+    val isBodyweight: Boolean,
 )
 
 data class SessionShareSummary(
@@ -21,7 +22,6 @@ data class SessionShareSummary(
 ) {
     val exerciseCount: Int get() = exercises.size
     val setCount: Int get() = exercises.sumOf(SessionShareExercise::setCount)
-    val volumeKg: Double get() = exercises.sumOf(SessionShareExercise::volumeKg)
 }
 
 /**
@@ -36,10 +36,14 @@ fun summarizeFinishedSession(details: List<SessionExerciseDetail>): SessionShare
                 set.loggedAt != null && set.reps != null && !set.isSkipped
             }
             if (completedSets.isEmpty()) return@mapNotNull null
+            val firstSet = completedSets.minWith(
+                compareBy({ it.setNumber }, { it.side.ordinal }),
+            )
             SessionShareExercise(
                 name = detail.exercise.name,
                 setCount = completedSets.size,
-                volumeKg = completedSets.sumOf { set -> set.reps!! * (set.kg ?: 0.0) },
+                firstSetKg = firstSet.kg,
+                isBodyweight = detail.exercise.isBodyweight,
             )
         }
     return SessionShareSummary(exercises)
@@ -59,7 +63,6 @@ fun buildSessionShareText(
     val headlineStats = buildList {
         add(plural(summary.exerciseCount, "exercise", "exercises"))
         add(plural(summary.setCount, "set", "sets"))
-        if (summary.volumeKg > 0.0) add("${formatTotalVolume(summary.volumeKg, unit)} volume")
     }.joinToString(" · ")
 
     return buildString {
@@ -72,9 +75,7 @@ fun buildSessionShareText(
             appendLine()
             summary.exercises.forEachIndexed { index, exercise ->
                 append("• ${exercise.name} — ${plural(exercise.setCount, "set", "sets")}")
-                if (exercise.volumeKg > 0.0) {
-                    append(" · ${formatTotalVolume(exercise.volumeKg, unit)}")
-                }
+                append(" · ${exercise.firstSetWeightLabel(unit)}")
                 if (index != summary.exercises.lastIndex) appendLine()
             }
         }
@@ -83,6 +84,15 @@ fun buildSessionShareText(
         appendLine()
         append("Tracked with Gym Tracker")
     }
+}
+
+fun SessionShareExercise.firstSetWeightLabel(unit: WeightUnit): String {
+    val kg = firstSetKg
+    if (isBodyweight && (kg == null || kg == 0.0)) return "BW"
+    if (kg == null) return "—"
+
+    val weight = "${formatWeightNumber(convertFromKg(kg, unit))} ${unit.label()}"
+    return if (isBodyweight) "BW +$weight" else weight
 }
 
 fun formatShareDuration(duration: Duration): String {
