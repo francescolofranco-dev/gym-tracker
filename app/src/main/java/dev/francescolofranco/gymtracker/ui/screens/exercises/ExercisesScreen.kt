@@ -144,9 +144,9 @@ fun ExercisesScreen(
                                     .weight(1f),
                                 contentPadding = PaddingValues(bottom = 96.dp),
                             ) {
-                                matchingGroups.forEach { (muscle, items) ->
-                                    stickyHeader(key = "header-${muscle.name}") {
-                                        SectionHeader(text = muscle.displayName)
+                                matchingGroups.forEach { (category, items) ->
+                                    stickyHeader(key = "header-${category.name}") {
+                                        SectionHeader(text = category.displayName)
                                     }
                                     items(
                                         items = items,

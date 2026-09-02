@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.data.repository.ExerciseRepository
-import dev.francescolofranco.gymtracker.domain.Muscle
+import dev.francescolofranco.gymtracker.domain.MuscleCategory
 import dev.francescolofranco.gymtracker.ui.components.ExerciseTopToBottomComparator
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.RetryableViewModel
@@ -25,12 +25,12 @@ class ExercisesViewModel @Inject constructor(
 ) : RetryableViewModel() {
 
     /**
-     * Groups exercises under their anatomically highest primary muscle. Multi-primary exercises
-     * only appear once rather than being duplicated across every group they touch.
+     * Groups exercises under the broad category of their anatomically highest primary muscle.
+     * Multi-primary exercises only appear once rather than being duplicated across categories.
      */
-    val grouped: StateFlow<Loadable<Map<Muscle, List<ExerciseEntity>>>> =
+    val grouped: StateFlow<Loadable<Map<MuscleCategory, List<ExerciseEntity>>>> =
         repo.observeActive()
-            .map(::groupExercisesTopToBottom)
+            .map(::groupExercisesByCategory)
             .asLoadableState(viewModelScope)
 
     private val _editing = MutableStateFlow<EditMode>(EditMode.None)
@@ -70,11 +70,15 @@ class ExercisesViewModel @Inject constructor(
     }
 }
 
-internal fun groupExercisesTopToBottom(
+internal fun groupExercisesByCategory(
     exercises: List<ExerciseEntity>,
-): Map<Muscle, List<ExerciseEntity>> = exercises
-    .groupBy { it.anatomicalLeadMuscle() ?: Muscle.CORE }
-    .toSortedMap(compareBy { it.anatomicalRank })
+): Map<MuscleCategory, List<ExerciseEntity>> = exercises
+    .groupBy { exercise ->
+        exercise.anatomicalLeadMuscle()
+            ?.let(MuscleCategory::containing)
+            ?: MuscleCategory.CORE
+    }
+    .toSortedMap(compareBy { it.ordinal })
     .mapValues { (_, items) -> items.sortedWith(ExerciseTopToBottomComparator) }
 
 sealed interface EditMode {
