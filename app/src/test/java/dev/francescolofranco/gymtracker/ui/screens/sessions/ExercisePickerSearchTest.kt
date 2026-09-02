@@ -3,6 +3,7 @@ package dev.francescolofranco.gymtracker.ui.screens.sessions
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.data.db.projections.ExerciseWithRecency
 import dev.francescolofranco.gymtracker.domain.Muscle
+import dev.francescolofranco.gymtracker.domain.MuscleCategory
 import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -36,11 +37,11 @@ class ExercisePickerSearchTest {
     }
 
     @Test
-    fun `muscle filter and query are both applied`() {
+    fun `category filter and query are both applied`() {
         val inclineBench = exercise(4, "Incline bench press", Muscle.CHEST)
         val result = filterPickerExercises(
             rows = rows + ExerciseWithRecency(inclineBench, null),
-            filter = PickerFilter.ByMuscle(Muscle.CHEST),
+            filter = PickerFilter.ByCategory(MuscleCategory.CHEST_AND_SHOULDERS),
             recentIds = emptyList(),
             query = "incline",
         )
@@ -53,13 +54,17 @@ class ExercisePickerSearchTest {
         val filters = listOf(
             PickerFilter.All,
             PickerFilter.Recent,
-            PickerFilter.ByMuscle(Muscle.REAR_DELTS),
+            PickerFilter.ByCategory(MuscleCategory.CHEST_AND_SHOULDERS),
         )
 
         filters.forEach { filter ->
             assertEquals(filter, restorePickerFilter(filter.saveKey()))
         }
-        assertEquals(PickerFilter.All, restorePickerFilter("muscle:REMOVED_VALUE"))
+        assertEquals(PickerFilter.All, restorePickerFilter("category:REMOVED_VALUE"))
+        assertEquals(
+            PickerFilter.ByCategory(MuscleCategory.CHEST_AND_SHOULDERS),
+            restorePickerFilter("muscle:REAR_DELTS"),
+        )
     }
 
     private fun exercise(id: Long, name: String, primaryMuscle: Muscle) = ExerciseEntity(
