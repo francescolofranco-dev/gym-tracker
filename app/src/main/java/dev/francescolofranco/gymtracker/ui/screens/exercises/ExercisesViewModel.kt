@@ -6,8 +6,10 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.data.repository.ExerciseRepository
 import dev.francescolofranco.gymtracker.domain.Muscle
+import dev.francescolofranco.gymtracker.ui.components.ExerciseTopToBottomComparator
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.RetryableViewModel
+import dev.francescolofranco.gymtracker.ui.components.anatomicalLeadMuscle
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -23,17 +25,12 @@ class ExercisesViewModel @Inject constructor(
 ) : RetryableViewModel() {
 
     /**
-     * Groups exercises under their "lead" primary muscle — the first primary in [Muscle] enum
-     * order. Multi-primary exercises only appear once (under their lead) rather than being
-     * duplicated across every group they touch, which would clutter the list.
+     * Groups exercises under their anatomically highest primary muscle. Multi-primary exercises
+     * only appear once rather than being duplicated across every group they touch.
      */
     val grouped: StateFlow<Loadable<Map<Muscle, List<ExerciseEntity>>>> =
         repo.observeActive()
-            .map { list ->
-                list.groupBy { ex -> ex.primaryMuscles.minByOrNull { it.ordinal } ?: Muscle.CORE }
-                        .toSortedMap(compareBy { it.ordinal })
-                        .mapValues { (_, items) -> items.sortedBy { it.name.lowercase() } }
-            }
+            .map(::groupExercisesTopToBottom)
             .asLoadableState(viewModelScope)
 
     private val _editing = MutableStateFlow<EditMode>(EditMode.None)
@@ -72,6 +69,13 @@ class ExercisesViewModel @Inject constructor(
         repo.restore(id)
     }
 }
+
+internal fun groupExercisesTopToBottom(
+    exercises: List<ExerciseEntity>,
+): Map<Muscle, List<ExerciseEntity>> = exercises
+    .groupBy { it.anatomicalLeadMuscle() ?: Muscle.CORE }
+    .toSortedMap(compareBy { it.anatomicalRank })
+    .mapValues { (_, items) -> items.sortedWith(ExerciseTopToBottomComparator) }
 
 sealed interface EditMode {
     data object None : EditMode

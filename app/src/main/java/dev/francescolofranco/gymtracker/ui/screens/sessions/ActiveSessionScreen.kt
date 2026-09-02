@@ -81,6 +81,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetail
 import dev.francescolofranco.gymtracker.domain.WeightUnit
+import dev.francescolofranco.gymtracker.domain.sortedTopToBottom
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
@@ -595,7 +596,7 @@ private fun ExerciseSectionHeader(
             )
             Text(
                 text = buildList {
-                    add(exercise.primaryMuscles.sortedBy { it.ordinal }.joinToString(" + ") { it.displayName })
+                    add(exercise.primaryMuscles.sortedTopToBottom().joinToString(" + ") { it.displayName })
                     if (exercise.isBodyweight) add("BW")
                     add(
                         "${exercise.targetSets}×${exercise.repRangeMin}–${exercise.repRangeMax}" +
@@ -747,7 +748,7 @@ fun ExerciseCard(
                 )
                 Text(
                     text = buildList {
-                        add(exercise.primaryMuscles.sortedBy { it.ordinal }.joinToString(" + ") { it.displayName })
+                        add(exercise.primaryMuscles.sortedTopToBottom().joinToString(" + ") { it.displayName })
                         if (exercise.isBodyweight) add("BW")
                         add(
                             "${exercise.targetSets}×${exercise.repRangeMin}–${exercise.repRangeMax}" +

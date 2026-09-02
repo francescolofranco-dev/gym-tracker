@@ -18,10 +18,25 @@ class ExercisePickerSearchTest {
     }
 
     @Test
-    fun `all filter stays alphabetical with a blank query`() {
+    fun `all filter follows anatomy before exercise name`() {
         val result = filterPickerExercises(rows, PickerFilter.All, emptyList(), "  ")
 
-        assertEquals(listOf("Back squat", "Bench press", "Lat pulldown"), result.map { it.name })
+        assertEquals(listOf("Bench press", "Lat pulldown", "Back squat"), result.map { it.name })
+    }
+
+    @Test
+    fun `search results retain anatomical order`() {
+        val frontRaise = exercise(4, "Front raise", Muscle.FRONT_DELTS)
+        val calfRaise = exercise(5, "Calf raise", Muscle.CALVES)
+
+        val result = filterPickerExercises(
+            rows = listOf(ExerciseWithRecency(calfRaise, null), ExerciseWithRecency(frontRaise, null)),
+            filter = PickerFilter.All,
+            recentIds = emptyList(),
+            query = "raise",
+        )
+
+        assertEquals(listOf(frontRaise.id, calfRaise.id), result.map { it.id })
     }
 
     @Test
@@ -39,14 +54,19 @@ class ExercisePickerSearchTest {
     @Test
     fun `category filter and query are both applied`() {
         val inclineBench = exercise(4, "Incline bench press", Muscle.CHEST)
+        val shoulderPress = exercise(
+            id = 5,
+            name = "Zulu shoulder press",
+            primaryMuscles = linkedSetOf(Muscle.CHEST, Muscle.FRONT_DELTS),
+        )
         val result = filterPickerExercises(
-            rows = rows + ExerciseWithRecency(inclineBench, null),
+            rows = rows + ExerciseWithRecency(inclineBench, null) + ExerciseWithRecency(shoulderPress, null),
             filter = PickerFilter.ByCategory(MuscleCategory.CHEST_AND_SHOULDERS),
             recentIds = emptyList(),
-            query = "incline",
+            query = "press",
         )
 
-        assertEquals(listOf(inclineBench.id), result.map { it.id })
+        assertEquals(listOf(shoulderPress.id, bench.id, inclineBench.id), result.map { it.id })
     }
 
     @Test
@@ -67,10 +87,17 @@ class ExercisePickerSearchTest {
         )
     }
 
-    private fun exercise(id: Long, name: String, primaryMuscle: Muscle) = ExerciseEntity(
+    private fun exercise(id: Long, name: String, primaryMuscle: Muscle) =
+        exercise(id, name, setOf(primaryMuscle))
+
+    private fun exercise(
+        id: Long,
+        name: String,
+        primaryMuscles: Set<Muscle>,
+    ) = ExerciseEntity(
         id = id,
         name = name,
-        primaryMuscles = setOf(primaryMuscle),
+        primaryMuscles = primaryMuscles,
         secondaryMuscles = if (id == 1L) setOf(Muscle.TRICEPS) else emptySet(),
         targetSets = 3,
         repRangeMin = 8,

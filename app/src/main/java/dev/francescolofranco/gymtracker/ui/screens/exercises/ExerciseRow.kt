@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
+import dev.francescolofranco.gymtracker.domain.sortedTopToBottom
 
 @Composable
 fun ExerciseRow(
@@ -63,10 +64,10 @@ fun ExerciseRow(
 
 private fun ExerciseEntity.summaryLine(showPrimaryMuscles: Boolean): String {
     val sets = "${targetSets}×${repRangeMin}–${repRangeMax}${if (isUnilateral) "/side" else ""}"
-    val secondaries = secondaryMuscles.joinToString(", ") { it.displayName }
+    val secondaries = secondaryMuscles.sortedTopToBottom().joinToString(", ") { it.displayName }
     val parts = mutableListOf<String>()
     if (showPrimaryMuscles) {
-        parts += primaryMuscles.sortedBy { it.ordinal }.joinToString(" + ") { it.displayName }
+        parts += primaryMuscles.sortedTopToBottom().joinToString(" + ") { it.displayName }
     }
     if (isBodyweight) parts += "BW"
     if (isUnilateral) parts += "Unilateral"

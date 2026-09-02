@@ -42,8 +42,10 @@ import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.data.db.projections.ExerciseWithRecency
 import dev.francescolofranco.gymtracker.domain.Muscle
 import dev.francescolofranco.gymtracker.domain.MuscleCategory
+import dev.francescolofranco.gymtracker.domain.sortedTopToBottom
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.components.ExerciseSearchField
+import dev.francescolofranco.gymtracker.ui.components.ExerciseTopToBottomComparator
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.components.matchesExerciseQuery
@@ -321,14 +323,14 @@ internal fun filterPickerExercises(
     query: String,
 ): List<ExerciseEntity> {
     val filtered = when (filter) {
-        PickerFilter.All -> rows.map { it.exercise }.sortedBy { it.name.lowercase() }
+        PickerFilter.All -> rows.map { it.exercise }.sortedWith(ExerciseTopToBottomComparator)
         PickerFilter.Recent -> recentIds.mapNotNull { id ->
             rows.firstOrNull { it.exercise.id == id }?.exercise
         }
         is PickerFilter.ByCategory -> rows.asSequence()
             .map { it.exercise }
             .filter { filter.category.containsAny(it.primaryMuscles) }
-            .sortedBy { it.name.lowercase() }
+            .sortedWith(ExerciseTopToBottomComparator)
             .toList()
     }
     return filtered.filter { it.matchesExerciseQuery(query) }
@@ -353,13 +355,13 @@ private fun PickerRow(
             Text(text = exercise.name, style = MaterialTheme.typography.titleMedium)
             Text(
                 text = buildList {
-                    val primaries = exercise.primaryMuscles.sortedBy { it.ordinal }
+                    val primaries = exercise.primaryMuscles.sortedTopToBottom()
                         .joinToString(" + ") { it.displayName }
                     if (primaries.isNotEmpty()) add(primaries)
                     if (exercise.isBodyweight) add("BW")
                     if (exercise.isUnilateral) add("Unilateral")
                     add("${exercise.targetSets}×${exercise.repRangeMin}–${exercise.repRangeMax}${if (exercise.isUnilateral) "/side" else ""}")
-                    val secondaries = exercise.secondaryMuscles.sortedBy { it.ordinal }
+                    val secondaries = exercise.secondaryMuscles.sortedTopToBottom()
                         .joinToString(", ") { it.displayName }
                     if (secondaries.isNotEmpty()) add(secondaries)
                 }.joinToString(" · "),

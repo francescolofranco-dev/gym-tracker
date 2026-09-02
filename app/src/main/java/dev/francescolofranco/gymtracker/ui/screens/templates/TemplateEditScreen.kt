@@ -40,8 +40,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
-import dev.francescolofranco.gymtracker.ui.motion.GymMotion
+import dev.francescolofranco.gymtracker.domain.sortedTopToBottom
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
+import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.screens.sessions.ExercisePickerSheet
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -189,7 +190,7 @@ private fun TemplateExerciseRow(
         Column(modifier = Modifier.weight(1f)) {
             Text(text = exercise.name, style = MaterialTheme.typography.titleMedium)
             Text(
-                text = "${exercise.primaryMuscles.sortedBy { it.ordinal }.joinToString(" + ") { it.displayName }} · " +
+                text = "${exercise.primaryMuscles.sortedTopToBottom().joinToString(" + ") { it.displayName }} · " +
                     "${exercise.targetSets}×${exercise.repRangeMin}–${exercise.repRangeMax}" +
                     if (exercise.isUnilateral) "/side · unilateral" else "",
                 style = MaterialTheme.typography.bodySmall,

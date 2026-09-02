@@ -29,7 +29,7 @@ fun MuscleChips(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Muscle.entries.forEach { muscle ->
+        Muscle.topToBottom.forEach { muscle ->
             val isSelected = selected(muscle)
             FilterChip(
                 selected = isSelected,
