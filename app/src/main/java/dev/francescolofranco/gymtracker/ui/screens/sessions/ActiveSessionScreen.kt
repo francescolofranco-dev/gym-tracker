@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -75,6 +76,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -974,7 +976,7 @@ private fun PersonalRecordBadge(records: Set<PersonalRecordType>) {
 }
 
 /**
- * A compact, tappable note flag next to an exercise name. Tapping it pops a rich tooltip showing
+ * A labeled, tappable note badge next to an exercise name. Tapping it pops a rich tooltip showing
  * the note text plus an Edit action; the tooltip is persistent so it stays open for reading until
  * the user taps away. Editing still routes through the overflow menu's "Edit note" via [onEdit].
  */
@@ -991,6 +993,10 @@ private fun NoteIndicator(
         isCarried -> "From last session"
         else -> "Note"
     }
+    val containerColor = if (isPinned) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.primaryContainer
+    val contentColor = if (isPinned) MaterialTheme.colorScheme.onPrimary
+        else MaterialTheme.colorScheme.onPrimaryContainer
     val tooltipState = rememberTooltipState(isPersistent = true)
     val scope = rememberCoroutineScope()
     TooltipBox(
@@ -1010,20 +1016,31 @@ private fun NoteIndicator(
         },
         state = tooltipState,
     ) {
-        Box(
+        Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-                .clickable { scope.launch { tooltipState.show() } }
-                .padding(horizontal = 6.dp, vertical = 2.dp),
+                .clip(RoundedCornerShape(12.dp))
+                .background(containerColor)
+                .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
+                .clickable(role = Role.Button, onClickLabel = "Read $label") {
+                    scope.launch { tooltipState.show() }
+                }
+                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 imageVector = if (isPinned) Icons.Filled.PushPin else Icons.AutoMirrored.Filled.Notes,
                 // Carry the note text in the description so screen readers can read it directly:
                 // the tooltip's content lives in a popup that isn't part of this anchor's semantics.
                 contentDescription = "$label: $note",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(16.dp),
+                tint = contentColor,
+                modifier = Modifier.size(20.dp),
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelLarge,
+                color = contentColor,
             )
         }
     }
