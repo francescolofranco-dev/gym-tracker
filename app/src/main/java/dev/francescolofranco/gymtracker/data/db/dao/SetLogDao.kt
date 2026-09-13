@@ -47,15 +47,15 @@ interface SetLogDao {
         """
         SELECT sl.* FROM set_log sl
         JOIN session_exercise se ON sl.sessionExerciseId = se.id
-        WHERE se.exerciseId = :exerciseId
-          AND sl.reps IS NOT NULL
+        WHERE se.isSkipped = 0 AND se.exerciseId = :exerciseId
+          AND sl.loggedAt IS NOT NULL AND sl.reps IS NOT NULL
           AND sl.isSkipped = 0
           AND se.sessionId = (
               SELECT s.id FROM session s
               JOIN session_exercise se2 ON se2.sessionId = s.id
               JOIN set_log sl2 ON sl2.sessionExerciseId = se2.id
-              WHERE se2.exerciseId = :exerciseId
-                AND sl2.reps IS NOT NULL
+              WHERE se2.isSkipped = 0 AND se2.exerciseId = :exerciseId
+                AND sl2.loggedAt IS NOT NULL AND sl2.reps IS NOT NULL
                 AND sl2.isSkipped = 0
               ORDER BY s.startedAt DESC
               LIMIT 1
@@ -79,15 +79,15 @@ interface SetLogDao {
         """
         SELECT sl.* FROM set_log sl
         JOIN session_exercise se ON sl.sessionExerciseId = se.id
-        WHERE se.exerciseId = :exerciseId
-          AND sl.reps IS NOT NULL
+        WHERE se.isSkipped = 0 AND se.exerciseId = :exerciseId
+          AND sl.loggedAt IS NOT NULL AND sl.reps IS NOT NULL
           AND sl.isSkipped = 0
           AND se.sessionId = (
               SELECT s.id FROM session s
               JOIN session_exercise se2 ON se2.sessionId = s.id
               JOIN set_log sl2 ON sl2.sessionExerciseId = se2.id
-              WHERE se2.exerciseId = :exerciseId
-                AND sl2.reps IS NOT NULL
+              WHERE se2.isSkipped = 0 AND se2.exerciseId = :exerciseId
+                AND sl2.loggedAt IS NOT NULL AND sl2.reps IS NOT NULL
                 AND sl2.isSkipped = 0
                 AND s.startedAt < :beforeStartedAtEpochMs
                 AND s.endedAt IS NOT NULL
@@ -120,10 +120,10 @@ interface SetLogDao {
         SELECT sl.* FROM set_log sl
         JOIN session_exercise se ON sl.sessionExerciseId = se.id
         JOIN session s ON s.id = se.sessionId
-        WHERE se.exerciseId = :exerciseId
+        WHERE se.isSkipped = 0 AND se.exerciseId = :exerciseId
           AND sl.setNumber = :setNumber
           AND sl.side = :side
-          AND sl.reps IS NOT NULL
+          AND sl.loggedAt IS NOT NULL AND sl.reps IS NOT NULL
           AND sl.isSkipped = 0
           AND s.startedAt < :beforeStartedAtEpochMs
           AND s.endedAt IS NOT NULL

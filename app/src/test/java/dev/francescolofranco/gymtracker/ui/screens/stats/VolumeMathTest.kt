@@ -28,6 +28,40 @@ class VolumeMathTest {
     }
 
     @Test
+    fun unequalSidesSumTheirActualTonnage() {
+        val rows = listOf(
+            row(side = ExerciseSide.LEFT, reps = 10, kg = 10.0, secondaries = setOf(Muscle.TRICEPS)),
+            row(side = ExerciseSide.RIGHT, reps = 8, kg = 12.0, secondaries = setOf(Muscle.TRICEPS)),
+        )
+        val volumes = computeMuscleVolumes(rows)
+        val chest = volumes.getValue(Muscle.CHEST)
+        assertEquals(196.0, chest.totalVolumeKg, 1e-9)
+        assertEquals(1.0, chest.effectiveSets, 1e-9)
+        assertEquals(1.0, chest.contributingExercises.single().sets, 1e-9)
+        val triceps = volumes.getValue(Muscle.TRICEPS)
+        assertEquals(98.0, triceps.totalVolumeKg, 1e-9)
+        assertEquals(0.5, triceps.effectiveSets, 1e-9)
+    }
+
+    @Test
+    fun oneCompletedSideDoesNotInventWorkForTheOtherSide() {
+        val chest = computeMuscleVolumes(listOf(
+            row(unilateral = true, side = ExerciseSide.LEFT, reps = 10, kg = 10.0),
+        )).getValue(Muscle.CHEST)
+        assertEquals(100.0, chest.totalVolumeKg, 1e-9)
+        assertEquals(0.5, chest.effectiveSets, 1e-9)
+    }
+
+    @Test
+    fun changingExerciseTogglePreservesHistoricalVolumeAndSetCredit() {
+        val original = listOf(row(), row(side = ExerciseSide.LEFT), row(side = ExerciseSide.RIGHT))
+        assertEquals(
+            computeMuscleVolumes(original),
+            computeMuscleVolumes(original.map { it.copy(isUnilateral = true) }),
+        )
+    }
+
+    @Test
     fun secondaryMuscleGetsHalfEffectiveCredit() {
         val triceps = computeMuscleVolumes(listOf(row(secondaries = setOf(Muscle.TRICEPS))))[Muscle.TRICEPS]!!
         assertEquals(1.0, triceps.indirectSets, 1e-9)

@@ -81,7 +81,7 @@ interface ExerciseDao {
         JOIN session_exercise se ON sl.sessionExerciseId = se.id AND se.isSkipped = 0
         JOIN session s ON se.sessionId = s.id
         WHERE se.exerciseId = :exerciseId
-          AND sl.reps IS NOT NULL AND sl.isSkipped = 0
+          AND sl.loggedAt IS NOT NULL AND sl.reps IS NOT NULL AND sl.isSkipped = 0
         ORDER BY COALESCE(s.acceptedAt, s.startedAt) ASC, sl.setNumber ASC, sl.side ASC
         """
     )

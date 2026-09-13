@@ -1,6 +1,7 @@
 package dev.francescolofranco.gymtracker.ui.screens.exercises
 
 import dev.francescolofranco.gymtracker.data.db.projections.ExerciseSetRow
+import dev.francescolofranco.gymtracker.domain.ExerciseSide
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -41,6 +42,18 @@ class ExerciseProgressTest {
         assertEquals(12, p.bestReps)
         assertEquals(25, p.totalReps)
         assertEquals(3, p.setsLogged)
+    }
+
+    @Test
+    fun aggregateSessions_sumsUnequalSidesWithoutDoublingOrAveraging() {
+        val left = setRow(1, 0, 1, 10, 10.0).copy(side = ExerciseSide.LEFT)
+        val right = setRow(1, 0, 1, 8, 12.0).copy(side = ExerciseSide.RIGHT)
+        val point = aggregateSessions(listOf(left, right)).single()
+        assertEquals(196.0, point.volumeKg, 1e-9)
+        assertEquals(18, point.totalReps)
+        assertEquals(2, point.setsLogged)
+        assertEquals(mapOf(ExerciseSide.LEFT to 10, ExerciseSide.RIGHT to 8), point.bestRepsBySide)
+        assertEquals(100.0, aggregateSessions(listOf(left)).single().volumeKg, 1e-9)
     }
 
     @Test

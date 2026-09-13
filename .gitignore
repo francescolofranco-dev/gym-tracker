@@ -36,3 +36,6 @@ google-services.json
 
 # Logs
 *.log
+
+# Python SQL regression checks
+__pycache__/

@@ -45,6 +45,21 @@ Run unit tests:
 ./gradlew :app:testDebugUnitTest
 ```
 
+Run the DAO SQL regression checks (Python 3 standard library, using the exported Room schema):
+
+```bash
+python3 -m unittest discover -s scripts -p 'test_*.py'
+```
+
+### Unilateral volume
+
+Only confirmed, non-skipped sets count toward statistics and history. For unilateral exercises,
+enter the weight and repetitions for each side separately. Volume sums the actual `reps × kg`
+from each completed side: left 10 × 10 kg plus right 8 × 12 kg is 196 kg. An unfinished side adds
+nothing. Session summaries count each completed side as a logged set; muscle coverage credits
+it as 0.5 bilateral-equivalent sets (a left/right pair is 1). Secondary muscles receive half
+credit. Historical set sides determine this credit even if the exercise's unilateral setting changes.
+
 ### Google Drive authorization
 
 Drive backup requires the Google Drive API and an Android OAuth client in Google Cloud Console.

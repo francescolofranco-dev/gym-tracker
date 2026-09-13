@@ -23,8 +23,8 @@ interface SessionDao {
         """
         SELECT s.*,
                COALESCE(COUNT(DISTINCT se.id), 0) AS exerciseCount,
-               COALESCE(SUM(CASE WHEN sl.reps IS NOT NULL AND sl.isSkipped = 0 THEN 1 ELSE 0 END), 0) AS setCount,
-               COALESCE(SUM(CASE WHEN sl.reps IS NOT NULL AND sl.isSkipped = 0
+               COALESCE(SUM(CASE WHEN sl.loggedAt IS NOT NULL AND sl.reps IS NOT NULL AND sl.isSkipped = 0 THEN 1 ELSE 0 END), 0) AS setCount,
+               COALESCE(SUM(CASE WHEN sl.loggedAt IS NOT NULL AND sl.reps IS NOT NULL AND sl.isSkipped = 0
                                  THEN sl.reps * COALESCE(sl.kg, 0.0) ELSE 0 END), 0.0) AS totalVolume
         FROM session s
         LEFT JOIN session_exercise se ON se.sessionId = s.id AND se.isSkipped = 0
@@ -211,7 +211,7 @@ interface SessionDao {
         JOIN session_exercise se ON sl.sessionExerciseId = se.id AND se.isSkipped = 0
         JOIN exercise e ON se.exerciseId = e.id
         JOIN session s ON se.sessionId = s.id
-        WHERE sl.reps IS NOT NULL AND sl.isSkipped = 0
+        WHERE sl.loggedAt IS NOT NULL AND sl.reps IS NOT NULL AND sl.isSkipped = 0
           AND COALESCE(s.acceptedAt, s.startedAt) >= :startInclusive
           AND COALESCE(s.acceptedAt, s.startedAt) < :endExclusive
         ORDER BY COALESCE(s.acceptedAt, s.startedAt)
@@ -234,7 +234,7 @@ interface SessionDao {
         JOIN session_exercise se ON sl.sessionExerciseId = se.id AND se.isSkipped = 0
         JOIN exercise e ON se.exerciseId = e.id
         JOIN session s ON se.sessionId = s.id
-        WHERE sl.reps IS NOT NULL AND sl.isSkipped = 0
+        WHERE sl.loggedAt IS NOT NULL AND sl.reps IS NOT NULL AND sl.isSkipped = 0
           AND COALESCE(s.acceptedAt, s.startedAt) >= :startInclusive
           AND COALESCE(s.acceptedAt, s.startedAt) < :endExclusive
         ORDER BY COALESCE(s.acceptedAt, s.startedAt)
