@@ -87,6 +87,7 @@ data class SetRowState(
     val hintKg: Double?,
     /** True when this is the current set to log (first un-logged, non-skipped). */
     val isActive: Boolean = false,
+    val showBilateralLabel: Boolean = false,
 )
 
 /** Column headers (# / WEIGHT / REPS) drawn once above the set rows; matches the row grid. */
@@ -204,7 +205,14 @@ fun SetRow(
         // # column
         Cell(modifier = Modifier.width(ColIndexWidth), captionText = null, horizontalAlignment = Alignment.Start) {
             Text(
-                text = if (log.side.shortLabel.isBlank()) "${log.setNumber}" else "${log.setNumber} ${log.side.shortLabel}",
+                text = "${log.setNumber}" + when {
+                    log.side.shortLabel.isNotBlank() -> " ${log.side.shortLabel}"
+                    state.showBilateralLabel -> " B"
+                    else -> ""
+                },
+                modifier = Modifier.semantics {
+                    contentDescription = "Set ${log.setNumber}, ${log.side.displayName}"
+                },
                 style = MaterialTheme.typography.titleMedium.asNumber(),
                 color = animatedIndexColor,
             )

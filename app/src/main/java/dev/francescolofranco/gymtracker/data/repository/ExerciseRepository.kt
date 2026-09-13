@@ -1,5 +1,7 @@
 package dev.francescolofranco.gymtracker.data.repository
 
+import androidx.room.withTransaction
+import dev.francescolofranco.gymtracker.data.db.AppDatabase
 import dev.francescolofranco.gymtracker.data.db.dao.ExerciseDao
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.data.db.projections.ExerciseSetRow
@@ -11,7 +13,8 @@ import javax.inject.Singleton
 
 @Singleton
 class ExerciseRepository @Inject constructor(
-    private val dao: ExerciseDao
+    private val dao: ExerciseDao,
+    private val db: AppDatabase,
 ) {
     fun observeActive(): Flow<List<ExerciseEntity>> = dao.observeActive()
 
@@ -63,8 +66,20 @@ class ExerciseRepository @Inject constructor(
         repRangeMax: Int,
         isBodyweight: Boolean,
         isUnilateral: Boolean,
-    ) {
-        val current = dao.byId(id) ?: return
+    ) = db.withTransaction {
+        val current = dao.byId(id) ?: return@withTransaction
+        if (current.isUnilateral != isUnilateral) {
+            val original = db.exerciseModeDao().openSessionSets(id)
+            val reconciled = reconcileSetMode(original, isUnilateral)
+            val retainedIds = reconciled.map { it.id }.toSet()
+            val setDao = db.setLogDao()
+            original.filter { it.id !in retainedIds }.forEach { setDao.delete(it.id) }
+            val originalsById = original.associateBy { it.id }
+            reconciled.forEach { row ->
+                if (row.id == 0L) setDao.upsert(row)
+                else if (row != originalsById[row.id]) setDao.update(row)
+            }
+        }
         dao.update(
             current.copy(
                 name = name.trim(),

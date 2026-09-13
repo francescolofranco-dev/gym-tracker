@@ -89,6 +89,16 @@ fun ExerciseFormSheet(
                 }
             }
 
+            if (state.isUnilateral != initial.isUnilateral) {
+                Text(
+                    "Applies to future sessions and empty sets in the open session. " +
+                        "Entered, completed and skipped sets keep their original sides; " +
+                        "past sessions are unchanged.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+
             SectionLabel("Primary muscles (up to ${ExerciseFormState.MAX_PRIMARY_MUSCLES})")
             MuscleChips(
                 selected = { it in state.primaryMuscles },

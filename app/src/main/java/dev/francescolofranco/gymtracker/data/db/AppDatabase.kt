@@ -5,6 +5,7 @@ import androidx.room.RoomDatabase
 import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
+import dev.francescolofranco.gymtracker.data.db.dao.ExerciseModeDao
 import dev.francescolofranco.gymtracker.data.db.dao.ExerciseDao
 import dev.francescolofranco.gymtracker.data.db.dao.SessionDao
 import dev.francescolofranco.gymtracker.data.db.dao.SetLogDao
@@ -30,6 +31,7 @@ import dev.francescolofranco.gymtracker.data.db.entities.TemplateExerciseEntity
 )
 @TypeConverters(Converters::class)
 abstract class AppDatabase : RoomDatabase() {
+    abstract fun exerciseModeDao(): ExerciseModeDao
     abstract fun exerciseDao(): ExerciseDao
     abstract fun sessionDao(): SessionDao
     abstract fun setLogDao(): SetLogDao

@@ -82,6 +82,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetail
+import dev.francescolofranco.gymtracker.domain.ExerciseSide
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.domain.sortedTopToBottom
 import dev.francescolofranco.gymtracker.ui.components.Loadable
@@ -530,6 +531,7 @@ internal fun LazyListScope.exerciseSection(
                         hintReps = hint?.reps,
                         hintKg = hint?.kg,
                         isActive = log.id == activeSetId,
+                        showBilateralLabel = sets.any { it.side != ExerciseSide.BOTH },
                     ),
                     onCommit = { reps, kg -> onCommitSet(log.id, reps, kg) },
                     onUncommit = { onUncommitSet(log.id) },
@@ -600,10 +602,7 @@ private fun ExerciseSectionHeader(
                 text = buildList {
                     add(exercise.primaryMuscles.sortedTopToBottom().joinToString(" + ") { it.displayName })
                     if (exercise.isBodyweight) add("BW")
-                    add(
-                        "${exercise.targetSets}×${exercise.repRangeMin}–${exercise.repRangeMax}" +
-                            if (exercise.isUnilateral) "/side" else "",
-                    )
+                    add(detail.setPlanLabel())
                     if (detail.sessionExercise.isSkipped) add("Skipped")
                     else if (incomplete) add("Incomplete")
                 }.joinToString(" · "),
@@ -752,10 +751,7 @@ fun ExerciseCard(
                     text = buildList {
                         add(exercise.primaryMuscles.sortedTopToBottom().joinToString(" + ") { it.displayName })
                         if (exercise.isBodyweight) add("BW")
-                        add(
-                            "${exercise.targetSets}×${exercise.repRangeMin}–${exercise.repRangeMax}" +
-                                if (exercise.isUnilateral) "/side" else "",
-                        )
+                        add(detail.setPlanLabel())
                         if (detail.sessionExercise.isSkipped) add("Skipped")
                         else if (incomplete) add("Incomplete")
                     }.joinToString(" · "),
@@ -866,6 +862,7 @@ fun ExerciseCard(
                         hintReps = hint?.reps,
                         hintKg = hint?.kg,
                         isActive = log.id == activeSetId,
+                        showBilateralLabel = sets.any { it.side != ExerciseSide.BOTH },
                     ),
                     onCommit = { reps, kg -> onCommitSet(log.id, reps, kg) },
                     onUncommit = { onUncommitSet(log.id) },
