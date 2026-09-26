@@ -14,8 +14,9 @@ object BackupSchema {
      *  - v2: list `primaryMuscles` per exercise (1-3 entries). Importer accepts both.
      *  - v3: unilateral exercise metadata and set sides.
      *  - v4: one-session carryover and pinning metadata for exercise notes.
+     *  - v5: separate regular and pinned exercise notes.
      */
-    const val CURRENT_SCHEMA_VERSION = 4
+    const val CURRENT_SCHEMA_VERSION = 5
     const val MIN_SUPPORTED_VERSION = 1
 
     const val K_SCHEMA_VERSION = "schemaVersion"

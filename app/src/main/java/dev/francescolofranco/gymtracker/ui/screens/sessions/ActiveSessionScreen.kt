@@ -316,12 +316,12 @@ fun ActiveSessionScreen(
 
     exerciseNotesTarget?.let { target ->
         ExerciseNoteDialog(
-            title = "${target.exercise.name} note",
+            title = "${target.exercise.name} notes",
             initial = target.sessionExercise.notes.orEmpty(),
-            initiallyPinned = target.sessionExercise.isNotePinned,
+            initialPinned = target.sessionExercise.pinnedNotes.orEmpty(),
             onCancel = { exerciseNotesTarget = null },
-            onConfirm = { notes, isPinned ->
-                viewModel.setExerciseNote(target.sessionExercise.id, notes, isPinned)
+            onConfirm = { notes, pinnedNotes ->
+                viewModel.setExerciseNote(target.sessionExercise.id, notes, pinnedNotes)
                 exerciseNotesTarget = null
             },
         )
@@ -594,7 +594,7 @@ private fun ExerciseSectionHeader(
                 isFirstTime = hints.isEmpty(),
                 personalRecords = personalRecords,
                 note = detail.sessionExercise.notes?.takeIf { it.isNotBlank() },
-                isNotePinned = detail.sessionExercise.isNotePinned,
+                pinnedNote = detail.sessionExercise.pinnedNotes?.takeIf { it.isNotBlank() },
                 isNoteCarried = !detail.sessionExercise.noteCarryForward,
                 onEditNote = onEditExerciseNotes,
             )
@@ -656,9 +656,9 @@ private fun ExerciseSectionHeader(
                     text = {
                         Text(
                             when {
-                                detail.sessionExercise.notes.isNullOrBlank() -> "Add note"
-                                detail.sessionExercise.isNotePinned -> "Edit pinned note"
-                                else -> "Edit note"
+                                detail.sessionExercise.notes.isNullOrBlank() &&
+                                    detail.sessionExercise.pinnedNotes.isNullOrBlank() -> "Add notes"
+                                else -> "Edit notes"
                             },
                         )
                     },
@@ -743,7 +743,7 @@ fun ExerciseCard(
                     isFirstTime = hints.isEmpty(),
                     personalRecords = personalRecords,
                     note = detail.sessionExercise.notes?.takeIf { it.isNotBlank() },
-                    isNotePinned = detail.sessionExercise.isNotePinned,
+                    pinnedNote = detail.sessionExercise.pinnedNotes?.takeIf { it.isNotBlank() },
                     isNoteCarried = !detail.sessionExercise.noteCarryForward,
                     onEditNote = onEditExerciseNotes,
                 )
@@ -809,9 +809,9 @@ fun ExerciseCard(
                         text = {
                             Text(
                                 when {
-                                    detail.sessionExercise.notes.isNullOrBlank() -> "Add note"
-                                    detail.sessionExercise.isNotePinned -> "Edit pinned note"
-                                    else -> "Edit note"
+                                    detail.sessionExercise.notes.isNullOrBlank() &&
+                                        detail.sessionExercise.pinnedNotes.isNullOrBlank() -> "Add notes"
+                                    else -> "Edit notes"
                                 },
                             )
                         },
@@ -889,7 +889,7 @@ private fun ExerciseNameAndBadges(
     isFirstTime: Boolean,
     personalRecords: Set<PersonalRecordType>,
     note: String?,
-    isNotePinned: Boolean,
+    pinnedNote: String?,
     isNoteCarried: Boolean,
     onEditNote: () -> Unit,
 ) {
@@ -909,10 +909,18 @@ private fun ExerciseNameAndBadges(
         if (personalRecords.isNotEmpty()) {
             PersonalRecordBadge(personalRecords)
         }
+        if (pinnedNote != null) {
+            NoteIndicator(
+                note = pinnedNote,
+                isPinned = true,
+                isCarried = false,
+                onEdit = onEditNote,
+            )
+        }
         if (note != null) {
             NoteIndicator(
                 note = note,
-                isPinned = isNotePinned,
+                isPinned = false,
                 isCarried = isNoteCarried,
                 onEdit = onEditNote,
             )

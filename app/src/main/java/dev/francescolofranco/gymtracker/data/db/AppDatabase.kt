@@ -26,7 +26,7 @@ import dev.francescolofranco.gymtracker.data.db.entities.TemplateExerciseEntity
         TemplateEntity::class,
         TemplateExerciseEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -39,6 +39,21 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "gym-tracker.db"
+
+        /** Split existing pinned notes from the regular note slot without losing either type. */
+        val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE session_exercise ADD COLUMN pinnedNotes TEXT")
+                db.execSQL(
+                    """
+                    UPDATE session_exercise
+                    SET pinnedNotes = notes, notes = NULL,
+                        isNotePinned = 0, noteCarryForward = 0
+                    WHERE isNotePinned = 1
+                    """.trimIndent(),
+                )
+            }
+        }
 
         /**
          * v1 → v2: single `primaryMuscle` column on `exercise` becomes a multi-valued

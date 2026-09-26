@@ -8,137 +8,76 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ExerciseNoteLifecycleTest {
-
     @Test
-    fun unpinnedNoteCarriesToExactlyOneSubsequentOccurrence() {
-        val original = occurrence(
-            notes = "Keep elbows tucked",
-            noteCarryForward = true,
-        )
+    fun eitherTypeCanBeAddedWithoutReplacingTheOther() {
+        val withPin = occurrence(pinnedNotes = "Safety bars")
+        val addedRegular = savedExerciseNote(withPin, "Try 40 kg", withPin.pinnedNotes)
+        assertEquals("Safety bars", addedRegular.pinnedText)
+        assertEquals("Try 40 kg", addedRegular.text)
+        assertTrue(addedRegular.carryForward)
 
-        val firstCarry = requireNotNull(noteForNextSession(original))
-        assertEquals("Keep elbows tucked", firstCarry.text)
-        assertFalse(firstCarry.isPinned)
-
-        val carriedOccurrence = occurrence(
-            notes = firstCarry.text,
-            isNotePinned = firstCarry.isPinned,
-            noteCarryForward = firstCarry.carryForward,
-        )
-        assertNull(noteForNextSession(carriedOccurrence))
+        val withRegular = occurrence(notes = "Try 40 kg", noteCarryForward = true)
+        val addedPin = savedExerciseNote(withRegular, withRegular.notes, "Safety bars")
+        assertEquals(addedRegular, addedPin)
     }
 
     @Test
-    fun pinnedNoteKeepsCarrying() {
-        val original = occurrence(
-            notes = "Use the safety bars",
-            isNotePinned = true,
-            noteCarryForward = true,
-        )
-
-        val firstCarry = requireNotNull(noteForNextSession(original))
-        assertTrue(firstCarry.isPinned)
-
-        val nextOccurrence = occurrence(
-            notes = firstCarry.text,
-            isNotePinned = firstCarry.isPinned,
-            noteCarryForward = firstCarry.carryForward,
-        )
-        val secondCarry = requireNotNull(noteForNextSession(nextOccurrence))
-        assertEquals("Use the safety bars", secondCarry.text)
-        assertTrue(secondCarry.isPinned)
+    fun bothCarryButOnlyPinnedNoteSurvivesSecondOccurrence() {
+        val first = requireNotNull(noteForNextSession(occurrence(
+            notes = "Try 40 kg", pinnedNotes = "Safety bars", noteCarryForward = true,
+        )))
+        assertEquals("Try 40 kg", first.text)
+        assertEquals("Safety bars", first.pinnedText)
+        assertFalse(first.carryForward)
+        val second = requireNotNull(noteForNextSession(occurrence(
+            notes = first.text, pinnedNotes = first.pinnedText, noteCarryForward = first.carryForward,
+        )))
+        assertNull(second.text)
+        assertEquals("Safety bars", second.pinnedText)
     }
 
     @Test
-    fun unpinnedPersistentNoteGetsOneFinalCarryThenExpires() {
-        val currentPinned = occurrence(
-            notes = "Use the safety bars",
-            isNotePinned = true,
-            noteCarryForward = true,
-        )
-        val unpinned = savedExerciseNote(
-            current = currentPinned,
-            notes = "Use the safety bars",
-            isPinned = false,
-        )
-        val savedOccurrence = occurrence(
-            notes = unpinned.text,
-            isNotePinned = unpinned.isPinned,
-            noteCarryForward = unpinned.carryForward,
-        )
-
-        val finalCarry = requireNotNull(noteForNextSession(savedOccurrence))
-        assertFalse(finalCarry.isPinned)
-        assertNull(
-            noteForNextSession(
-                occurrence(
-                    notes = finalCarry.text,
-                    isNotePinned = finalCarry.isPinned,
-                    noteCarryForward = finalCarry.carryForward,
-                ),
-            ),
-        )
+    fun unpinnedNoteExpiresAfterOneCarry() {
+        val first = requireNotNull(noteForNextSession(occurrence(
+            notes = "Try 40 kg", noteCarryForward = true,
+        )))
+        assertNull(noteForNextSession(occurrence(notes = first.text)))
     }
 
     @Test
-    fun clearingNoteAlsoClearsPinnedState() {
-        val cleared = savedExerciseNote(
-            current = occurrence(
-                notes = "Use the safety bars",
-                isNotePinned = true,
-                noteCarryForward = true,
-            ),
-            notes = "   ",
-            isPinned = true,
-        )
-
-        assertNull(cleared.text)
-        assertFalse(cleared.isPinned)
-        assertFalse(cleared.carryForward)
+    fun clearingEitherNotePreservesTheOther() {
+        val both = occurrence("Try 40 kg", "Safety bars", true)
+        val clearedPin = savedExerciseNote(both, both.notes, "  ")
+        assertNull(clearedPin.pinnedText)
+        assertEquals(both.notes, clearedPin.text)
+        assertTrue(clearedPin.carryForward)
+        val clearedRegular = savedExerciseNote(both, "  ", both.pinnedNotes)
+        assertNull(clearedRegular.text)
+        assertFalse(clearedRegular.carryForward)
+        assertEquals(both.pinnedNotes, clearedRegular.pinnedText)
+        assertNull(noteForNextSession(occurrence()))
     }
 
     @Test
-    fun savingUnchangedCarriedNoteDoesNotRenewIt() {
-        val carried = occurrence(
-            notes = "Keep elbows tucked",
-            noteCarryForward = false,
-        )
-
-        val saved = savedExerciseNote(
-            current = carried,
-            notes = "Keep elbows tucked",
-            isPinned = false,
-        )
-
+    fun editingPinDoesNotRenewCarriedRegularNote() {
+        val saved = savedExerciseNote(occurrence("Try 40 kg", "Safety bars"), "Try 40 kg", "New pin")
         assertFalse(saved.carryForward)
+        assertEquals("New pin", saved.pinnedText)
     }
 
     @Test
-    fun editingCarriedNoteRenewsItForOneOccurrence() {
-        val carried = occurrence(
-            notes = "Keep elbows tucked",
-            noteCarryForward = false,
-        )
-
-        val saved = savedExerciseNote(
-            current = carried,
-            notes = "Keep elbows tucked on the way down",
-            isPinned = false,
-        )
-
+    fun editingCarriedRegularNoteRenewsItWithoutChangingPin() {
+        val saved = savedExerciseNote(occurrence("Try 40 kg", "Safety bars"), "Try 45 kg", "Safety bars")
         assertTrue(saved.carryForward)
+        assertEquals("Safety bars", saved.pinnedText)
     }
 
     private fun occurrence(
-        notes: String?,
-        isNotePinned: Boolean = false,
+        notes: String? = null,
+        pinnedNotes: String? = null,
         noteCarryForward: Boolean = false,
     ) = SessionExerciseEntity(
-        sessionId = 1,
-        exerciseId = 2,
-        orderInSession = 0,
-        notes = notes,
-        isNotePinned = isNotePinned,
-        noteCarryForward = noteCarryForward,
+        sessionId = 1, exerciseId = 2, orderInSession = 0,
+        notes = notes, pinnedNotes = pinnedNotes, noteCarryForward = noteCarryForward,
     )
 }

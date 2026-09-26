@@ -206,9 +206,9 @@ private fun JSONObject.parseSessionExercise(): SessionExerciseEntity {
         sessionId = getLong("sessionId"),
         exerciseId = getLong("exerciseId"),
         orderInSession = getInt("orderInSession"),
-        notes = notes,
-        isNotePinned = isPinned,
-        noteCarryForward = carryForward,
+        notes = if (isPinned) null else notes,
+        pinnedNotes = optStringOrNull("pinnedNotes") ?: notes.takeIf { isPinned },
+        noteCarryForward = !isPinned && carryForward,
         isSkipped = getBoolean("isSkipped"),
     )
 }

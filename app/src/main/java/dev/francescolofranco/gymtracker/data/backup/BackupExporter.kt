@@ -79,7 +79,7 @@ private fun SessionExerciseEntity.toJson(): JSONObject = JSONObject().apply {
     put("exerciseId", exerciseId)
     put("orderInSession", orderInSession)
     put("notes", notes ?: JSONObject.NULL)
-    put("isNotePinned", isNotePinned)
+    put("pinnedNotes", pinnedNotes ?: JSONObject.NULL)
     put("noteCarryForward", noteCarryForward)
     put("isSkipped", isSkipped)
 }

@@ -183,9 +183,9 @@ class ActiveSessionViewModel @Inject constructor(
     fun setExerciseNote(
         sessionExerciseId: Long,
         notes: String?,
-        isPinned: Boolean,
+        pinnedNotes: String?,
     ) = viewModelScope.launch {
-        repo.updateSessionExerciseNote(sessionExerciseId, notes, isPinned)
+        repo.updateSessionExerciseNote(sessionExerciseId, notes, pinnedNotes)
     }
 
     fun setSessionNotes(notes: String?) = viewModelScope.launch {

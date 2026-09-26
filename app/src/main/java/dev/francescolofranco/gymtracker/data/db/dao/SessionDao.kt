@@ -104,7 +104,8 @@ interface SessionDao {
         """
         UPDATE session_exercise
         SET notes = :notes,
-            isNotePinned = :isPinned,
+            isNotePinned = 0,
+            pinnedNotes = :pinnedNotes,
             noteCarryForward = :carryForward
         WHERE id = :id
         """,
@@ -112,7 +113,7 @@ interface SessionDao {
     suspend fun updateExerciseNote(
         id: Long,
         notes: String?,
-        isPinned: Boolean,
+        pinnedNotes: String?,
         carryForward: Boolean,
     )
 

@@ -224,12 +224,12 @@ fun SessionDetailScreen(
 
     exerciseNotesTarget?.let { target ->
         ExerciseNoteDialog(
-            title = "${target.exercise.name} note",
+            title = "${target.exercise.name} notes",
             initial = target.sessionExercise.notes.orEmpty(),
-            initiallyPinned = target.sessionExercise.isNotePinned,
+            initialPinned = target.sessionExercise.pinnedNotes.orEmpty(),
             onCancel = { exerciseNotesTarget = null },
-            onConfirm = { notes, isPinned ->
-                viewModel.setExerciseNote(target.sessionExercise.id, notes, isPinned)
+            onConfirm = { notes, pinnedNotes ->
+                viewModel.setExerciseNote(target.sessionExercise.id, notes, pinnedNotes)
                 exerciseNotesTarget = null
             },
         )

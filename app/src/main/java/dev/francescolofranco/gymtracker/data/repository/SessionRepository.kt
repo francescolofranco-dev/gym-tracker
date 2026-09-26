@@ -116,9 +116,8 @@ class SessionRepository @Inject constructor(
                 exerciseId = exerciseId,
                 orderInSession = order,
                 notes = note?.text,
-                isNotePinned = note?.isPinned == true,
-                // A normal note has now reached its one subsequent session. A pinned note keeps
-                // travelling until the user unpins it.
+                pinnedNotes = note?.pinnedText,
+                // The regular note has reached its one subsequent session.
                 noteCarryForward = note?.carryForward == true,
             )
         )
@@ -203,14 +202,14 @@ class SessionRepository @Inject constructor(
     suspend fun updateSessionExerciseNote(
         sessionExerciseId: Long,
         notes: String?,
-        isPinned: Boolean,
+        pinnedNotes: String?,
     ) {
         val current = sessionDao.sessionExerciseById(sessionExerciseId) ?: return
-        val state = savedExerciseNote(current, notes, isPinned)
+        val state = savedExerciseNote(current, notes, pinnedNotes)
         sessionDao.updateExerciseNote(
             id = sessionExerciseId,
             notes = state.text,
-            isPinned = state.isPinned,
+            pinnedNotes = state.pinnedText,
             carryForward = state.carryForward,
         )
     }
@@ -295,43 +294,29 @@ internal fun historyLookupSides(side: ExerciseSide): List<ExerciseSide> = when (
 
 internal data class ExerciseNoteState(
     val text: String?,
-    val isPinned: Boolean,
+    val pinnedText: String?,
     val carryForward: Boolean,
 )
 
-/**
- * Normalise editor input and resolve its next-session lifetime. An unchanged Save preserves the
- * current lifetime, so simply reading a carried note cannot renew it indefinitely. Any actual
- * edit makes an unpinned note relevant for one more occurrence; unpinning follows that same rule.
- */
+/** Saving an unchanged regular note preserves its lifetime, including when editing the pin. */
 internal fun savedExerciseNote(
     current: SessionExerciseEntity,
     notes: String?,
-    isPinned: Boolean,
+    pinnedNotes: String?,
 ): ExerciseNoteState {
     val text = notes?.trim()?.takeIf { it.isNotEmpty() }
-    val pinned = text != null && isPinned
-    val carryForward = when {
-        text == null -> false
-        pinned -> true
-        text == current.notes && !current.isNotePinned -> current.noteCarryForward
-        else -> true
-    }
     return ExerciseNoteState(
         text = text,
-        isPinned = pinned,
-        carryForward = carryForward,
+        pinnedText = pinnedNotes?.trim()?.takeIf { it.isNotEmpty() },
+        carryForward = text != null && (text != current.notes || current.noteCarryForward),
     )
 }
 
-/** Resolve the previous occurrence's note without letting an expired note reappear. */
+/** Carry each type independently; an expired regular note cannot reappear alongside a pin. */
 internal fun noteForNextSession(previous: SessionExerciseEntity?): ExerciseNoteState? {
     previous ?: return null
-    val text = previous.notes?.takeIf { it.isNotBlank() } ?: return null
-    if (!previous.isNotePinned && !previous.noteCarryForward) return null
-    return ExerciseNoteState(
-        text = text,
-        isPinned = previous.isNotePinned,
-        carryForward = previous.isNotePinned,
-    )
+    val text = previous.notes?.takeIf { it.isNotBlank() && previous.noteCarryForward }
+    val pinnedText = previous.pinnedNotes?.takeIf { it.isNotBlank() }
+    if (text == null && pinnedText == null) return null
+    return ExerciseNoteState(text = text, pinnedText = pinnedText, carryForward = false)
 }

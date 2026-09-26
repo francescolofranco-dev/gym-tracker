@@ -33,7 +33,7 @@ class LoggedSetQueriesTest(unittest.TestCase):
         for session_id in (1, 2):
             self.db.execute('INSERT INTO session (id, startedAt, acceptedAt, endedAt) VALUES (?, ?, ?, ?)',
                             (session_id, session_id * 100, session_id * 100, session_id * 100 + 50))
-            self.db.execute('INSERT INTO session_exercise VALUES (?, ?, 1, 0, NULL, 0, 0, 0)',
+            self.db.execute('INSERT INTO session_exercise (id, sessionId, exerciseId, orderInSession, notes, isNotePinned, noteCarryForward, isSkipped) VALUES (?, ?, 1, 0, NULL, 0, 0, 0)',
                             (session_id, session_id))
         # The later session has a completed left side and a drafted right side.
         self.db.executemany('INSERT INTO set_log VALUES (?, ?, 1, ?, ?, ?, ?, ?)', [
