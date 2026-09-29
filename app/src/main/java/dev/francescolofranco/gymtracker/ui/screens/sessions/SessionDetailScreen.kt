@@ -223,8 +223,8 @@ fun SessionDetailScreen(
     }
 
     exerciseNotesTarget?.let { target ->
-        ExerciseNoteDialog(
-            title = "${target.exercise.name} notes",
+        ExerciseNoteSheet(
+            exerciseName = target.exercise.name,
             initial = target.sessionExercise.notes.orEmpty(),
             initialPinned = target.sessionExercise.pinnedNotes.orEmpty(),
             onCancel = { exerciseNotesTarget = null },

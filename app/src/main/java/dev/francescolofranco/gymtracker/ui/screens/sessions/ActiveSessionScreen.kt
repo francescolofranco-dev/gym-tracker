@@ -30,8 +30,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Add
@@ -77,6 +79,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -315,8 +319,8 @@ fun ActiveSessionScreen(
     }
 
     exerciseNotesTarget?.let { target ->
-        ExerciseNoteDialog(
-            title = "${target.exercise.name} notes",
+        ExerciseNoteSheet(
+            exerciseName = target.exercise.name,
             initial = target.sessionExercise.notes.orEmpty(),
             initialPinned = target.sessionExercise.pinnedNotes.orEmpty(),
             onCancel = { exerciseNotesTarget = null },
@@ -897,6 +901,7 @@ private fun ExerciseNameAndBadges(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(4.dp),
+        itemVerticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = name,
@@ -909,21 +914,30 @@ private fun ExerciseNameAndBadges(
         if (personalRecords.isNotEmpty()) {
             PersonalRecordBadge(personalRecords)
         }
-        if (pinnedNote != null) {
-            NoteIndicator(
-                note = pinnedNote,
-                isPinned = true,
-                isCarried = false,
-                onEdit = onEditNote,
-            )
-        }
-        if (note != null) {
-            NoteIndicator(
-                note = note,
-                isPinned = false,
-                isCarried = isNoteCarried,
-                onEdit = onEditNote,
-            )
+        if (pinnedNote != null || note != null) {
+            // Keep the two note types together when the header wraps, while still allowing
+            // them to wrap independently on narrow screens or with larger system text.
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (pinnedNote != null) {
+                    NoteIndicator(
+                        note = pinnedNote,
+                        isPinned = true,
+                        isCarried = false,
+                        onEdit = onEditNote,
+                    )
+                }
+                if (note != null) {
+                    NoteIndicator(
+                        note = note,
+                        isPinned = false,
+                        isCarried = isNoteCarried,
+                        onEdit = onEditNote,
+                    )
+                }
+            }
         }
     }
 }
@@ -981,9 +995,8 @@ private fun PersonalRecordBadge(records: Set<PersonalRecordType>) {
 }
 
 /**
- * A labeled, tappable note badge next to an exercise name. Tapping it pops a rich tooltip showing
- * the note text plus an Edit action; the tooltip is persistent so it stays open for reading until
- * the user taps away. Editing still routes through the overflow menu's "Edit note" via [onEdit].
+ * A quiet note badge with a full-size touch target around its compact painted surface.
+ * The persistent tooltip keeps the complete note and its Edit action available on tap.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -998,10 +1011,15 @@ private fun NoteIndicator(
         isCarried -> "From last session"
         else -> "Note"
     }
-    val containerColor = if (isPinned) MaterialTheme.colorScheme.primary
-        else MaterialTheme.colorScheme.primaryContainer
-    val contentColor = if (isPinned) MaterialTheme.colorScheme.onPrimary
-        else MaterialTheme.colorScheme.onPrimaryContainer
+    val badgeLabel = when {
+        isPinned -> "Pinned"
+        isCarried -> "Previous note"
+        else -> "Note"
+    }
+    val containerColor = if (isPinned) MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
+        else MaterialTheme.colorScheme.surfaceContainerHighest
+    val contentColor = if (isPinned) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.onSurfaceVariant
     val tooltipState = rememberTooltipState(isPersistent = true)
     val scope = rememberCoroutineScope()
     TooltipBox(
@@ -1017,36 +1035,47 @@ private fun NoteIndicator(
                         },
                     ) { Text("Edit") }
                 },
-            ) { Text(note) }
+            ) {
+                Text(
+                    text = note,
+                    modifier = Modifier
+                        .sizeIn(maxHeight = 240.dp)
+                        .verticalScroll(rememberScrollState()),
+                )
+            }
         },
         state = tooltipState,
     ) {
-        Row(
+        Box(
             modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
-                .background(containerColor)
-                .border(1.dp, MaterialTheme.colorScheme.primary, RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(8.dp))
                 .clickable(role = Role.Button, onClickLabel = "Read $label") {
                     scope.launch { tooltipState.show() }
                 }
-                .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .sizeIn(minWidth = 48.dp, minHeight = 48.dp),
+            contentAlignment = Alignment.Center,
         ) {
-            Icon(
-                imageVector = if (isPinned) Icons.Filled.PushPin else Icons.AutoMirrored.Filled.Notes,
-                // Carry the note text in the description so screen readers can read it directly:
-                // the tooltip's content lives in a popup that isn't part of this anchor's semantics.
-                contentDescription = "$label: $note",
-                tint = contentColor,
-                modifier = Modifier.size(20.dp),
-            )
-            Text(
-                text = label,
-                style = MaterialTheme.typography.labelLarge,
-                color = contentColor,
-            )
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(containerColor)
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+                    .clearAndSetSemantics { contentDescription = "$label: $note" },
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(
+                    imageVector = if (isPinned) Icons.Filled.PushPin else Icons.AutoMirrored.Filled.Notes,
+                    contentDescription = null,
+                    tint = contentColor,
+                    modifier = Modifier.size(16.dp),
+                )
+                Text(
+                    text = badgeLabel,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = contentColor,
+                )
+            }
         }
     }
 }
