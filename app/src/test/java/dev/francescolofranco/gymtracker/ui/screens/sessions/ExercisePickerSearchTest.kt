@@ -53,7 +53,7 @@ class ExercisePickerSearchTest {
         )
         val result = filterPickerExercises(
             rows = rows + ExerciseWithRecency(inclineBench, null) + ExerciseWithRecency(shoulderPress, null),
-            filter = PickerFilter.ByCategory(MuscleCategory.CHEST_AND_SHOULDERS),
+            filter = PickerFilter.ByCategory(MuscleCategory.PUSH),
             query = "press",
         )
 
@@ -69,11 +69,11 @@ class ExercisePickerSearchTest {
             assertEquals(filter, restorePickerFilter(filter.saveKey()))
         }
         assertEquals(PickerFilter.All, restorePickerFilter("category:REMOVED_VALUE"))
-        listOf("PUSH", "PULL", "LEGS").forEach { oldCategory ->
+        listOf("CHEST_AND_SHOULDERS", "BACK", "ARMS", "LEGS_AND_GLUTES").forEach { oldCategory ->
             assertEquals(PickerFilter.All, restorePickerFilter("category:$oldCategory"))
         }
         assertEquals(
-            PickerFilter.ByCategory(MuscleCategory.CHEST_AND_SHOULDERS),
+            PickerFilter.ByCategory(MuscleCategory.PULL),
             restorePickerFilter("muscle:REAR_DELTS"),
         )
     }

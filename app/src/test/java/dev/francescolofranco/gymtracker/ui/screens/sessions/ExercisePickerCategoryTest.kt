@@ -28,12 +28,12 @@ class ExercisePickerCategoryTest {
     fun `exercise is available from every category represented by a primary muscle`() {
         val chestResults = filterPickerExercises(
             rows,
-            PickerFilter.ByCategory(MuscleCategory.CHEST_AND_SHOULDERS),
+            PickerFilter.ByCategory(MuscleCategory.PUSH),
             "",
         )
         val pullResults = filterPickerExercises(
             rows,
-            PickerFilter.ByCategory(MuscleCategory.BACK),
+            PickerFilter.ByCategory(MuscleCategory.PULL),
             "",
         )
 
@@ -56,18 +56,18 @@ class ExercisePickerCategoryTest {
     fun `only represented categories are offered and a selected empty category stays visible`() {
         assertEquals(
             listOf(
-                MuscleCategory.CHEST_AND_SHOULDERS,
-                MuscleCategory.BACK,
-                MuscleCategory.LEGS_AND_GLUTES,
+                MuscleCategory.PUSH,
+                MuscleCategory.PULL,
+                MuscleCategory.LEGS,
             ),
             availablePickerCategories(rows, selected = null),
         )
         assertEquals(
             listOf(
-                MuscleCategory.CHEST_AND_SHOULDERS,
-                MuscleCategory.BACK,
+                MuscleCategory.PUSH,
+                MuscleCategory.PULL,
+                MuscleCategory.LEGS,
                 MuscleCategory.CORE,
-                MuscleCategory.LEGS_AND_GLUTES,
             ),
             availablePickerCategories(rows, selected = MuscleCategory.CORE),
         )
@@ -95,9 +95,9 @@ class ExercisePickerCategoryTest {
     fun `each muscle belongs to exactly one workout group`() {
         assertEquals(Muscle.entries.toSet(), MuscleCategory.entries.flatMap { it.muscles }.toSet())
         assertEquals(Muscle.entries.size, MuscleCategory.entries.sumOf { it.muscles.size })
-        assertEquals(MuscleCategory.ARMS, MuscleCategory.containing(Muscle.TRICEPS))
-        assertEquals(MuscleCategory.CHEST_AND_SHOULDERS, MuscleCategory.containing(Muscle.REAR_DELTS))
-        assertEquals(MuscleCategory.LEGS_AND_GLUTES, MuscleCategory.containing(Muscle.QUADS))
+        assertEquals(MuscleCategory.PUSH, MuscleCategory.containing(Muscle.TRICEPS))
+        assertEquals(MuscleCategory.PULL, MuscleCategory.containing(Muscle.REAR_DELTS))
+        assertEquals(MuscleCategory.LEGS, MuscleCategory.containing(Muscle.QUADS))
         assertEquals(MuscleCategory.CORE, MuscleCategory.containing(Muscle.CORE))
     }
 

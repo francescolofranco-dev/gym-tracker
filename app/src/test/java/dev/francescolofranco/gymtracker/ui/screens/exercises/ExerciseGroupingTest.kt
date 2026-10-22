@@ -40,12 +40,12 @@ class ExerciseGroupingTest {
         val grouped = groupExercisesByCategory(exercises)
 
         assertEquals(
-            listOf(MuscleCategory.CHEST_AND_SHOULDERS, MuscleCategory.LEGS_AND_GLUTES),
+            listOf(MuscleCategory.PUSH, MuscleCategory.LEGS),
             grouped.keys.toList(),
         )
         assertEquals(
             listOf(shoulderAndCalves.id, 3L),
-            grouped.getValue(MuscleCategory.CHEST_AND_SHOULDERS).map { it.id },
+            grouped.getValue(MuscleCategory.PUSH).map { it.id },
         )
         assertEquals(1, grouped.values.flatten().count { it.id == shoulderAndCalves.id })
     }
@@ -63,7 +63,7 @@ class ExerciseGroupingTest {
 
         assertEquals(
             listOf(3L, 1L, 2L, 4L),
-            grouped.getValue(MuscleCategory.CHEST_AND_SHOULDERS).map { it.id },
+            grouped.getValue(MuscleCategory.PUSH).map { it.id },
         )
     }
 

@@ -7,8 +7,8 @@ import org.junit.Test
 class MuscleCategoryTest {
 
     @Test
-    fun `picker exposes no more than five broad categories`() {
-        assertTrue(MuscleCategory.entries.size in 4..5)
+    fun `app uses push pull legs core in that order`() {
+        assertEquals(listOf("Push", "Pull", "Legs", "Core"), MuscleCategory.entries.map { it.displayName })
     }
 
     @Test

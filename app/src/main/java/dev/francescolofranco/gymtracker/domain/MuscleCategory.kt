@@ -8,37 +8,28 @@ enum class MuscleCategory(
     val displayName: String,
     val muscles: Set<Muscle>,
 ) {
-    CHEST_AND_SHOULDERS(
-        displayName = "Chest & shoulders",
+    PUSH(
+        displayName = "Push",
         muscles = setOf(
             Muscle.CHEST,
             Muscle.FRONT_DELTS,
             Muscle.SIDE_DELTS,
-            Muscle.REAR_DELTS,
+            Muscle.TRICEPS,
         ),
     ),
-    BACK(
-        displayName = "Back",
+    PULL(
+        displayName = "Pull",
         muscles = setOf(
             Muscle.LATS,
             Muscle.UPPER_BACK_TRAPS,
             Muscle.LOWER_BACK,
-        ),
-    ),
-    ARMS(
-        displayName = "Arms",
-        muscles = setOf(
+            Muscle.REAR_DELTS,
             Muscle.BICEPS,
-            Muscle.TRICEPS,
             Muscle.FOREARMS,
         ),
     ),
-    CORE(
-        displayName = "Core",
-        muscles = setOf(Muscle.CORE),
-    ),
-    LEGS_AND_GLUTES(
-        displayName = "Legs & glutes",
+    LEGS(
+        displayName = "Legs",
         muscles = setOf(
             Muscle.QUADS,
             Muscle.HAMSTRINGS,
@@ -46,6 +37,10 @@ enum class MuscleCategory(
             Muscle.GLUTES,
             Muscle.CALVES,
         ),
+    ),
+    CORE(
+        displayName = "Core",
+        muscles = setOf(Muscle.CORE),
     ),
     ;
 
