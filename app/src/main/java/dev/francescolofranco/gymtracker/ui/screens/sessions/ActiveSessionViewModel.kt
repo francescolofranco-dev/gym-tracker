@@ -27,9 +27,12 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -154,8 +157,21 @@ class ActiveSessionViewModel @Inject constructor(
     private val _events = Channel<Event>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
 
+    private val exerciseSelectionMutex = Mutex()
+
     fun addExercise(exerciseId: Long) = viewModelScope.launch {
-        repo.addExerciseToSession(sessionId, exerciseId)
+        exerciseSelectionMutex.withLock {
+            repo.addExerciseToSession(sessionId, exerciseId)
+        }
+    }
+
+    fun removeExercise(exerciseId: Long) = viewModelScope.launch {
+        // Serialize with additions so a quick second tap can remove a newly inserted row.
+        exerciseSelectionMutex.withLock {
+            repo.observeExerciseDetails(sessionId).first()
+                .filter { it.exercise.id == exerciseId }
+                .forEach { repo.removeSessionExercise(it.sessionExercise.id) }
+        }
     }
 
     fun removeSessionExercise(sessionExerciseId: Long) = viewModelScope.launch {

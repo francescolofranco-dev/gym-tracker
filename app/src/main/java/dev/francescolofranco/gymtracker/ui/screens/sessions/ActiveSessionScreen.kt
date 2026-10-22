@@ -190,7 +190,7 @@ fun ActiveSessionScreen(
                 ExtendedFloatingActionButton(
                     onClick = { showPicker = true },
                     icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                    text = { Text("Select exercise") },
+                    text = { Text("Add exercise") },
                 )
             }
         },
@@ -285,6 +285,7 @@ fun ActiveSessionScreen(
             excludeIds = details.map { it.exercise.id }.toSet(),
             onDismiss = { showPicker = false },
             onPick = { e -> viewModel.addExercise(e.id) },
+            onUnpick = { e -> viewModel.removeExercise(e.id) },
         )
     }
 
@@ -382,7 +383,7 @@ private fun EmptyActiveSession(modifier: Modifier = Modifier) {
         )
         Text(text = "Empty session", style = MaterialTheme.typography.titleLarge)
         Text(
-            text = "Tap Select exercise to add the first one.",
+            text = "Tap Add exercise to add the first one.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

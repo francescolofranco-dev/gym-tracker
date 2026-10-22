@@ -54,15 +54,16 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun ExercisePickerSheet(
-    /** IDs that should appear disabled (already added to the current session). */
+    /** IDs already selected; tappable for removal when [onUnpick] is supplied. */
     excludeIds: Set<Long> = emptySet(),
     onDismiss: () -> Unit,
     onPick: (ExerciseEntity) -> Unit,
+    onUnpick: ((ExerciseEntity) -> Unit)? = null,
     viewModel: ExercisePickerViewModel = hiltViewModel(),
 ) {
     val rowState by viewModel.rows.collectAsStateWithLifecycle()
     val rows = (rowState as? Loadable.Ready)?.value.orEmpty()
-    var pickedIds by remember { mutableStateOf(emptySet<Long>()) }
+    var selectionOverrides by remember { mutableStateOf(emptyMap<Long, Boolean>()) }
     var filterKey by rememberSaveable { mutableStateOf(PickerFilter.All.saveKey()) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
     val filter = restorePickerFilter(filterKey)
@@ -179,16 +180,20 @@ fun ExercisePickerSheet(
                                     .weight(1f),
                             ) {
                                 items(items = visibleExercises, key = { it.id }) { e ->
-                                    // Track the tap locally as well as relying on excludeIds.
-                                    // Session persistence is asynchronous, so this closes the brief
-                                    // window in which a double-tap could enqueue the exercise twice.
-                                    val alreadyAdded = e.id in excludeIds || e.id in pickedIds
+                                    // Reflect taps immediately while persistence catches up.
+                                    val alreadyAdded = selectionOverrides[e.id] ?: (e.id in excludeIds)
                                     PickerRow(
                                         exercise = e,
                                         alreadyAdded = alreadyAdded,
+                                        canRemove = onUnpick != null,
                                         onClick = {
-                                            if (!alreadyAdded) {
-                                                pickedIds += e.id
+                                            if (alreadyAdded) {
+                                                onUnpick?.let { remove ->
+                                                    selectionOverrides = selectionOverrides + (e.id to false)
+                                                    remove(e)
+                                                }
+                                            } else {
+                                                selectionOverrides = selectionOverrides + (e.id to true)
                                                 onPick(e)
                                             }
                                         },
@@ -340,14 +345,15 @@ internal fun filterPickerExercises(
 private fun PickerRow(
     exercise: ExerciseEntity,
     alreadyAdded: Boolean,
+    canRemove: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(enabled = !alreadyAdded, onClick = onClick)
-            .alpha(if (alreadyAdded) 0.45f else 1f)
+            .clickable(enabled = !alreadyAdded || canRemove, onClick = onClick)
+            .alpha(if (alreadyAdded && !canRemove) 0.45f else 1f)
             .padding(vertical = 12.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
