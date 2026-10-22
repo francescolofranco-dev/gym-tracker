@@ -41,7 +41,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.data.db.projections.ExerciseWithRecency
 import dev.francescolofranco.gymtracker.domain.Muscle
-import dev.francescolofranco.gymtracker.domain.MuscleCategory
 import dev.francescolofranco.gymtracker.domain.sortedTopToBottom
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.components.ExerciseSearchField
@@ -94,13 +93,8 @@ fun ExercisePickerSheet(
             selected = (filter as? PickerFilter.ByCategory)?.category,
         )
     }
-    // Snapshot recency when the picker receives its first result. Adding an exercise to the active
-    // session updates lastUsedAt; keeping this order fixed prevents rows jumping under the finger.
-    val recentIds = remember(rows.isNotEmpty()) {
-        rows.filter { it.lastUsedAt != null }.take(10).map { it.exercise.id }
-    }
-    val visibleExercises = remember(rows, filter, recentIds, searchQuery) {
-        filterPickerExercises(rows, filter, recentIds, searchQuery)
+    val visibleExercises = remember(rows, filter, searchQuery) {
+        filterPickerExercises(rows, filter, searchQuery)
     }
 
     // Keep the picker open while several exercises are added. It is intentionally dismissed only
@@ -229,11 +223,7 @@ private fun PickerNoSearchResults(
             text = when {
                 query.isBlank() && filter is PickerFilter.ByCategory ->
                     "No exercises in ${filter.category.displayName}."
-                query.isBlank() && filter == PickerFilter.Recent ->
-                    "No recently used exercises yet."
                 query.isBlank() -> "No exercises in this filter."
-                filter == PickerFilter.Recent ->
-                    "No recent exercises match \"${query.trim()}\""
                 filter is PickerFilter.ByCategory ->
                     "No exercises in ${filter.category.displayName} match \"${query.trim()}\""
                 else -> "No exercises match \"${query.trim()}\""
@@ -256,7 +246,7 @@ private fun PickerNoSearchResults(
 @Composable
 private fun ExerciseFilters(
     filter: PickerFilter,
-    availableCategories: List<MuscleCategory>,
+    availableCategories: List<PickerCategory>,
     onFilter: (PickerFilter) -> Unit,
 ) {
     Row(
@@ -271,11 +261,6 @@ private fun ExerciseFilters(
             onClick = { onFilter(PickerFilter.All) },
             label = { Text("All") },
         )
-        FilterChip(
-            selected = filter == PickerFilter.Recent,
-            onClick = { onFilter(PickerFilter.Recent) },
-            label = { Text("Recent") },
-        )
         availableCategories.forEach { category ->
             val categoryFilter = PickerFilter.ByCategory(category)
             FilterChip(
@@ -289,26 +274,23 @@ private fun ExerciseFilters(
 
 internal sealed interface PickerFilter {
     data object All : PickerFilter
-    data object Recent : PickerFilter
-    data class ByCategory(val category: MuscleCategory) : PickerFilter
+    data class ByCategory(val category: PickerCategory) : PickerFilter
 }
 
 internal fun PickerFilter.saveKey(): String = when (this) {
     PickerFilter.All -> "all"
-    PickerFilter.Recent -> "recent"
     is PickerFilter.ByCategory -> "category:${category.name}"
 }
 
 internal fun restorePickerFilter(key: String): PickerFilter = when {
-    key == "recent" -> PickerFilter.Recent
-    key.startsWith("category:") -> MuscleCategory.entries
+    key.startsWith("category:") -> PickerCategory.entries
         .firstOrNull { it.name == key.substringAfter("category:") }
         ?.let { PickerFilter.ByCategory(it) }
         ?: PickerFilter.All
     // Migrate process-restored state saved by versions that exposed one chip per muscle.
     key.startsWith("muscle:") -> Muscle.entries
         .firstOrNull { it.name == key.substringAfter("muscle:") }
-        ?.let(MuscleCategory::containing)
+        ?.let(PickerCategory::containing)
         ?.let { PickerFilter.ByCategory(it) }
         ?: PickerFilter.All
     else -> PickerFilter.All
@@ -316,22 +298,18 @@ internal fun restorePickerFilter(key: String): PickerFilter = when {
 
 internal fun availablePickerCategories(
     rows: List<ExerciseWithRecency>,
-    selected: MuscleCategory?,
-): List<MuscleCategory> = MuscleCategory.entries.filter { category ->
+    selected: PickerCategory?,
+): List<PickerCategory> = PickerCategory.entries.filter { category ->
     category == selected || rows.any { category.containsAny(it.exercise.primaryMuscles) }
 }
 
 internal fun filterPickerExercises(
     rows: List<ExerciseWithRecency>,
     filter: PickerFilter,
-    recentIds: List<Long>,
     query: String,
 ): List<ExerciseEntity> {
     val filtered = when (filter) {
         PickerFilter.All -> rows.map { it.exercise }.sortedWith(ExerciseTopToBottomComparator)
-        PickerFilter.Recent -> recentIds.mapNotNull { id ->
-            rows.firstOrNull { it.exercise.id == id }?.exercise
-        }
         is PickerFilter.ByCategory -> rows.asSequence()
             .map { it.exercise }
             .filter { filter.category.containsAny(it.primaryMuscles) }

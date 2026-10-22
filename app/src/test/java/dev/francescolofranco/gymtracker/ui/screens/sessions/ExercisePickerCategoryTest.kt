@@ -3,17 +3,16 @@ package dev.francescolofranco.gymtracker.ui.screens.sessions
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.data.db.projections.ExerciseWithRecency
 import dev.francescolofranco.gymtracker.domain.Muscle
-import dev.francescolofranco.gymtracker.domain.MuscleCategory
 import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class ExercisePickerCategoryTest {
 
-    private val chestAndTriceps = exercise(
+    private val pullover = exercise(
         id = 1,
-        name = "Bench press",
-        primaries = setOf(Muscle.CHEST, Muscle.TRICEPS),
+        name = "Pullover",
+        primaries = setOf(Muscle.CHEST, Muscle.LATS),
     )
     private val squat = exercise(
         id = 2,
@@ -21,33 +20,30 @@ class ExercisePickerCategoryTest {
         primaries = setOf(Muscle.QUADS),
         secondaries = setOf(Muscle.CORE),
     )
-    private val rows = listOf(chestAndTriceps, squat).map { ExerciseWithRecency(it, null) }
+    private val rows = listOf(pullover, squat).map { ExerciseWithRecency(it, null) }
 
     @Test
     fun `exercise is available from every category represented by a primary muscle`() {
         val chestResults = filterPickerExercises(
             rows,
-            PickerFilter.ByCategory(MuscleCategory.CHEST_AND_SHOULDERS),
-            emptyList(),
+            PickerFilter.ByCategory(PickerCategory.PUSH),
             "",
         )
-        val armResults = filterPickerExercises(
+        val pullResults = filterPickerExercises(
             rows,
-            PickerFilter.ByCategory(MuscleCategory.ARMS),
-            emptyList(),
+            PickerFilter.ByCategory(PickerCategory.PULL),
             "",
         )
 
-        assertEquals(listOf(chestAndTriceps.id), chestResults.map { it.id })
-        assertEquals(listOf(chestAndTriceps.id), armResults.map { it.id })
+        assertEquals(listOf(pullover.id), chestResults.map { it.id })
+        assertEquals(listOf(pullover.id), pullResults.map { it.id })
     }
 
     @Test
     fun `secondary muscles do not opt an exercise into a category`() {
         val results = filterPickerExercises(
             rows,
-            PickerFilter.ByCategory(MuscleCategory.CORE),
-            emptyList(),
+            PickerFilter.ByCategory(PickerCategory.CORE),
             "",
         )
 
@@ -58,21 +54,31 @@ class ExercisePickerCategoryTest {
     fun `only represented categories are offered and a selected empty category stays visible`() {
         assertEquals(
             listOf(
-                MuscleCategory.CHEST_AND_SHOULDERS,
-                MuscleCategory.ARMS,
-                MuscleCategory.LEGS_AND_GLUTES,
+                PickerCategory.PUSH,
+                PickerCategory.PULL,
+                PickerCategory.LEGS,
             ),
             availablePickerCategories(rows, selected = null),
         )
         assertEquals(
             listOf(
-                MuscleCategory.CHEST_AND_SHOULDERS,
-                MuscleCategory.ARMS,
-                MuscleCategory.CORE,
-                MuscleCategory.LEGS_AND_GLUTES,
+                PickerCategory.PUSH,
+                PickerCategory.PULL,
+                PickerCategory.LEGS,
+                PickerCategory.CORE,
             ),
-            availablePickerCategories(rows, selected = MuscleCategory.CORE),
+            availablePickerCategories(rows, selected = PickerCategory.CORE),
         )
+    }
+
+    @Test
+    fun `each muscle belongs to exactly one workout group`() {
+        assertEquals(Muscle.entries.toSet(), PickerCategory.entries.flatMap { it.muscles }.toSet())
+        assertEquals(Muscle.entries.size, PickerCategory.entries.sumOf { it.muscles.size })
+        assertEquals(PickerCategory.PUSH, PickerCategory.containing(Muscle.TRICEPS))
+        assertEquals(PickerCategory.PULL, PickerCategory.containing(Muscle.REAR_DELTS))
+        assertEquals(PickerCategory.LEGS, PickerCategory.containing(Muscle.QUADS))
+        assertEquals(PickerCategory.CORE, PickerCategory.containing(Muscle.CORE))
     }
 
     private fun exercise(

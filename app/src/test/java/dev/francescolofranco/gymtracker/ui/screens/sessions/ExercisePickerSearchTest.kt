@@ -3,7 +3,6 @@ package dev.francescolofranco.gymtracker.ui.screens.sessions
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.data.db.projections.ExerciseWithRecency
 import dev.francescolofranco.gymtracker.domain.Muscle
-import dev.francescolofranco.gymtracker.domain.MuscleCategory
 import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -19,7 +18,7 @@ class ExercisePickerSearchTest {
 
     @Test
     fun `all filter follows anatomy before exercise name`() {
-        val result = filterPickerExercises(rows, PickerFilter.All, emptyList(), "  ")
+        val result = filterPickerExercises(rows, PickerFilter.All, "  ")
 
         assertEquals(listOf("Bench press", "Lat pulldown", "Back squat"), result.map { it.name })
     }
@@ -32,7 +31,6 @@ class ExercisePickerSearchTest {
         val result = filterPickerExercises(
             rows = listOf(ExerciseWithRecency(calfRaise, null), ExerciseWithRecency(frontRaise, null)),
             filter = PickerFilter.All,
-            recentIds = emptyList(),
             query = "raise",
         )
 
@@ -40,15 +38,8 @@ class ExercisePickerSearchTest {
     }
 
     @Test
-    fun `recent filter keeps its snapshotted order while searching`() {
-        val result = filterPickerExercises(
-            rows = rows,
-            filter = PickerFilter.Recent,
-            recentIds = listOf(pulldown.id, bench.id, squat.id),
-            query = "back",
-        )
-
-        assertEquals(listOf(pulldown.id, squat.id), result.map { it.id })
+    fun `removed recent filter restores to all`() {
+        assertEquals(PickerFilter.All, restorePickerFilter("recent"))
     }
 
     @Test
@@ -61,8 +52,7 @@ class ExercisePickerSearchTest {
         )
         val result = filterPickerExercises(
             rows = rows + ExerciseWithRecency(inclineBench, null) + ExerciseWithRecency(shoulderPress, null),
-            filter = PickerFilter.ByCategory(MuscleCategory.CHEST_AND_SHOULDERS),
-            recentIds = emptyList(),
+            filter = PickerFilter.ByCategory(PickerCategory.PUSH),
             query = "press",
         )
 
@@ -73,8 +63,7 @@ class ExercisePickerSearchTest {
     fun `picker filters round trip through save keys`() {
         val filters = listOf(
             PickerFilter.All,
-            PickerFilter.Recent,
-            PickerFilter.ByCategory(MuscleCategory.CHEST_AND_SHOULDERS),
+            PickerFilter.ByCategory(PickerCategory.PUSH),
         )
 
         filters.forEach { filter ->
@@ -82,7 +71,7 @@ class ExercisePickerSearchTest {
         }
         assertEquals(PickerFilter.All, restorePickerFilter("category:REMOVED_VALUE"))
         assertEquals(
-            PickerFilter.ByCategory(MuscleCategory.CHEST_AND_SHOULDERS),
+            PickerFilter.ByCategory(PickerCategory.PULL),
             restorePickerFilter("muscle:REAR_DELTS"),
         )
     }
