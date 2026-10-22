@@ -41,6 +41,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.data.db.projections.ExerciseWithRecency
 import dev.francescolofranco.gymtracker.domain.Muscle
+import dev.francescolofranco.gymtracker.domain.MuscleCategory
 import dev.francescolofranco.gymtracker.domain.sortedTopToBottom
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.components.ExerciseSearchField
@@ -246,7 +247,7 @@ private fun PickerNoSearchResults(
 @Composable
 private fun ExerciseFilters(
     filter: PickerFilter,
-    availableCategories: List<PickerCategory>,
+    availableCategories: List<MuscleCategory>,
     onFilter: (PickerFilter) -> Unit,
 ) {
     Row(
@@ -274,7 +275,7 @@ private fun ExerciseFilters(
 
 internal sealed interface PickerFilter {
     data object All : PickerFilter
-    data class ByCategory(val category: PickerCategory) : PickerFilter
+    data class ByCategory(val category: MuscleCategory) : PickerFilter
 }
 
 internal fun PickerFilter.saveKey(): String = when (this) {
@@ -283,14 +284,14 @@ internal fun PickerFilter.saveKey(): String = when (this) {
 }
 
 internal fun restorePickerFilter(key: String): PickerFilter = when {
-    key.startsWith("category:") -> PickerCategory.entries
+    key.startsWith("category:") -> MuscleCategory.entries
         .firstOrNull { it.name == key.substringAfter("category:") }
         ?.let { PickerFilter.ByCategory(it) }
         ?: PickerFilter.All
     // Migrate process-restored state saved by versions that exposed one chip per muscle.
     key.startsWith("muscle:") -> Muscle.entries
         .firstOrNull { it.name == key.substringAfter("muscle:") }
-        ?.let(PickerCategory::containing)
+        ?.let(MuscleCategory::containing)
         ?.let { PickerFilter.ByCategory(it) }
         ?: PickerFilter.All
     else -> PickerFilter.All
@@ -298,8 +299,8 @@ internal fun restorePickerFilter(key: String): PickerFilter = when {
 
 internal fun availablePickerCategories(
     rows: List<ExerciseWithRecency>,
-    selected: PickerCategory?,
-): List<PickerCategory> = PickerCategory.entries.filter { category ->
+    selected: MuscleCategory?,
+): List<MuscleCategory> = MuscleCategory.entries.filter { category ->
     category == selected || rows.any { category.containsAny(it.exercise.primaryMuscles) }
 }
 
