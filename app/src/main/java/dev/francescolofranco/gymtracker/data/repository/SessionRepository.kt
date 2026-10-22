@@ -193,8 +193,8 @@ class SessionRepository @Inject constructor(
      * items; the caller (a ViewModel) is responsible for finding the adjacent neighbour and
      * passing both IDs.
      */
-    suspend fun swapSessionExerciseOrder(idA: Long, idB: Long) =
-        sessionDao.swapExerciseOrder(idA, idB)
+    suspend fun reorderSessionExercises(ids: List<Long>) =
+        sessionDao.reorderExercises(ids)
 
     suspend fun setSessionExerciseSkipped(sessionExerciseId: Long, skipped: Boolean) =
         sessionDao.setExerciseSkipped(sessionExerciseId, skipped)

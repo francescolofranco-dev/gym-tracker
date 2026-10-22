@@ -37,8 +37,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.FitnessCenter
@@ -235,47 +233,50 @@ fun ActiveSessionScreen(
                 return@Column
             }
 
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                // Extra bottom space so the last set's ✓ scrolls clear of the FAB instead of
-                // being permanently obscured by it.
-                contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 96.dp),
-            ) {
-                session?.notes?.takeIf { it.isNotBlank() }?.let { notes ->
-                    item(key = "session-notes", contentType = "session-notes") {
-                        SessionNotesPreview(notes = notes, onEdit = { sessionNotesEditor = true })
+            val reorder = rememberSessionExerciseDrag(details, viewModel::reorderExercises)
+            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
+                LazyColumn(
+                    state = reorder.listState,
+                    modifier = Modifier.fillMaxSize().then(reorder.gestures),
+                    // Extra bottom space so the last set's ✓ scrolls clear of the FAB instead of
+                    // being permanently obscured by it.
+                    contentPadding = PaddingValues(start = 12.dp, end = 12.dp, top = 12.dp, bottom = 96.dp),
+                ) {
+                    session?.notes?.takeIf { it.isNotBlank() }?.let { notes ->
+                        item(key = "session-notes", contentType = "session-notes") {
+                            SessionNotesPreview(notes = notes, onEdit = { sessionNotesEditor = true })
+                        }
+                        item(key = "session-notes-gap", contentType = "gap") {
+                            Spacer(Modifier.height(12.dp))
+                        }
                     }
-                    item(key = "session-notes-gap", contentType = "gap") {
-                        Spacer(Modifier.height(12.dp))
+                    details.forEach { detail ->
+                        exerciseSection(
+                            detail = detail,
+                            headerModifier = reorder.headerModifier(detail.sessionExercise.id),
+                            footerModifier = reorder.footerModifier(detail.sessionExercise.id),
+                            unit = unit,
+                            hints = hints.byExerciseId[detail.exercise.id] ?: emptyList(),
+                            personalRecords = personalRecords[detail.exercise.id].orEmpty(),
+                            editable = true,
+                            onCommitSet = { setLogId, reps, kg -> viewModel.logSet(setLogId, reps, kg) },
+                            onUncommitSet = { setLogId -> viewModel.unlogSet(setLogId) },
+                            onDraftSet = { setLogId, reps, kg, kgExplicit ->
+                                viewModel.saveSetDraft(detail.sessionExercise.id, setLogId, reps, kg, kgExplicit)
+                            },
+                            onToggleSetSkipped = { setLogId, currentlySkipped ->
+                                viewModel.toggleSetSkipped(setLogId, currentlySkipped)
+                            },
+                            onSkipExercise = { skipped ->
+                                viewModel.setExerciseSkipped(detail.sessionExercise.id, skipped)
+                            },
+                            onEditExerciseNotes = { exerciseNotesTarget = detail },
+                            onRemoveExercise = { viewModel.removeSessionExercise(detail.sessionExercise.id) },
+                            onOpenExerciseStats = { onOpenExerciseStats(detail.exercise.id) },
+                        )
                     }
                 }
-                details.forEachIndexed { index, detail ->
-                    exerciseSection(
-                        detail = detail,
-                        unit = unit,
-                        hints = hints.byExerciseId[detail.exercise.id] ?: emptyList(),
-                        personalRecords = personalRecords[detail.exercise.id].orEmpty(),
-                        editable = true,
-                        canMoveUp = index > 0,
-                        canMoveDown = index < details.lastIndex,
-                        onCommitSet = { setLogId, reps, kg -> viewModel.logSet(setLogId, reps, kg) },
-                        onUncommitSet = { setLogId -> viewModel.unlogSet(setLogId) },
-                        onDraftSet = { setLogId, reps, kg, kgExplicit ->
-                            viewModel.saveSetDraft(detail.sessionExercise.id, setLogId, reps, kg, kgExplicit)
-                        },
-                        onToggleSetSkipped = { setLogId, currentlySkipped ->
-                            viewModel.toggleSetSkipped(setLogId, currentlySkipped)
-                        },
-                        onSkipExercise = { skipped ->
-                            viewModel.setExerciseSkipped(detail.sessionExercise.id, skipped)
-                        },
-                        onMoveUp = { viewModel.moveSessionExercise(detail.sessionExercise.id, -1) },
-                        onMoveDown = { viewModel.moveSessionExercise(detail.sessionExercise.id, +1) },
-                        onEditExerciseNotes = { exerciseNotesTarget = detail },
-                        onRemoveExercise = { viewModel.removeSessionExercise(detail.sessionExercise.id) },
-                        onOpenExerciseStats = { onOpenExerciseStats(detail.exercise.id) },
-                    )
-                }
+                SessionExerciseDragPreview(reorder, details)
             }
         }
     }
@@ -435,20 +436,18 @@ private fun Modifier.completionRail(isComplete: Boolean): Modifier {
  * a single frame. Keeping each set as its own keyed item spreads that work across prefetch frames.
  */
 internal fun LazyListScope.exerciseSection(
+    headerModifier: Modifier = Modifier,
+    footerModifier: Modifier = Modifier,
     detail: SessionExerciseDetail,
     unit: WeightUnit,
     hints: List<HintRow>,
     personalRecords: Set<PersonalRecordType> = emptySet(),
     editable: Boolean,
-    canMoveUp: Boolean,
-    canMoveDown: Boolean,
     onCommitSet: (setLogId: Long, reps: Int, kg: Double) -> Unit,
     onUncommitSet: (setLogId: Long) -> Unit,
     onDraftSet: (setLogId: Long, reps: Int?, kg: Double?, kgFromExplicitEntry: Boolean) -> Unit,
     onToggleSetSkipped: (setLogId: Long, currentlySkipped: Boolean) -> Unit,
     onSkipExercise: (skipped: Boolean) -> Unit,
-    onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit,
     onEditExerciseNotes: () -> Unit,
     onRemoveExercise: () -> Unit,
     onOpenExerciseStats: () -> Unit,
@@ -467,6 +466,7 @@ internal fun LazyListScope.exerciseSection(
         contentType = "exercise-header",
     ) {
         ExerciseSectionHeader(
+            modifier = headerModifier,
             detail = detail,
             hints = hints,
             personalRecords = personalRecords,
@@ -474,11 +474,7 @@ internal fun LazyListScope.exerciseSection(
             incomplete = incomplete,
             hasSets = sets.isNotEmpty(),
             editable = editable,
-            canMoveUp = canMoveUp,
-            canMoveDown = canMoveDown,
             onSkipExercise = onSkipExercise,
-            onMoveUp = onMoveUp,
-            onMoveDown = onMoveDown,
             onEditExerciseNotes = onEditExerciseNotes,
             onRemoveExercise = onRemoveExercise,
             onOpenExerciseStats = onOpenExerciseStats,
@@ -553,13 +549,14 @@ internal fun LazyListScope.exerciseSection(
         key = "exercise-$sectionId-gap",
         contentType = "gap",
     ) {
-        Spacer(Modifier.height(12.dp))
+        Spacer(footerModifier.fillMaxWidth().height(12.dp))
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ExerciseSectionHeader(
+    modifier: Modifier = Modifier,
     detail: SessionExerciseDetail,
     hints: List<HintRow>,
     personalRecords: Set<PersonalRecordType>,
@@ -567,11 +564,7 @@ private fun ExerciseSectionHeader(
     incomplete: Boolean,
     hasSets: Boolean,
     editable: Boolean,
-    canMoveUp: Boolean,
-    canMoveDown: Boolean,
     onSkipExercise: (skipped: Boolean) -> Unit,
-    onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit,
     onEditExerciseNotes: () -> Unit,
     onRemoveExercise: () -> Unit,
     onOpenExerciseStats: () -> Unit,
@@ -585,7 +578,7 @@ private fun ExerciseSectionHeader(
     }
 
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .clip(shape)
             .completionRail(isComplete)
@@ -629,24 +622,6 @@ private fun ExerciseSectionHeader(
                     onClick = {
                         menuExpanded = false
                         onOpenExerciseStats()
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text("Move up") },
-                    leadingIcon = { Icon(Icons.Filled.ArrowUpward, contentDescription = null) },
-                    enabled = canMoveUp,
-                    onClick = {
-                        menuExpanded = false
-                        onMoveUp()
-                    },
-                )
-                DropdownMenuItem(
-                    text = { Text("Move down") },
-                    leadingIcon = { Icon(Icons.Filled.ArrowDownward, contentDescription = null) },
-                    enabled = canMoveDown,
-                    onClick = {
-                        menuExpanded = false
-                        onMoveDown()
                     },
                 )
                 DropdownMenuItem(
@@ -696,15 +671,11 @@ fun ExerciseCard(
     modifier: Modifier = Modifier,
     personalRecords: Set<PersonalRecordType> = emptySet(),
     editable: Boolean,
-    canMoveUp: Boolean,
-    canMoveDown: Boolean,
     onCommitSet: (setLogId: Long, reps: Int, kg: Double) -> Unit,
     onUncommitSet: (setLogId: Long) -> Unit,
     onDraftSet: (setLogId: Long, reps: Int?, kg: Double?, kgFromExplicitEntry: Boolean) -> Unit,
     onToggleSetSkipped: (setLogId: Long, currentlySkipped: Boolean) -> Unit,
     onSkipExercise: (skipped: Boolean) -> Unit,
-    onMoveUp: () -> Unit,
-    onMoveDown: () -> Unit,
     onEditExerciseNotes: () -> Unit,
     onRemoveExercise: () -> Unit,
     onOpenExerciseStats: () -> Unit,
@@ -780,26 +751,6 @@ fun ExerciseCard(
                         onClick = {
                             menuExpanded = false
                             onOpenExerciseStats()
-                        },
-                    )
-                    // Move up / down: greyed out at the edges instead of hidden so the menu
-                    // stays a predictable shape across rows.
-                    DropdownMenuItem(
-                        text = { Text("Move up") },
-                        leadingIcon = { Icon(Icons.Filled.ArrowUpward, contentDescription = null) },
-                        enabled = canMoveUp,
-                        onClick = {
-                            menuExpanded = false
-                            onMoveUp()
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text("Move down") },
-                        leadingIcon = { Icon(Icons.Filled.ArrowDownward, contentDescription = null) },
-                        enabled = canMoveDown,
-                        onClick = {
-                            menuExpanded = false
-                            onMoveDown()
                         },
                     )
                     DropdownMenuItem(

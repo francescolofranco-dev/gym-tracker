@@ -154,18 +154,16 @@ interface SessionDao {
     @Query("UPDATE session_exercise SET orderInSession = :order WHERE id = :id")
     suspend fun setExerciseOrder(id: Long, order: Int)
 
-    /**
-     * Swap orderInSession between two session_exercise rows. Wrapped in a transaction so a
-     * crash mid-swap can't leave the list with two rows at the same order (which would make
-     * sorting unstable). Caller is responsible for picking the right pair (an exercise + its
-     * neighbour) — this is a generic "exchange these two orders" primitive.
-     */
+    @Query("SELECT id FROM session_exercise WHERE sessionId = :sessionId")
+    suspend fun exerciseIdsForSession(sessionId: Long): List<Long>
+
+    /** Save a complete session order atomically, rejecting stale or cross-session lists. */
     @Transaction
-    suspend fun swapExerciseOrder(idA: Long, idB: Long) {
-        val a = sessionExerciseById(idA) ?: return
-        val b = sessionExerciseById(idB) ?: return
-        setExerciseOrder(idA, b.orderInSession)
-        setExerciseOrder(idB, a.orderInSession)
+    suspend fun reorderExercises(ids: List<Long>) {
+        val rows = ids.map { sessionExerciseById(it) ?: return }
+        if (rows.map { it.sessionId }.distinct().size != 1 || ids.distinct().size != ids.size) return
+        if (exerciseIdsForSession(rows.first().sessionId).toSet() != ids.toSet()) return
+        ids.forEachIndexed { index, id -> setExerciseOrder(id, index) }
     }
 
     @Query("SELECT * FROM session ORDER BY id")

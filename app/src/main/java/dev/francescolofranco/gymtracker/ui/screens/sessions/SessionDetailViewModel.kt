@@ -128,13 +128,8 @@ class SessionDetailViewModel @Inject constructor(
         repo.setSessionExerciseSkipped(sessionExerciseId, skipped)
     }
 
-    fun moveSessionExercise(targetId: Long, delta: Int) = viewModelScope.launch {
-        if (delta == 0) return@launch
-        val ordered = details.value.map { it.sessionExercise.id }
-        val idx = ordered.indexOf(targetId)
-        val neighborIdx = idx + delta
-        if (idx < 0 || neighborIdx !in ordered.indices) return@launch
-        repo.swapSessionExerciseOrder(targetId, ordered[neighborIdx])
+    fun reorderExercises(ids: List<Long>) = viewModelScope.launch {
+        repo.reorderSessionExercises(ids)
     }
 
     fun setExerciseNote(

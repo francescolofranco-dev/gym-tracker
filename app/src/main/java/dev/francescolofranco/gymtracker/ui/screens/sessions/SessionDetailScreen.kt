@@ -155,57 +155,60 @@ fun SessionDetailScreen(
                 Text(text = "No exercises were logged.", style = MaterialTheme.typography.bodyMedium)
             }
         } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
-            ) {
-                session?.notes?.takeIf { it.isNotBlank() }?.let { notes ->
-                    item(key = "session-notes", contentType = "session-notes") {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 4.dp),
-                        ) {
-                            Text(
-                                text = "Notes",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                            Text(text = notes, style = MaterialTheme.typography.bodyMedium)
+            val reorder = rememberSessionExerciseDrag(details, viewModel::reorderExercises)
+            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().padding(padding)) {
+                LazyColumn(
+                    state = reorder.listState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .then(reorder.gestures),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
+                ) {
+                    session?.notes?.takeIf { it.isNotBlank() }?.let { notes ->
+                        item(key = "session-notes", contentType = "session-notes") {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 4.dp),
+                            ) {
+                                Text(
+                                    text = "Notes",
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                                Text(text = notes, style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                        item(key = "session-notes-gap", contentType = "gap") {
+                            Spacer(Modifier.height(12.dp))
                         }
                     }
-                    item(key = "session-notes-gap", contentType = "gap") {
-                        Spacer(Modifier.height(12.dp))
+                    details.forEach { detail ->
+                        exerciseSection(
+                            detail = detail,
+                            headerModifier = reorder.headerModifier(detail.sessionExercise.id),
+                            footerModifier = reorder.footerModifier(detail.sessionExercise.id),
+                            unit = unit,
+                            hints = hints.byExerciseId[detail.exercise.id] ?: emptyList(),
+                            editable = true,
+                            onCommitSet = { setLogId, reps, kg -> viewModel.logSet(setLogId, reps, kg) },
+                            onUncommitSet = { setLogId -> viewModel.unlogSet(setLogId) },
+                            onDraftSet = { setLogId, reps, kg, kgExplicit ->
+                                viewModel.saveSetDraft(detail.sessionExercise.id, setLogId, reps, kg, kgExplicit)
+                            },
+                            onToggleSetSkipped = { setLogId, currentlySkipped ->
+                                viewModel.toggleSetSkipped(setLogId, currentlySkipped)
+                            },
+                            onSkipExercise = { skipped ->
+                                viewModel.setExerciseSkipped(detail.sessionExercise.id, skipped)
+                            },
+                            onEditExerciseNotes = { exerciseNotesTarget = detail },
+                            onRemoveExercise = { /* read-mostly: no removal from past sessions */ },
+                            onOpenExerciseStats = { onOpenExerciseStats(detail.exercise.id) },
+                        )
                     }
                 }
-                details.forEachIndexed { index, detail ->
-                    exerciseSection(
-                        detail = detail,
-                        unit = unit,
-                        hints = hints.byExerciseId[detail.exercise.id] ?: emptyList(),
-                        editable = true,
-                        canMoveUp = index > 0,
-                        canMoveDown = index < details.lastIndex,
-                        onCommitSet = { setLogId, reps, kg -> viewModel.logSet(setLogId, reps, kg) },
-                        onUncommitSet = { setLogId -> viewModel.unlogSet(setLogId) },
-                        onDraftSet = { setLogId, reps, kg, kgExplicit ->
-                            viewModel.saveSetDraft(detail.sessionExercise.id, setLogId, reps, kg, kgExplicit)
-                        },
-                        onToggleSetSkipped = { setLogId, currentlySkipped ->
-                            viewModel.toggleSetSkipped(setLogId, currentlySkipped)
-                        },
-                        onSkipExercise = { skipped ->
-                            viewModel.setExerciseSkipped(detail.sessionExercise.id, skipped)
-                        },
-                        onMoveUp = { viewModel.moveSessionExercise(detail.sessionExercise.id, -1) },
-                        onMoveDown = { viewModel.moveSessionExercise(detail.sessionExercise.id, +1) },
-                        onEditExerciseNotes = { exerciseNotesTarget = detail },
-                        onRemoveExercise = { /* read-mostly: no removal from past sessions */ },
-                        onOpenExerciseStats = { onOpenExerciseStats(detail.exercise.id) },
-                    )
-                }
+                SessionExerciseDragPreview(reorder, details)
             }
         }
     }
