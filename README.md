@@ -14,9 +14,10 @@ Android workout tracker for logging gym sessions, sets, reps, weight, notes, and
 - Review compact 7, 28, and 90-day training insights, weekly muscle coverage, and exercise progress.
 - Back up and preview restores from files or Google Drive, with one-step restore recovery.
 - Configure display units, templates, notifications, and keep-screen-on behavior.
-- Enable **Settings → Floating timer** to allow a draggable timer with Reset/Stop above other
-  apps and full-screen videos while the timer runs. Android system surfaces and apps that
-  explicitly block overlays can hide it. Stop removes the floating timer and notification.
+- Enable **Settings → Floating timer** to allow a small, draggable time counter at the top right
+  above other apps and full-screen videos while the timer runs. Reset/Stop stay in the notification.
+  Android system surfaces and apps that explicitly block overlays can hide it.
+  Stop removes the floating timer and notification.
 
 ## Tech Stack
 

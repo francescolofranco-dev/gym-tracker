@@ -5,15 +5,12 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Typeface
-import android.graphics.drawable.GradientDrawable
 import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.view.WindowManager
-import android.widget.Button
 import android.widget.Chronometer
-import android.widget.LinearLayout
 import dev.francescolofranco.gymtracker.R
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -21,8 +18,9 @@ import kotlin.math.roundToInt
 /** A small service-owned window; the platform Chronometer ticks without a polling coroutine. */
 internal class TimerOverlay(private val context: Context) {
     private val windowManager = context.getSystemService(WindowManager::class.java)
-    private var view: LinearLayout? = null
-    private var chronometer: Chronometer? = null
+    private var view: Chronometer? = null
+    // Physical right edge, regardless of the language direction.
+    @SuppressLint("RtlHardcoded")
     private val params = WindowManager.LayoutParams(
         WindowManager.LayoutParams.WRAP_CONTENT,
         WindowManager.LayoutParams.WRAP_CONTENT,
@@ -30,9 +28,9 @@ internal class TimerOverlay(private val context: Context) {
         WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
         PixelFormat.TRANSLUCENT,
     ).apply {
-        gravity = Gravity.TOP or Gravity.LEFT
-        x = dp(16)
-        y = dp(120)
+        gravity = Gravity.TOP or Gravity.RIGHT
+        x = dp(12)
+        y = dp(8)
         title = context.getString(R.string.timer_title)
     }
 
@@ -43,50 +41,36 @@ internal class TimerOverlay(private val context: Context) {
         }
         if (view == null) {
             val timer = Chronometer(context).apply {
-                textSize = 28f
+                textSize = 18f
                 setTextColor(Color.WHITE)
-                typeface = Typeface.MONOSPACE
+                typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
+                includeFontPadding = false
+                setShadowLayer(dp(2).toFloat(), 0f, 0f, Color.BLACK)
                 gravity = Gravity.CENTER
-                setPadding(dp(16), dp(8), dp(16), dp(8))
+                setPadding(dp(6), dp(4), dp(6), dp(4))
                 contentDescription = context.getString(R.string.timer_overlay_drag)
-            }
-            val panel = LinearLayout(context).apply {
-                orientation = LinearLayout.VERTICAL
-                setPadding(dp(4), dp(4), dp(4), dp(4))
-                background = GradientDrawable().apply {
-                    setColor(Color.rgb(30, 33, 39))
-                    cornerRadius = dp(20).toFloat()
-                    setStroke(dp(1), Color.rgb(104, 114, 130))
-                }
-                addView(timer)
-                addView(LinearLayout(context).apply {
-                    addView(action(R.string.timer_reset, TimerService.ACTION_RESET))
-                    addView(action(R.string.timer_stop, TimerService.ACTION_STOP))
-                })
             }
             enableDragging(timer)
             try {
-                windowManager.addView(panel, params)
-                view = panel
-                chronometer = timer
-                panel.post { reposition() }
+                windowManager.addView(timer, params)
+                view = timer
+                timer.post { reposition() }
             } catch (_: SecurityException) {
                 // Permission can be revoked between the check and addView. The notification
                 // and in-app timer remain usable without the optional floating window.
                 return
             }
         }
-        chronometer?.apply {
+        view?.apply {
             base = state.baseElapsedRealtime
             start()
         }
     }
 
     fun hide() {
-        chronometer?.stop()
+        view?.stop()
         view?.let { windowManager.removeView(it) }
         view = null
-        chronometer = null
     }
 
     fun reposition() {
@@ -99,16 +83,6 @@ internal class TimerOverlay(private val context: Context) {
         } catch (_: SecurityException) {
             hide()
         }
-    }
-
-    private fun action(label: Int, action: String) = Button(context).apply {
-        setText(label)
-        isAllCaps = false
-        setTextColor(Color.WHITE)
-        backgroundTintList = android.content.res.ColorStateList.valueOf(Color.rgb(56, 63, 76))
-        minWidth = dp(64)
-        minimumWidth = dp(64)
-        setOnClickListener { TimerService.send(context, action) }
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -134,7 +108,8 @@ internal class TimerOverlay(private val context: Context) {
                     val dy = event.rawY - downY
                     if (abs(dx) > slop || abs(dy) > slop) dragging = true
                     if (dragging) {
-                        params.x = startX + dx.roundToInt()
+                        // Right-anchored windows use the opposite sign for horizontal movement.
+                        params.x = startX - dx.roundToInt()
                         params.y = startY + dy.roundToInt()
                         reposition()
                     }
