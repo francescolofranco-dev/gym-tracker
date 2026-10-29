@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.State
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
@@ -69,6 +70,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.backup.drive.DriveSnapshot
 import dev.francescolofranco.gymtracker.domain.WeightUnit
+import dev.francescolofranco.gymtracker.R
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
@@ -179,6 +181,7 @@ fun SettingsScreen(
                 }
             }
             item { NotificationRow() }
+            item { FloatingTimerRow() }
             item { HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh) }
 
             item { SectionHeader("Backup") }
@@ -518,6 +521,34 @@ private fun UnitsRow(unit: WeightUnit, onChange: (WeightUnit) -> Unit) {
             ) { Text("lbs") }
         }
     }
+}
+
+@Composable
+private fun FloatingTimerRow() {
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var granted by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
+    DisposableEffect(lifecycleOwner, context) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                granted = Settings.canDrawOverlays(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    SettingsRow(
+        icon = Icons.Filled.Visibility,
+        title = stringResource(R.string.timer_overlay_title),
+        subtitle = stringResource(
+            if (granted) R.string.timer_overlay_enabled else R.string.timer_overlay_disabled,
+        ),
+        onClick = {
+            context.startActivity(
+                Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")),
+            )
+        },
+    )
 }
 
 @Composable

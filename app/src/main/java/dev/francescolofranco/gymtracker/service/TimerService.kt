@@ -30,6 +30,18 @@ import kotlinx.coroutines.flow.asStateFlow
  * alive (the spec wants the notification visible at 00:00 rather than disappearing).
  */
 class TimerService : Service() {
+    private val overlay by lazy { TimerOverlay(this) }
+
+    override fun onDestroy() {
+        overlay.hide()
+        _state.value = TimerState.Stopped
+        super.onDestroy()
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        overlay.reposition()
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -44,6 +56,7 @@ class TimerService : Service() {
             }
             ACTION_STOP -> {
                 _state.value = TimerState.Stopped
+                overlay.hide()
                 // Satisfy the startForegroundService 5s contract by briefly attaching before
                 // removing — covers the case where STOP arrives at a service that hadn't yet
                 // called startForeground (e.g. a stray dispatch when the timer was already
@@ -81,6 +94,7 @@ class TimerService : Service() {
             notification,
             serviceType,
         )
+        if (state is TimerState.Running) overlay.show(state) else overlay.hide()
     }
 
     private fun buildNotification(state: TimerState): Notification {

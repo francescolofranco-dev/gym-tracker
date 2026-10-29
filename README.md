@@ -14,6 +14,9 @@ Android workout tracker for logging gym sessions, sets, reps, weight, notes, and
 - Review compact 7, 28, and 90-day training insights, weekly muscle coverage, and exercise progress.
 - Back up and preview restores from files or Google Drive, with one-step restore recovery.
 - Configure display units, templates, notifications, and keep-screen-on behavior.
+- Enable **Settings → Floating timer** to allow a draggable timer with Reset/Stop above other
+  apps and full-screen videos while the timer runs. Android system surfaces and apps that
+  explicitly block overlays can hide it. Stop removes the floating timer and notification.
 
 ## Tech Stack
 
@@ -38,6 +41,11 @@ Run from Android Studio, or use Gradle:
 ```bash
 ./gradlew :app:assembleDebug
 ```
+
+For device acceptance, build the optimized, locally signed, non-debuggable and shell-profileable
+APK with `./gradlew :app:assembleBenchmark`. Install
+`app/build/outputs/apk/benchmark/app-benchmark.apk`. This is a performance-ready build;
+building it does not produce measured benchmark results.
 
 Run unit tests:
 
