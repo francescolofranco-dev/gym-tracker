@@ -1,36 +1,12 @@
 package dev.francescolofranco.gymtracker.ui.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.lightColorScheme
+import android.app.Activity
+import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.WindowCompat
 import androidx.compose.runtime.Composable
-
-private val LightColors = lightColorScheme(
-    primary = LightPrimary,
-    onPrimary = LightOnPrimary,
-    primaryContainer = LightPrimaryContainer,
-    onPrimaryContainer = LightOnPrimaryContainer,
-    secondary = LightSecondary,
-    onSecondary = LightOnSecondary,
-    secondaryContainer = LightSecondaryContainer,
-    onSecondaryContainer = LightOnSecondaryContainer,
-    tertiary = LightTertiary,
-    onTertiary = LightOnTertiary,
-    tertiaryContainer = LightTertiaryContainer,
-    onTertiaryContainer = LightOnTertiaryContainer,
-    background = LightBackground,
-    onBackground = LightOnSurface,
-    surface = LightSurface,
-    onSurface = LightOnSurface,
-    surfaceVariant = LightSurfaceVariant,
-    onSurfaceVariant = LightOnSurfaceVariant,
-    surfaceContainer = LightSurfaceContainer,
-    surfaceContainerHigh = LightSurfaceContainerHigh,
-    surfaceContainerHighest = LightSurfaceContainerHighest,
-    outline = LightOutline,
-    outlineVariant = LightOutlineVariant,
-)
 
 private val DarkColors = darkColorScheme(
     primary = DarkPrimary,
@@ -58,20 +34,24 @@ private val DarkColors = darkColorScheme(
     outlineVariant = DarkOutlineVariant,
 )
 
-/**
- * Branded palette — we deliberately bypass Material You's dynamic colour extraction so the app
- * has a consistent, modern feel regardless of the user's wallpaper. The electric-cyan primary is
- * picked to stay clear of the volume traffic-light (grey/blue/green/red) on the Stats screen.
- */
+/** Fixed dark editorial identity, independent of wallpaper and system appearance. */
 @Composable
-fun GymTrackerTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
-    content: @Composable () -> Unit,
-) {
-    val colorScheme = if (darkTheme) DarkColors else LightColors
+fun GymTrackerTheme(content: @Composable () -> Unit) {
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            (view.context as? Activity)?.window?.let { window ->
+                WindowCompat.getInsetsController(window, view).apply {
+                    isAppearanceLightStatusBars = false
+                    isAppearanceLightNavigationBars = false
+                }
+            }
+        }
+    }
     MaterialTheme(
-        colorScheme = colorScheme,
+        colorScheme = DarkColors,
         typography = AppTypography,
+        shapes = AppShapes,
         content = content,
     )
 }

@@ -685,8 +685,7 @@ fun ExerciseCard(
     val loggedSets = sets.count { it.loggedAt != null && it.reps != null && !it.isSkipped }
     val plannedSets = sets.count { !it.isSkipped }
     val incomplete = !detail.sessionExercise.isSkipped && loggedSets < plannedSets
-    // Completed = every planned set is logged. A subtle green tint on the card body confirms
-    // the exercise is done without shouting — matches the SetIndex / CheckButton green.
+    // Completion uses the same accent as logged set checks.
     val isComplete = !detail.sessionExercise.isSkipped &&
         plannedSets > 0 && loggedSets >= plannedSets
     val borderWidth by animateDpAsState(
@@ -695,7 +694,7 @@ fun ExerciseCard(
         label = "exercise completion border",
     )
     val borderColor by animateColorAsState(
-        targetValue = if (isComplete) dev.francescolofranco.gymtracker.ui.theme.VolumeGreen else Color.Transparent,
+        targetValue = if (isComplete) MaterialTheme.colorScheme.primary else Color.Transparent,
         animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
         label = "exercise completion color",
     )

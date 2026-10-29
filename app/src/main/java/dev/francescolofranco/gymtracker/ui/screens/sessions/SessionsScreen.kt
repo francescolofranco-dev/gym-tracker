@@ -10,6 +10,9 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.tween
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -22,6 +25,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -47,6 +51,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
@@ -80,6 +88,7 @@ fun SessionsScreen(
 ) {
     val content by viewModel.content.collectAsStateWithLifecycle()
 
+    var editGoal by remember { mutableStateOf(false) }
     var confirmEnd by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
@@ -144,7 +153,25 @@ fun SessionsScreen(
             Loadable.Loading -> LoadingPane(modifier = Modifier.padding(padding))
             is Loadable.Error -> ErrorPane(current.message, viewModel::retry, Modifier.padding(padding))
             is Loadable.Ready -> {
-                val (active, past, unit, suggestion) = current.value
+                val (active, past, unit, suggestion, weeklyGoal) = current.value
+                if (editGoal) {
+                    AlertDialog(
+                        onDismissRequest = { editGoal = false },
+                        shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
+                        title = { Text("Weekly session goal") },
+                        text = {
+                            Column(Modifier.verticalScroll(rememberScrollState())) {
+                                Text("Completed sessions, Monday through Sunday.")
+                                (1..7).forEach { goal ->
+                                    TextButton(onClick = { viewModel.setWeeklyGoal(goal); editGoal = false }) {
+                                        Text("$goal session${if (goal == 1) "" else "s"}${if (goal == weeklyGoal) " · Selected" else ""}")
+                                    }
+                                }
+                            }
+                        },
+                        confirmButton = { TextButton(onClick = { editGoal = false }) { Text("Cancel") } },
+                    )
+                }
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -169,11 +196,10 @@ fun SessionsScreen(
                     }
 
                     if (past.isEmpty() && active == null) {
-                        EmptyState(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth(),
-                        )
+                        Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                            WeeklyProgress(past, weeklyGoal, onEditGoal = { editGoal = true })
+                            EmptyState(modifier = Modifier.weight(1f).fillMaxWidth())
+                        }
                     } else {
                         val grouped = remember(past) { groupPastSessionsByMonth(past) }
                         LazyColumn(
@@ -182,6 +208,9 @@ fun SessionsScreen(
                                 .fillMaxWidth(),
                             contentPadding = PaddingValues(bottom = 16.dp),
                         ) {
+                            item(key = "weekly-progress") {
+                                WeeklyProgress(past, weeklyGoal, onEditGoal = { editGoal = true })
+                            }
                             grouped.forEach { (label, group) ->
                                 item(key = "h-$label") { MonthHeader(label = label) }
                                 items(items = group, key = { it.session.id }) { summary ->
@@ -252,7 +281,7 @@ private fun SuggestionBanner(template: TemplateEntity, onUseTemplate: () -> Unit
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.secondaryContainer)
             .clickable(onClick = onUseTemplate)
             .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -290,7 +319,7 @@ private fun ActiveSessionBanner(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp)
-            .clip(RoundedCornerShape(16.dp))
+            .clip(RoundedCornerShape(8.dp))
             .background(MaterialTheme.colorScheme.primaryContainer)
             .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {
@@ -426,4 +455,43 @@ private fun rememberElapsed(start: Instant): Duration {
         }
     }
     return remember(now, start) { Duration.between(start, now) }
+}
+
+/** Decorative marks are replaced by actual progress, with the target available at the point of use. */
+@Composable
+private fun WeeklyProgress(past: List<SessionSummary>, goal: Int, onEditGoal: () -> Unit) {
+    // Recompute on composition so returning home after midnight observes the new calendar week.
+    val count = completedThisWeek(past.map { it.session })
+    val progress = (count.toFloat() / goal).coerceIn(0f, 1f)
+    val accent = MaterialTheme.colorScheme.primary
+    val track = MaterialTheme.colorScheme.outlineVariant
+    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 20.dp)) {
+        Text("SHOW UP. BUILD MORE.", style = MaterialTheme.typography.headlineLarge)
+        HorizontalDivider(Modifier.padding(top = 20.dp, bottom = 18.dp), color = track)
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Column(Modifier.weight(1f)) {
+                Text("THIS WEEK", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text("$count / $goal", style = MaterialTheme.typography.displayMedium)
+                TextButton(onClick = onEditGoal) { Text("Edit weekly goal") }
+            }
+            Box(Modifier.size(88.dp).semantics { contentDescription = "$count of $goal weekly sessions completed" }, contentAlignment = Alignment.Center) {
+                Canvas(Modifier.size(80.dp)) {
+                    val stroke = Stroke(width = 7.dp.toPx(), cap = StrokeCap.Round)
+                    drawArc(track, -90f, 360f, false, style = stroke)
+                    if (progress > 0f) drawArc(accent, -90f, 360f * progress, false, style = stroke)
+                }
+                Text("${(progress * 100).toInt()}%", style = MaterialTheme.typography.titleLarge)
+            }
+        }
+        val remaining = (goal - count).coerceAtLeast(0)
+        Text(
+            when (remaining) {
+                0 -> "Weekly goal reached. Keep building."
+                1 -> "One more session to your weekly goal"
+                else -> "$remaining more sessions to your weekly goal"
+            },
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        HorizontalDivider(Modifier.padding(top = 18.dp), color = track)
+    }
 }

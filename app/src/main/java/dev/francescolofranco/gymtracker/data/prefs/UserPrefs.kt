@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -19,12 +20,19 @@ private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(na
 class UserPrefs(private val context: Context) {
 
     private object Keys {
+        val WEEKLY_GOAL = intPreferencesKey("weekly_session_goal")
         val UNIT = stringPreferencesKey("unit")
         val WEEK_MODE = stringPreferencesKey("week_mode")
         val DRIVE_BACKUP_ENABLED = booleanPreferencesKey("drive_backup_enabled")
         val LAST_BACKUP_AT = longPreferencesKey("last_backup_at")
         val HAS_OFFERED_DRIVE_RESTORE = booleanPreferencesKey("has_offered_drive_restore")
         val KEEP_SCREEN_ON_DURING_SESSION = booleanPreferencesKey("keep_screen_on_during_session")
+    }
+
+    val weeklyGoal: Flow<Int> = context.dataStore.data.map { (it[Keys.WEEKLY_GOAL] ?: 4).coerceIn(1, 7) }
+
+    suspend fun setWeeklyGoal(goal: Int) {
+        context.dataStore.edit { it[Keys.WEEKLY_GOAL] = goal.coerceIn(1, 7) }
     }
 
     val unit: Flow<WeightUnit> = context.dataStore.data.map { p ->

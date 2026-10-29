@@ -21,7 +21,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -458,7 +458,7 @@ private fun NumberValue(value: String) {
 }
 
 /**
- * Flat "ghost" +/- key: just the cyan glyph, no filled background, on a 40dp touch target. Tap to
+ * Flat "ghost" +/- key: just the accent glyph, no filled background, on a 40dp touch target. Tap to
  * step once, press-and-hold to scrub.
  */
 @Composable
@@ -521,7 +521,7 @@ private fun GhostStepper(
 }
 
 /**
- * Tap-to-toggle check, a rounded square. Logged sets fill solid green with a white tick;
+ * Tap-to-toggle check, a rounded square. Logged sets fill lime with a dark tick;
  * un-logged sets are a muted square. Long-press toggles the skipped state.
  */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -535,10 +535,10 @@ private fun CheckSquare(
 ) {
     val bg = when {
         isSkipped -> MaterialTheme.colorScheme.surfaceContainerHighest
-        isLogged -> VolumeGreen
+        isLogged -> MaterialTheme.colorScheme.primary
         else -> MaterialTheme.colorScheme.surfaceVariant
     }
-    val tint = if (isLogged) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+    val tint = if (isLogged) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
     val animatedBg by animateColorAsState(
         targetValue = bg,
         animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
@@ -580,7 +580,7 @@ private fun CheckSquare(
         contentAlignment = Alignment.Center,
     ) {
         Icon(
-            imageVector = Icons.Filled.Check,
+            imageVector = Icons.Rounded.Check,
             contentDescription = null,
             tint = animatedTint,
             modifier = Modifier.size(22.dp),

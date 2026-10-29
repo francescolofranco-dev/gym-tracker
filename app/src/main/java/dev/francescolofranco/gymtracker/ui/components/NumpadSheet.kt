@@ -6,15 +6,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Backspace
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -31,16 +30,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import dev.francescolofranco.gymtracker.ui.theme.VolumeGreen
+import androidx.compose.ui.unit.sp
 
 /**
  * Custom on-screen numpad. Updates the value live as digits are entered;
  * dismissing the sheet (swipe / tap outside) commits whatever's in the buffer.
- * No "OK" / "Done" affordance — tap outside to dismiss.
+ * Done, swipe, and tap-outside all dismiss without changing live-entry behavior.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -71,17 +67,15 @@ fun NumpadSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        dragHandle = null
+        containerColor = MaterialTheme.colorScheme.surfaceContainer
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 24.dp),
+                .padding(horizontal = 16.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Header row: label on the left, prominent ✓ on the right. Tap-outside still
-            // dismisses, but a deliberate confirm button means the user doesn't have to swipe
-            // or tap empty space — the cursor flow goes type → tap ✓ → done.
+            // Keep the existing live-entry flow with an explicit, readable dismissal action.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -96,26 +90,17 @@ fun NumpadSheet(
                 } else {
                     Box(modifier = Modifier.weight(1f))
                 }
-                Box(
-                    modifier = Modifier
-                        .height(48.dp)
-                        .aspectRatio(1f)
-                        .clip(RoundedCornerShape(16.dp))
-                        .background(VolumeGreen)
-                        .clickable { onDismiss() }
-                        .semantics { contentDescription = "Confirm value" },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Check,
-                        contentDescription = null,
-                        tint = Color.White,
-                    )
+                Button(onClick = onDismiss, shape = RoundedCornerShape(24.dp)) {
+                    Text("Done")
                 }
             }
             Text(
                 text = buffer.ifEmpty { "0" },
-                style = MaterialTheme.typography.displayLarge.copy(fontWeight = FontWeight.Bold)
+                style = MaterialTheme.typography.displayLarge,
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                maxLines = 1,
+                autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(minFontSize = 28.sp, maxFontSize = 52.sp)
             )
 
             val rows = listOf(
@@ -128,13 +113,13 @@ fun NumpadSheet(
             rows.forEach { row ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     row.forEach { token ->
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .aspectRatio(1.6f)
+                                .height(58.dp)
                         ) {
                             if (token.isNotEmpty()) {
                                 NumpadKey(
@@ -164,9 +149,9 @@ private fun NumpadKey(token: String, onTap: (String) -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(64.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
+            .height(58.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (token == BACKSPACE_TOKEN) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant)
             .clickable {
                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                 onTap(token)
@@ -181,7 +166,7 @@ private fun NumpadKey(token: String, onTap: (String) -> Unit) {
         } else {
             Text(
                 text = token,
-                style = MaterialTheme.typography.headlineMedium
+                style = MaterialTheme.typography.headlineSmall
             )
         }
     }

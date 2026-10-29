@@ -31,6 +31,7 @@ data class SessionsContent(
     val past: List<SessionSummary>,
     val unit: WeightUnit,
     val suggestion: TemplateEntity?,
+    val weeklyGoal: Int,
 )
 
 @HiltViewModel
@@ -39,7 +40,7 @@ class SessionsViewModel @Inject constructor(
     private val templates: TemplateRepository,
     private val idleScheduler: IdleSessionScheduler,
     private val timer: TimerController,
-    userPrefs: UserPrefs,
+    private val userPrefs: UserPrefs,
 ) : RetryableViewModel() {
 
     @OptIn(FlowPreview::class)
@@ -48,8 +49,9 @@ class SessionsViewModel @Inject constructor(
         repo.observeAllSummaries(),
         userPrefs.unit,
         templates.observeNextSuggestion(),
-    ) { active, past, unit, suggestion ->
-        SessionsContent(active, past, unit, suggestion)
+        userPrefs.weeklyGoal,
+    ) { active, past, unit, suggestion, weeklyGoal ->
+        SessionsContent(active, past, unit, suggestion, weeklyGoal)
     }.debounce(24L)
         .asLoadableState(viewModelScope)
 
@@ -57,6 +59,8 @@ class SessionsViewModel @Inject constructor(
     // briefly being recreated, without replaying them after they have been handled.
     private val _events = Channel<Event>(Channel.BUFFERED)
     val events = _events.receiveAsFlow()
+
+    fun setWeeklyGoal(goal: Int) = viewModelScope.launch { userPrefs.setWeeklyGoal(goal) }
 
     fun startBlankSession() = startWithTemplate(templateId = null)
 
