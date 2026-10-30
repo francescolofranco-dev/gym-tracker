@@ -18,12 +18,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
@@ -43,6 +46,7 @@ import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.foundation.layout.size
@@ -289,24 +293,50 @@ fun ActiveSessionScreen(
                 HorizontalDivider(color = EditorialBorder, thickness = 1.dp)
             }
         },
-        floatingActionButton = {
+        bottomBar = {
             if (content != null) {
-                ExtendedFloatingActionButton(
-                    onClick = { showPicker = true },
-                    shape = RoundedCornerShape(4.dp),
-                    containerColor = BrandLime,
-                    contentColor = DarkOnPrimary,
-                    icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                    text = {
-                        Text(
-                            text = "Add exercise",
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 0.6.sp,
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(SurfaceBase)
+                        .navigationBarsPadding(),
+                ) {
+                    HorizontalDivider(color = EditorialBorder, thickness = 1.dp)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
+                    ) {
+                        Button(
+                            onClick = { showPicker = true },
+                            shape = RoundedCornerShape(2.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = SurfaceElevated,
+                                contentColor = MaterialTheme.colorScheme.onSurface,
                             ),
-                        )
-                    },
-                )
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                                .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp)),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Add,
+                                contentDescription = null,
+                                tint = BrandLime,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "ADD EXERCISE",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontSize = 16.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.8.sp,
+                                ),
+                            )
+                        }
+                    }
+                }
             }
         },
     ) { padding ->
@@ -519,17 +549,17 @@ private fun ActiveSessionMetricsBand(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
-                        text = "$loggedSets / $plannedSets",
+                        text = "$loggedSets",
                         style = MaterialTheme.typography.titleLarge.copy(
-                            fontSize = 18.sp,
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                         ),
-                        color = MaterialTheme.colorScheme.onSurface,
+                        color = BrandLime,
                     )
                     Text(
-                        text = "SETS",
+                        text = "/ $plannedSets SETS",
                         style = MaterialTheme.typography.labelSmall.copy(
-                            fontSize = 9.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
                         ),
                         color = SlateSubtext,
@@ -949,6 +979,85 @@ private fun ExerciseSectionHeader(
                     }
                 }
             }
+        }
+        if (pinnedNote != null) {
+            InlineExerciseNoteCallout(
+                label = "SETUP",
+                text = pinnedNote,
+                accentColor = BrandLime,
+                icon = Icons.Filled.PushPin,
+                onClick = onEditExerciseNotes,
+            )
+        }
+        if (sessionNote != null) {
+            InlineExerciseNoteCallout(
+                label = if (!detail.sessionExercise.noteCarryForward) "PREVIOUS NOTE" else "SESSION NOTE",
+                text = sessionNote,
+                accentColor = SlateSubtext,
+                icon = Icons.Filled.Info,
+                onClick = onEditExerciseNotes,
+            )
+        }
+    }
+}
+
+@Composable
+private fun InlineExerciseNoteCallout(
+    label: String,
+    text: String,
+    accentColor: Color,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(IntrinsicSize.Min)
+            .clip(RoundedCornerShape(2.dp))
+            .background(SurfaceBase)
+            .border(1.dp, EditorialBorder.copy(alpha = 0.5f), RoundedCornerShape(2.dp))
+            .clickable(onClick = onClick),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .width(3.dp)
+                .fillMaxHeight()
+                .background(accentColor),
+        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = accentColor,
+                modifier = Modifier.size(14.dp),
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.6.sp,
+                ),
+                color = accentColor,
+            )
+            Text(
+                text = "•",
+                style = MaterialTheme.typography.bodySmall,
+                color = MutedOlive,
+            )
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }

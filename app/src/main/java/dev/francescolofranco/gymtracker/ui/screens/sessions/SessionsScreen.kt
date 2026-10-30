@@ -36,6 +36,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
@@ -334,11 +336,11 @@ private fun SuggestionBanner(template: TemplateEntity, onUseTemplate: () -> Unit
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.weight(1f),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(6.dp)
-                    .clip(CircleShape)
-                    .background(BrandLime),
+            Icon(
+                imageVector = Icons.Filled.BookmarkBorder,
+                contentDescription = null,
+                tint = MutedOlive,
+                modifier = Modifier.size(16.dp),
             )
             Text(
                 text = "TEMPLATE:",
@@ -593,45 +595,59 @@ private fun EmptyState(modifier: Modifier = Modifier) {
 @Composable
 private fun MonthHeader(label: String, sessionCount: Int) {
     Row(
-        verticalAlignment = Alignment.Bottom,
+        verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 10.dp),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             Text(
                 text = label.uppercase(),
                 style = MaterialTheme.typography.titleLarge.copy(
-                    fontSize = 18.sp,
+                    fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.9.sp,
+                    letterSpacing = 0.5.sp,
                 ),
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = "MONTHLY LOG",
                 style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 10.sp,
-                    letterSpacing = 1.0.sp,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.55.sp,
                 ),
                 color = MutedOlive,
+                modifier = Modifier.padding(bottom = 2.dp),
             )
         }
-        Box(
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
             modifier = Modifier
                 .clip(RoundedCornerShape(2.dp))
-                .background(SurfaceElevated)
+                .background(SurfaceCard)
                 .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp))
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(horizontal = 10.dp, vertical = 5.dp),
         ) {
+            Icon(
+                imageVector = Icons.Filled.BarChart,
+                contentDescription = null,
+                tint = BrandLime,
+                modifier = Modifier.size(13.dp),
+            )
             Text(
                 text = "$sessionCount SESSION${if (sessionCount == 1) "" else "S"}",
                 style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 10.sp,
-                    letterSpacing = 0.8.sp,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.55.sp,
                 ),
-                color = SlateSubtext,
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
     }
@@ -715,19 +731,20 @@ private fun WeeklyProgress(past: List<SessionSummary>, goal: Int, onEditGoal: ()
                     .clickable(onClick = onEditGoal)
                     .padding(horizontal = 4.dp, vertical = 2.dp),
             ) {
-                Icon(
-                    imageVector = Icons.Filled.Tune,
-                    contentDescription = null,
-                    tint = SlateSubtext,
-                    modifier = Modifier.size(14.dp),
-                )
                 Text(
                     text = "EDIT GOAL",
                     style = MaterialTheme.typography.labelMedium.copy(
                         fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
                         letterSpacing = 0.88.sp,
                     ),
-                    color = SlateSubtext,
+                    color = BrandLime,
+                )
+                Icon(
+                    imageVector = Icons.Filled.Tune,
+                    contentDescription = null,
+                    tint = BrandLime,
+                    modifier = Modifier.size(14.dp),
                 )
             }
         }

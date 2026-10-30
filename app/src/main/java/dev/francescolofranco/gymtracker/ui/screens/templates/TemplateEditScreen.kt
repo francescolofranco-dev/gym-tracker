@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FitnessCenter
+import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -222,6 +223,7 @@ fun TemplateEditScreen(
                 ) {
                     Column(
                         modifier = Modifier.weight(1f),
+                        horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
                         Text(
@@ -234,16 +236,17 @@ fun TemplateEditScreen(
                             color = OliveSubtext,
                         )
                         Text(
-                            text = totalSets.toString(),
+                            text = "$totalSets SETS",
                             style = MaterialTheme.typography.titleMedium.copy(
-                                fontSize = 18.sp,
+                                fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
                             ),
-                            color = BrandLime,
+                            color = DarkOnSurface,
                         )
                     }
                     Column(
                         modifier = Modifier.weight(1.3f),
+                        horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
                         Text(
@@ -258,16 +261,16 @@ fun TemplateEditScreen(
                         Text(
                             text = targetBias,
                             style = MaterialTheme.typography.titleSmall.copy(
-                                fontSize = 14.sp,
+                                fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
                             ),
-                            color = DarkOnSurface,
+                            color = BrandLime,
                             maxLines = 1,
                         )
                     }
                     Column(
                         modifier = Modifier.weight(0.9f),
-                        horizontalAlignment = Alignment.End,
+                        horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(2.dp),
                     ) {
                         Text(
@@ -282,7 +285,7 @@ fun TemplateEditScreen(
                         Text(
                             text = state.exercises.size.toString(),
                             style = MaterialTheme.typography.titleMedium.copy(
-                                fontSize = 18.sp,
+                                fontSize = 15.sp,
                                 fontWeight = FontWeight.Bold,
                             ),
                             color = DarkOnSurface,
@@ -304,23 +307,27 @@ fun TemplateEditScreen(
                 ) {
                     Text(
                         text = "EXERCISES",
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            fontSize = 14.sp,
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.8.sp,
+                            letterSpacing = 0.6.sp,
                         ),
-                        color = OliveSubtext,
+                        color = DarkOnSurface,
                     )
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(4.dp))
-                            .background(SurfaceChip)
-                            .padding(horizontal = 8.dp, vertical = 2.dp),
+                            .background(SurfaceControl)
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
                     ) {
                         Text(
-                            text = state.exercises.size.toString(),
-                            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                            color = BrandLime,
+                            text = "${state.exercises.size} EXERCISE${if (state.exercises.size == 1) "" else "S"}",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.6.sp,
+                            ),
+                            color = SlateSubtext,
                         )
                     }
                 }
@@ -384,6 +391,30 @@ fun TemplateEditScreen(
                                 onMoveUp = { viewModel.moveUp(e.id) },
                                 onMoveDown = { viewModel.moveDown(e.id) },
                                 onRemove = { viewModel.remove(e.id) },
+                            )
+                        }
+                    }
+                    item(key = "reorder-tip") {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(SurfaceDeep)
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.SwapVert,
+                                contentDescription = null,
+                                tint = BrandLime,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Text(
+                                text = "Reorder exercises using the stepped arrows to customize progression sequence.",
+                                style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                                color = OliveSubtext,
                             )
                         }
                     }

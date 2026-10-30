@@ -57,11 +57,11 @@ fun ExerciseRow(
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
-                text = exercise.name.uppercase(),
+                text = exercise.name,
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.36.sp,
+                    letterSpacing = 0.2.sp,
                 ),
                 color = MaterialTheme.colorScheme.onSurface,
             )

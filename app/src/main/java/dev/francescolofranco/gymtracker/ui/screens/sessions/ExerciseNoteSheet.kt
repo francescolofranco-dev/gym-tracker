@@ -13,14 +13,18 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -51,6 +55,8 @@ import androidx.compose.ui.unit.sp
 import dev.francescolofranco.gymtracker.ui.theme.BrandLime
 import dev.francescolofranco.gymtracker.ui.theme.ButtonShape
 import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
+import dev.francescolofranco.gymtracker.ui.theme.DarkPrimaryContainer
+import dev.francescolofranco.gymtracker.ui.theme.DestructiveCoral
 import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
 import dev.francescolofranco.gymtracker.ui.theme.OliveSubtext
 import dev.francescolofranco.gymtracker.ui.theme.SlateSubtext
@@ -58,6 +64,7 @@ import dev.francescolofranco.gymtracker.ui.theme.SurfaceBase
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceControl
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,43 +104,44 @@ internal fun ExerciseNoteSheet(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier.weight(1f),
                     ) {
+                        Text(
+                            text = "EXERCISE NOTES",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.5.sp,
+                            ),
+                        )
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Notes,
+                                imageVector = Icons.Filled.FitnessCenter,
                                 contentDescription = null,
                                 tint = BrandLime,
-                                modifier = Modifier.size(18.dp),
+                                modifier = Modifier.size(16.dp),
                             )
                             Text(
-                                text = "EXERCISE NOTES",
-                                style = MaterialTheme.typography.titleLarge.copy(
-                                    fontSize = 20.sp,
+                                text = exerciseName.uppercase(),
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
-                                    letterSpacing = 0.5.sp,
+                                    letterSpacing = 0.4.sp,
                                 ),
+                                color = OliveSubtext,
                             )
                         }
-                        Text(
-                            text = exerciseName.uppercase(),
-                            style = MaterialTheme.typography.labelMedium.copy(
-                                fontSize = 11.sp,
-                                letterSpacing = 0.66.sp,
-                            ),
-                            color = OliveSubtext,
-                        )
                     }
                     IconButton(
                         onClick = onCancel,
                         modifier = Modifier
                             .size(36.dp)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(SurfaceControl),
+                            .background(SurfaceElevated),
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Close,
@@ -146,8 +154,9 @@ internal fun ExerciseNoteSheet(
 
                 NoteField(
                     title = "Pinned note",
+                    pillText = "PINNED SETUP NOTE",
                     badge = "EVERGREEN",
-                    description = "Shown every time you do this exercise.",
+                    description = "Permanent setup & technique cue. Shown every time you do this exercise.",
                     placeholder = "Seat height, grip, technique…",
                     icon = Icons.Filled.PushPin,
                     isPinned = true,
@@ -156,10 +165,11 @@ internal fun ExerciseNoteSheet(
                 )
                 NoteField(
                     title = "Session note",
-                    badge = "NEXT SESSION ONLY",
-                    description = "Carries forward for one session.",
+                    pillText = "NEXT SESSION ONLY",
+                    badge = "AUTO-ARCHIVE",
+                    description = "Carries forward to the immediate next workout, then automatically archives.",
                     placeholder = "Something to remember next time…",
-                    icon = Icons.AutoMirrored.Filled.Notes,
+                    icon = Icons.Filled.Schedule,
                     isPinned = false,
                     value = value,
                     onValueChange = { value = it },
@@ -176,13 +186,15 @@ internal fun ExerciseNoteSheet(
                     onClick = onCancel,
                     shape = ButtonShape,
                     modifier = Modifier
-                        .heightIn(min = 48.dp)
+                        .heightIn(min = 52.dp)
                         .clip(ButtonShape)
-                        .background(SurfaceControl),
+                        .background(SurfaceControl)
+                        .padding(horizontal = 12.dp),
                 ) {
                     Text(
                         text = "CANCEL",
-                        style = MaterialTheme.typography.labelLarge.copy(
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 0.8.sp,
                         ),
@@ -196,11 +208,18 @@ internal fun ExerciseNoteSheet(
                         containerColor = BrandLime,
                         contentColor = DarkOnPrimary,
                     ),
-                    modifier = Modifier.weight(1f).heightIn(min = 48.dp),
+                    modifier = Modifier.weight(1f).heightIn(min = 52.dp),
                 ) {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
                     Text(
                         text = "SAVE NOTES",
-                        style = MaterialTheme.typography.labelLarge.copy(
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 0.8.sp,
                         ),
@@ -214,6 +233,7 @@ internal fun ExerciseNoteSheet(
 @Composable
 private fun NoteField(
     title: String,
+    pillText: String,
     badge: String,
     description: String,
     placeholder: String,
@@ -226,50 +246,48 @@ private fun NoteField(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(4.dp))
-            .background(SurfaceBase)
-            .border(1.dp, EditorialBorder, RoundedCornerShape(4.dp))
+            .clip(RoundedCornerShape(6.dp))
+            .background(SurfaceElevated)
             .padding(12.dp),
     ) {
         Row(
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth(),
         ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(3.dp))
+                    .background(if (isPinned) DarkPrimaryContainer else SurfaceControl)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
                     tint = if (isPinned) BrandLime else SlateSubtext,
-                    modifier = Modifier.size(16.dp),
+                    modifier = Modifier.size(13.dp),
                 )
                 Text(
-                    text = title.uppercase(),
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.6.sp,
-                    ),
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(SurfaceControl)
-                    .padding(horizontal = 6.dp, vertical = 2.dp),
-            ) {
-                Text(
-                    text = badge,
+                    text = pillText,
                     style = MaterialTheme.typography.labelSmall.copy(
-                        fontSize = 9.sp,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
                         letterSpacing = 0.6.sp,
                     ),
                     color = if (isPinned) BrandLime else SlateSubtext,
                 )
             }
+            Text(
+                text = badge,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.6.sp,
+                ),
+                color = if (isPinned) BrandLime else DestructiveCoral,
+            )
         }
         Text(
             description,

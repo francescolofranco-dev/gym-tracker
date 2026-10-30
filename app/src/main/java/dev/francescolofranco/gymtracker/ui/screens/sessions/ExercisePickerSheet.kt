@@ -20,6 +20,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.PlaylistAddCheck
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
@@ -296,17 +297,21 @@ fun ExercisePickerSheet(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(horizontal = 16.dp, vertical = 12.dp)
-                                    .height(48.dp),
+                                    .height(52.dp),
                             ) {
                                 Icon(
-                                    imageVector = Icons.Filled.Check,
+                                    imageVector = Icons.AutoMirrored.Filled.PlaylistAddCheck,
                                     contentDescription = null,
-                                    modifier = Modifier.size(18.dp),
+                                    modifier = Modifier.size(20.dp),
                                 )
                                 Text(
-                                    text = if (selectedCount > 0) "  DONE ($selectedCount SELECTED)" else "  DONE",
-                                    style = MaterialTheme.typography.labelLarge.copy(
-                                        fontSize = 14.sp,
+                                    text = when {
+                                        selectedCount == 1 -> "  ADD 1 EXERCISE"
+                                        selectedCount > 1 -> "  ADD $selectedCount EXERCISES"
+                                        else -> "  DONE"
+                                    },
+                                    style = MaterialTheme.typography.titleMedium.copy(
+                                        fontSize = 17.sp,
                                         fontWeight = FontWeight.Bold,
                                         letterSpacing = 0.8.sp,
                                     ),
@@ -501,10 +506,10 @@ private fun PickerRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    text = exercise.name.uppercase(),
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
+                    text = exercise.name,
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.SemiBold,
                     ),
                     color = if (alreadyAdded) BrandLime else MaterialTheme.colorScheme.onSurface,
                 )

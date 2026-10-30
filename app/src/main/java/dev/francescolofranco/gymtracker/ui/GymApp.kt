@@ -41,11 +41,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.francescolofranco.gymtracker.ui.theme.BrandLime
-import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
 import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
 import dev.francescolofranco.gymtracker.ui.theme.MutedOlive
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceBase
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -212,7 +212,7 @@ private fun TopLevelScaffold(
             ) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp)
@@ -221,15 +221,15 @@ private fun TopLevelScaffold(
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
-                            .size(28.dp)
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(BrandLime),
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(SurfaceElevated),
                     ) {
                         Icon(
                             imageVector = Icons.Filled.FitnessCenter,
                             contentDescription = null,
-                            tint = DarkOnPrimary,
-                            modifier = Modifier.size(16.dp),
+                            tint = BrandLime,
+                            modifier = Modifier.size(18.dp),
                         )
                     }
                     Text(
@@ -275,7 +275,7 @@ private fun TopLevelScaffold(
                         ) {
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
-                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                                verticalArrangement = Arrangement.Center,
                             ) {
                                 Icon(
                                     imageVector = destination.icon,
@@ -283,23 +283,23 @@ private fun TopLevelScaffold(
                                     tint = itemColor,
                                     modifier = Modifier.size(20.dp),
                                 )
+                                Spacer(Modifier.height(4.dp))
                                 Text(
                                     text = label.uppercase(),
                                     style = MaterialTheme.typography.labelSmall.copy(
-                                        fontSize = 10.sp,
+                                        fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
-                                        letterSpacing = 0.8.sp,
+                                        letterSpacing = 0.55.sp,
                                     ),
                                     color = itemColor,
                                 )
-                            }
-                            if (isSelected) {
+                                Spacer(Modifier.height(4.dp))
                                 Box(
                                     modifier = Modifier
-                                        .align(Alignment.BottomCenter)
                                         .width(16.dp)
                                         .height(2.dp)
-                                        .background(BrandLime),
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(if (isSelected) BrandLime else androidx.compose.ui.graphics.Color.Transparent),
                                 )
                             }
                         }

@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.NotInterested
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Icon
@@ -310,43 +311,65 @@ fun SetRow(
                 )
             }
 
-            // REPS column — bordered stepper box with - / + keys around the tappable value.
+            // REPS column — bordered stepper box with - / + keys around the tappable value, or SKIPPED badge.
             Cell(
                 modifier = Modifier
                     .weight(ColRepsWeight)
                     .padding(horizontal = 4.dp),
-                captionText = repsDelta?.text,
+                captionText = if (isSkipped) null else repsDelta?.text,
                 captionColor = repsDeltaColor,
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(36.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(SurfaceControl)
-                        .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp)),
-                ) {
-                    GhostStepper(
-                        icon = Icons.Filled.Remove,
-                        contentDescription = "Decrease reps",
-                        enabled = editable && !isSkipped && reps > 0,
-                        onTap = { bumpReps(-1) },
-                        onHoldStep = { bumpReps(-2) },
-                    )
-                    RepsValue(
-                        reps = reps,
-                        onTap = if (editable) ({ numpadFor = NumpadField.REPS }) else null,
-                        enabled = editable && !isSkipped,
-                    )
-                    GhostStepper(
-                        icon = Icons.Filled.Add,
-                        contentDescription = "Increase reps",
-                        enabled = editable && !isSkipped && reps < 200,
-                        onTap = { bumpReps(1) },
-                        onHoldStep = { bumpReps(2) },
-                    )
+                if (isSkipped) {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(32.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(SurfaceDeep)
+                            .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp)),
+                    ) {
+                        Text(
+                            text = "SKIPPED",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.8.sp,
+                            ),
+                            color = MutedOlive,
+                        )
+                    }
+                } else {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(36.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(SurfaceControl)
+                            .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp)),
+                    ) {
+                        GhostStepper(
+                            icon = Icons.Filled.Remove,
+                            contentDescription = "Decrease reps",
+                            enabled = editable && reps > 0,
+                            onTap = { bumpReps(-1) },
+                            onHoldStep = { bumpReps(-2) },
+                        )
+                        RepsValue(
+                            reps = reps,
+                            onTap = if (editable) ({ numpadFor = NumpadField.REPS }) else null,
+                            enabled = editable,
+                        )
+                        GhostStepper(
+                            icon = Icons.Filled.Add,
+                            contentDescription = "Increase reps",
+                            enabled = editable && reps < 200,
+                            onTap = { bumpReps(1) },
+                            onHoldStep = { bumpReps(2) },
+                        )
+                    }
                 }
             }
 
@@ -664,15 +687,16 @@ private fun CheckSquare(
     }
     val shape = RoundedCornerShape(2.dp)
     val borderModifier = when {
+        isSkipped -> Modifier
         isLogged -> Modifier
-        isActive && !isSkipped -> Modifier.border(2.dp, BrandLime, shape)
+        isActive -> Modifier.border(2.dp, BrandLime, shape)
         else -> Modifier.border(1.dp, EditorialBorder, shape)
     }
     Box(
         modifier = Modifier
             .size(36.dp)
             .clip(shape)
-            .background(animatedBg)
+            .background(if (isSkipped) Color.Transparent else animatedBg)
             .then(borderModifier)
             .then(clickModifier)
             .semantics {
@@ -695,6 +719,14 @@ private fun CheckSquare(
         contentAlignment = Alignment.Center,
     ) {
         when {
+            isSkipped -> {
+                Icon(
+                    imageVector = Icons.Filled.NotInterested,
+                    contentDescription = null,
+                    tint = MutedOlive,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
             isLogged -> {
                 Icon(
                     imageVector = Icons.Rounded.Check,
@@ -703,7 +735,7 @@ private fun CheckSquare(
                     modifier = Modifier.size(18.dp),
                 )
             }
-            isActive && !isSkipped -> {
+            isActive -> {
                 Box(
                     modifier = Modifier
                         .size(10.dp)
