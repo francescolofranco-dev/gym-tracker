@@ -262,6 +262,13 @@ class ActiveSessionViewModel @Inject constructor(
         _events.send(if (wasAccepted) Event.OpenCompleted(sessionId) else Event.Exit)
     }
 
+    fun discardSession() = viewModelScope.launch {
+        repo.deleteSession(sessionId)
+        idleScheduler.cancel(sessionId)
+        timer.stop()
+        _events.send(Event.Exit)
+    }
+
     sealed interface Event {
         data object Exit : Event
         data class OpenCompleted(val sessionId: Long) : Event

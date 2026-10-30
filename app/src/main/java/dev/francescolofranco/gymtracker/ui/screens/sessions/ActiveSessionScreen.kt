@@ -43,7 +43,9 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Info
@@ -52,7 +54,7 @@ import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NotInterested
-import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
@@ -149,6 +151,7 @@ fun ActiveSessionScreen(
     var showPicker by remember { mutableStateOf(false) }
     var showWorkoutActions by remember { mutableStateOf(false) }
     var confirmEnd by remember { mutableStateOf(false) }
+    var confirmDiscard by remember { mutableStateOf(false) }
     var sessionNotesEditor by remember { mutableStateOf(false) }
     var exerciseNotesTarget by remember { mutableStateOf<SessionExerciseDetail?>(null) }
 
@@ -234,41 +237,15 @@ fun ActiveSessionScreen(
                             modifier = Modifier
                                 .padding(end = 6.dp)
                                 .size(38.dp)
-                                .clip(RoundedCornerShape(2.dp))
+                                .clip(RoundedCornerShape(4.dp))
                                 .background(SurfaceElevated)
-                                .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp)),
+                                .border(1.dp, EditorialBorder, RoundedCornerShape(4.dp)),
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.Notes,
                                 contentDescription = "Session notes",
                                 tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(18.dp),
-                            )
-                        }
-                        TextButton(
-                            onClick = { confirmEnd = true },
-                            enabled = content != null,
-                            shape = RoundedCornerShape(2.dp),
-                            colors = ButtonDefaults.textButtonColors(contentColor = DestructiveCoral),
-                            modifier = Modifier
-                                .padding(end = 6.dp)
-                                .height(38.dp)
-                                .clip(RoundedCornerShape(2.dp))
-                                .background(SurfaceElevated)
-                                .border(1.dp, DestructiveCoral, RoundedCornerShape(2.dp)),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Stop,
-                                contentDescription = null,
-                                modifier = Modifier.size(14.dp),
-                            )
-                            Spacer(Modifier.width(4.dp))
-                            Text(
-                                text = "End",
-                                style = MaterialTheme.typography.labelMedium.copy(
-                                    fontWeight = FontWeight.Bold,
-                                    letterSpacing = 0.8.sp,
-                                ),
                             )
                         }
                         IconButton(
@@ -457,6 +434,10 @@ fun ActiveSessionScreen(
                 showWorkoutActions = false
                 confirmEnd = true
             },
+            onDiscardWorkout = {
+                showWorkoutActions = false
+                confirmDiscard = true
+            },
         )
     }
 
@@ -465,7 +446,7 @@ fun ActiveSessionScreen(
             onDismissRequest = { confirmEnd = false },
             shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
             title = { Text("End session?") },
-            text = { Text("This finalises the session. You can still edit sets afterwards.") },
+            text = { Text("This finalises the session and logs your completed sets. You can still edit sets afterwards.") },
             confirmButton = {
                 TextButton(onClick = {
                     confirmEnd = false
@@ -474,6 +455,26 @@ fun ActiveSessionScreen(
             },
             dismissButton = {
                 TextButton(onClick = { confirmEnd = false }) { Text("Cancel") }
+            },
+        )
+    }
+
+    if (confirmDiscard) {
+        AlertDialog(
+            onDismissRequest = { confirmDiscard = false },
+            shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
+            title = { Text("Discard workout?") },
+            text = { Text("This will delete this workout and all sets entered so far without logging it.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmDiscard = false
+                    viewModel.discardSession()
+                }) {
+                    Text("Discard", color = DestructiveCoral)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmDiscard = false }) { Text("Cancel") }
             },
         )
     }
@@ -1454,6 +1455,7 @@ private fun WorkoutActionsSheet(
     onDismiss: () -> Unit,
     onOpenNotes: () -> Unit,
     onEndWorkout: () -> Unit,
+    onDiscardWorkout: () -> Unit,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
@@ -1541,7 +1543,7 @@ private fun WorkoutActionsSheet(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.Notes,
                             contentDescription = null,
-                            tint = BrandLime,
+                            tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(20.dp),
                         )
                     }
@@ -1554,25 +1556,35 @@ private fun WorkoutActionsSheet(
                             ),
                         )
                         Text(
-                            text = if (hasNotes) "Edit session readiness, cues & fatigue notes"
-                            else "Add session readiness, cues & fatigue notes",
+                            text = "Log session energy, fatigue & notes",
                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                             color = OliveSubtext,
                         )
                     }
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                        contentDescription = null,
-                        tint = SlateSubtext,
-                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(SurfaceControl)
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                    ) {
+                        Text(
+                            text = if (hasNotes) "SAVED" else "EMPTY",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.6.sp,
+                            ),
+                            color = if (hasNotes) BrandLime else OliveSubtext,
+                        )
+                    }
                 }
 
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(4.dp))
-                        .background(DestructiveCoral.copy(alpha = 0.08f))
-                        .border(1.dp, DestructiveCoral.copy(alpha = 0.35f), RoundedCornerShape(4.dp))
+                        .background(SurfaceElevated)
+                        .border(1.dp, BrandLime.copy(alpha = 0.45f), RoundedCornerShape(4.dp))
                         .clickable(onClick = onEndWorkout)
                         .padding(16.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -1582,13 +1594,13 @@ private fun WorkoutActionsSheet(
                         modifier = Modifier
                             .size(40.dp)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(DestructiveCoral.copy(alpha = 0.16f)),
+                            .background(BrandLime.copy(alpha = 0.16f)),
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Stop,
+                            imageVector = Icons.Filled.Check,
                             contentDescription = null,
-                            tint = DestructiveCoral,
+                            tint = BrandLime,
                             modifier = Modifier.size(20.dp),
                         )
                     }
@@ -1599,18 +1611,65 @@ private fun WorkoutActionsSheet(
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
                             ),
-                            color = DestructiveCoral,
+                            color = BrandLime,
                         )
                         Text(
-                            text = "Finish session and save logged sets to history",
+                            text = "Finish session and log completed sets to history",
                             style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                            color = DestructiveCoral.copy(alpha = 0.8f),
+                            color = OliveSubtext,
                         )
                     }
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                         contentDescription = null,
+                        tint = BrandLime,
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(SurfaceElevated)
+                        .clickable(onClick = onDiscardWorkout)
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(SurfaceControl),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.DeleteOutline,
+                            contentDescription = null,
+                            tint = DestructiveCoral,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "DISCARD WORKOUT",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            color = DestructiveCoral,
+                        )
+                        Text(
+                            text = "Abort session without saving set telemetry",
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                            color = OliveSubtext,
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.Filled.WarningAmber,
+                        contentDescription = null,
                         tint = DestructiveCoral,
+                        modifier = Modifier.size(20.dp),
                     )
                 }
             }
