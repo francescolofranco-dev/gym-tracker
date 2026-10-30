@@ -1,19 +1,26 @@
 package dev.francescolofranco.gymtracker.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Backspace
-import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
@@ -30,8 +37,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.francescolofranco.gymtracker.ui.theme.BrandLime
+import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
+import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
+import dev.francescolofranco.gymtracker.ui.theme.SlateSubtext
+import dev.francescolofranco.gymtracker.ui.theme.SubtleBorder
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceBase
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceControl
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
 
 /**
  * Custom on-screen numpad. Updates the value live as digits are entered;
@@ -67,41 +84,95 @@ fun NumpadSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surfaceContainer
+        containerColor = SurfaceCard,
+        shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             // Keep the existing live-entry flow with an explicit, readable dismissal action.
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
             ) {
-                if (label != null) {
-                    Text(
-                        text = label,
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.weight(1f),
-                    )
-                } else {
-                    Box(modifier = Modifier.weight(1f))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.weight(1f),
+                ) {
+                    if (label != null) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(BrandLime),
+                        )
+                        Text(
+                            text = label.uppercase(),
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.88.sp,
+                            ),
+                            color = SlateSubtext,
+                        )
+                    }
                 }
-                Button(onClick = onDismiss, shape = RoundedCornerShape(24.dp)) {
-                    Text("Done")
+                Button(
+                    onClick = onDismiss,
+                    shape = RoundedCornerShape(2.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = BrandLime,
+                        contentColor = DarkOnPrimary,
+                    ),
+                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                ) {
+                    Text(
+                        text = "DONE",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.8.sp,
+                        ),
+                    )
                 }
             }
-            Text(
-                text = buffer.ifEmpty { "0" },
-                style = MaterialTheme.typography.displayLarge,
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-                maxLines = 1,
-                autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(minFontSize = 28.sp, maxFontSize = 52.sp)
-            )
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(SurfaceBase)
+                    .border(1.dp, SubtleBorder, RoundedCornerShape(4.dp))
+                    .padding(vertical = 12.dp, horizontal = 16.dp),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Text(
+                        text = buffer.ifEmpty { "0" },
+                        style = MaterialTheme.typography.displayLarge.copy(
+                            fontWeight = FontWeight.ExtraBold,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        maxLines = 1,
+                        autoSize = androidx.compose.foundation.text.TextAutoSize.StepBased(minFontSize = 28.sp, maxFontSize = 48.sp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Box(
+                        modifier = Modifier
+                            .width(3.dp)
+                            .height(36.dp)
+                            .background(BrandLime),
+                    )
+                }
+            }
 
             val rows = listOf(
                 listOf("1", "2", "3"),
@@ -119,7 +190,7 @@ fun NumpadSheet(
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .height(58.dp)
+                                .height(56.dp)
                         ) {
                             if (token.isNotEmpty()) {
                                 NumpadKey(
@@ -146,27 +217,35 @@ fun NumpadSheet(
 @Composable
 private fun NumpadKey(token: String, onTap: (String) -> Unit) {
     val haptic = LocalHapticFeedback.current
+    val isBackspace = token == BACKSPACE_TOKEN
+    val shape = RoundedCornerShape(2.dp)
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(58.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(if (token == BACKSPACE_TOKEN) Color.Transparent else MaterialTheme.colorScheme.surfaceVariant)
+            .height(56.dp)
+            .clip(shape)
+            .background(if (isBackspace) SurfaceControl else SurfaceElevated)
+            .border(1.dp, if (isBackspace) EditorialBorder else SubtleBorder, shape)
             .clickable {
                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                 onTap(token)
             },
         contentAlignment = Alignment.Center
     ) {
-        if (token == BACKSPACE_TOKEN) {
+        if (isBackspace) {
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.Backspace,
-                contentDescription = "Backspace"
+                contentDescription = "Backspace",
+                tint = SlateSubtext,
             )
         } else {
             Text(
                 text = token,
-                style = MaterialTheme.typography.headlineSmall
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                ),
+                color = MaterialTheme.colorScheme.onSurface,
             )
         }
     }

@@ -48,7 +48,19 @@ import dev.francescolofranco.gymtracker.domain.workoutStartedAt
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
+import androidx.compose.foundation.border
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.ui.unit.sp
+import dev.francescolofranco.gymtracker.ui.theme.BrandLime
 import dev.francescolofranco.gymtracker.ui.theme.ButtonShape
+import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
+import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
+import dev.francescolofranco.gymtracker.ui.theme.MutedOlive
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceBase
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
 
 @Composable
 fun SessionCompletedScreen(
@@ -89,8 +101,9 @@ private fun CompletedSessionContent(
     }
 
     Scaffold(
+        containerColor = SurfaceDeep,
         bottomBar = {
-            Surface(tonalElevation = 3.dp) {
+            Surface(color = SurfaceBase, tonalElevation = 0.dp) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -104,7 +117,14 @@ private fun CompletedSessionContent(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     TextButton(onClick = onDone, modifier = Modifier.fillMaxWidth()) {
-                        Text("Done")
+                        Text(
+                            text = "DONE",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.8.sp,
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
                     }
                 }
             }
@@ -113,6 +133,7 @@ private fun CompletedSessionContent(
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
+                .background(SurfaceDeep)
                 .padding(padding),
             contentPadding = PaddingValues(horizontal = 24.dp, vertical = 32.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -121,16 +142,17 @@ private fun CompletedSessionContent(
             item {
                 Box(
                     modifier = Modifier
-                        .size(96.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.secondaryContainer),
+                        .size(88.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(SurfaceElevated)
+                        .border(1.dp, BrandLime, RoundedCornerShape(8.dp)),
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
                         imageVector = Icons.Filled.EmojiEvents,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier.size(52.dp),
+                        tint = BrandLime,
+                        modifier = Modifier.size(44.dp),
                     )
                 }
             }
@@ -140,7 +162,7 @@ private fun CompletedSessionContent(
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
-                        text = "Workout complete!",
+                        text = "WORKOUT COMPLETE!",
                         style = MaterialTheme.typography.headlineMedium,
                         fontWeight = FontWeight.Bold,
                         textAlign = TextAlign.Center,
@@ -152,18 +174,20 @@ private fun CompletedSessionContent(
                         textAlign = TextAlign.Center,
                     )
                     Text(
-                        text = formatSessionDate(session.workoutStartedAt()),
+                        text = formatSessionDate(session.workoutStartedAt()).uppercase(),
                         style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary,
+                        color = BrandLime,
                     )
                 }
             }
             item {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .border(1.dp, EditorialBorder, RoundedCornerShape(4.dp)),
+                    shape = RoundedCornerShape(4.dp),
                     colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                        containerColor = SurfaceCard,
                     ),
                 ) {
                     Row(
@@ -173,17 +197,17 @@ private fun CompletedSessionContent(
                     ) {
                         CompletionMetric(
                             value = formatShareDuration(session.workoutDuration()),
-                            label = "Duration",
+                            label = "DURATION",
                             modifier = Modifier.weight(1f),
                         )
                         CompletionMetric(
                             value = summary.exerciseCount.toString(),
-                            label = "Exercises",
+                            label = "EXERCISES",
                             modifier = Modifier.weight(1f),
                         )
                         CompletionMetric(
                             value = summary.setCount.toString(),
-                            label = "Sets",
+                            label = "SETS",
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -192,10 +216,12 @@ private fun CompletedSessionContent(
             if (summary.exercises.isNotEmpty()) {
                 item {
                     Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .border(1.dp, EditorialBorder, RoundedCornerShape(4.dp)),
+                        shape = RoundedCornerShape(4.dp),
                         colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                            containerColor = SurfaceCard,
                         ),
                     ) {
                         Column(
@@ -203,18 +229,21 @@ private fun CompletedSessionContent(
                             verticalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
                             Text(
-                                text = "Session summary",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
+                                text = "SESSION SUMMARY",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.6.sp,
+                                ),
                             )
+                            HorizontalDivider(color = EditorialBorder, thickness = 1.dp)
                             summary.exercises.take(5).forEach { exercise ->
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
                                     Text(
-                                        text = exercise.name,
-                                        style = MaterialTheme.typography.bodyLarge,
+                                        text = exercise.name.uppercase(),
+                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
                                         modifier = Modifier.weight(1f),
                                     )
                                     Spacer(Modifier.width(12.dp))
@@ -222,12 +251,13 @@ private fun CompletedSessionContent(
                                         Text(
                                             text = exercise.firstSetWeightLabel(unit),
                                             style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.SemiBold,
+                                            fontWeight = FontWeight.Bold,
+                                            color = BrandLime,
                                         )
                                         Text(
                                             text = "${exercise.setCount} ${if (exercise.setCount == 1) "set" else "sets"}",
                                             style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            color = MutedOlive,
                                         )
                                     }
                                 }
@@ -236,7 +266,7 @@ private fun CompletedSessionContent(
                                 Text(
                                     text = "+${summary.exercises.size - 5} more",
                                     style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.primary,
+                                    color = BrandLime,
                                 )
                             }
                         }
@@ -252,18 +282,24 @@ private fun CompletionMetric(value: String, label: String, modifier: Modifier = 
     Column(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Text(
             text = value,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+            color = BrandLime,
             textAlign = TextAlign.Center,
         )
         Text(
             text = label,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 10.sp,
+                letterSpacing = 0.8.sp,
+            ),
+            color = MutedOlive,
         )
     }
 }
@@ -276,10 +312,20 @@ fun WhatsAppShareButton(
     Button(
         onClick = onClick,
         shape = ButtonShape,
-        modifier = modifier.height(56.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = BrandLime,
+            contentColor = DarkOnPrimary,
+        ),
+        modifier = modifier.height(52.dp),
     ) {
         Icon(Icons.Filled.Share, contentDescription = null)
         Spacer(Modifier.width(8.dp))
-        Text("Share on WhatsApp")
+        Text(
+            text = "SHARE ON WHATSAPP",
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.8.sp,
+            ),
+        )
     }
 }

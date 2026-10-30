@@ -1,21 +1,30 @@
 package dev.francescolofranco.gymtracker.ui.screens.sessions
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -33,7 +42,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
@@ -50,6 +62,15 @@ import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.components.matchesExerciseQuery
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
+import dev.francescolofranco.gymtracker.ui.theme.BrandLime
+import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
+import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
+import dev.francescolofranco.gymtracker.ui.theme.OliveSubtext
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceChip
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceControl
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
 import kotlinx.coroutines.launch
 
 @Composable
@@ -111,23 +132,52 @@ fun ExercisePickerSheet(
         Surface(
             modifier = Modifier
                 .fillMaxWidth(0.94f)
-                .fillMaxHeight(0.86f),
-            shape = androidx.compose.foundation.shape.RoundedCornerShape(16.dp),
-            color = MaterialTheme.colorScheme.surface,
+                .fillMaxHeight(0.88f)
+                .border(1.dp, EditorialBorder, RoundedCornerShape(8.dp)),
+            shape = RoundedCornerShape(8.dp),
+            color = SurfaceCard,
             tonalElevation = 6.dp,
         ) {
-            Column(modifier = Modifier.padding(start = 16.dp, end = 8.dp, top = 16.dp, bottom = 12.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(modifier = Modifier.fillMaxHeight()) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp, bottom = 4.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .width(40.dp)
+                            .height(4.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(SurfaceChip),
+                    )
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                ) {
                     Text(
-                        text = "Select exercise",
-                        style = MaterialTheme.typography.titleLarge,
+                        text = "SELECT EXERCISE",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.8.sp,
+                        ),
                         modifier = Modifier.weight(1f),
                     )
-                    IconButton(onClick = onDismiss) {
+                    IconButton(
+                        onClick = onDismiss,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(SurfaceElevated),
+                    ) {
                         Icon(Icons.Filled.Close, contentDescription = "Close")
                     }
                 }
-                HorizontalDivider(modifier = Modifier.padding(top = 4.dp, bottom = 4.dp))
 
                 when (val current = rowState) {
                     Loadable.Loading -> LoadingPane(modifier = Modifier.weight(1f))
@@ -141,22 +191,40 @@ fun ExercisePickerSheet(
                             text = "Create exercises in the Exercises tab first.",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(vertical = 24.dp, horizontal = 4.dp),
+                            modifier = Modifier.padding(vertical = 24.dp, horizontal = 16.dp),
                         )
                     } else {
-                        ExerciseSearchField(
-                            query = searchQuery,
-                            onQueryChange = ::updateSearchQuery,
+                        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                            ExerciseSearchField(
+                                query = searchQuery,
+                                onQueryChange = ::updateSearchQuery,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 4.dp),
+                            )
+
+                            ExerciseFilters(
+                                filter = filter,
+                                availableCategories = availableCategories,
+                                onFilter = ::updateFilter,
+                            )
+                        }
+
+                        Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(top = 8.dp, end = 8.dp),
-                        )
-
-                        ExerciseFilters(
-                            filter = filter,
-                            availableCategories = availableCategories,
-                            onFilter = ::updateFilter,
-                        )
+                                .background(SurfaceDeep)
+                                .padding(horizontal = 16.dp, vertical = 6.dp),
+                        ) {
+                            Text(
+                                text = "${visibleExercises.size} EXERCISE${if (visibleExercises.size == 1) "" else "S"} AVAILABLE",
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 10.sp,
+                                    letterSpacing = 1.0.sp,
+                                ),
+                                color = OliveSubtext,
+                            )
+                        }
 
                         if (visibleExercises.isEmpty()) {
                             PickerNoSearchResults(
@@ -174,12 +242,13 @@ fun ExercisePickerSheet(
                                     .fillMaxWidth()
                                     .weight(1f),
                             ) {
-                                items(items = visibleExercises, key = { it.id }) { e ->
+                                itemsIndexed(items = visibleExercises, key = { _, it -> it.id }) { index, e ->
                                     // Reflect taps immediately while persistence catches up.
                                     val alreadyAdded = selectionOverrides[e.id] ?: (e.id in excludeIds)
                                     PickerRow(
                                         exercise = e,
                                         alreadyAdded = alreadyAdded,
+                                        isAlternate = index % 2 == 1,
                                         canRemove = onUnpick != null,
                                         onClick = {
                                             if (alreadyAdded) {
@@ -250,6 +319,12 @@ private fun ExerciseFilters(
     availableCategories: List<MuscleCategory>,
     onFilter: (PickerFilter) -> Unit,
 ) {
+    val chipColors = FilterChipDefaults.filterChipColors(
+        selectedContainerColor = BrandLime,
+        selectedLabelColor = DarkOnPrimary,
+        containerColor = SurfaceElevated,
+        labelColor = OliveSubtext,
+    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -260,14 +335,28 @@ private fun ExerciseFilters(
         FilterChip(
             selected = filter == PickerFilter.All,
             onClick = { onFilter(PickerFilter.All) },
-            label = { Text("All") },
+            shape = RoundedCornerShape(12.dp),
+            colors = chipColors,
+            label = {
+                Text(
+                    text = "All",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                )
+            },
         )
         availableCategories.forEach { category ->
             val categoryFilter = PickerFilter.ByCategory(category)
             FilterChip(
                 selected = filter == categoryFilter,
                 onClick = { onFilter(categoryFilter) },
-                label = { Text(category.displayName) },
+                shape = RoundedCornerShape(12.dp),
+                colors = chipColors,
+                label = {
+                    Text(
+                        text = category.displayName,
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    )
+                },
             )
         }
     }
@@ -324,20 +413,66 @@ internal fun filterPickerExercises(
 private fun PickerRow(
     exercise: ExerciseEntity,
     alreadyAdded: Boolean,
+    isAlternate: Boolean,
     canRemove: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val rowBg = when {
+        alreadyAdded -> SurfaceControl
+        isAlternate -> SurfaceDeep
+        else -> SurfaceCard
+    }
+    val category = exercise.primaryMuscles.sortedTopToBottom()
+        .firstOrNull()
+        ?.let(MuscleCategory::containing)
+
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .background(rowBg)
             .clickable(enabled = !alreadyAdded || canRemove, onClick = onClick)
             .alpha(if (alreadyAdded && !canRemove) 0.45f else 1f)
-            .padding(vertical = 12.dp, horizontal = 4.dp),
+            .padding(vertical = 12.dp, horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = exercise.name, style = MaterialTheme.typography.titleMedium)
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = exercise.name,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    color = if (alreadyAdded) BrandLime else MaterialTheme.colorScheme.onSurface,
+                )
+                if (category != null) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(if (alreadyAdded) BrandLime else SurfaceElevated)
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Text(
+                            text = category.displayName.uppercase(),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            color = if (alreadyAdded) DarkOnPrimary else OliveSubtext,
+                        )
+                    }
+                }
+            }
             Text(
                 text = buildList {
                     val primaries = exercise.primaryMuscles.sortedTopToBottom()
@@ -351,15 +486,35 @@ private fun PickerRow(
                     if (secondaries.isNotEmpty()) add(secondaries)
                 }.joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = OliveSubtext,
             )
         }
-        if (alreadyAdded) {
-            Icon(
-                imageVector = Icons.Filled.Check,
-                contentDescription = "Already selected",
-                tint = MaterialTheme.colorScheme.primary,
-            )
+        Box(
+            contentAlignment = Alignment.Center,
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(if (alreadyAdded) BrandLime else SurfaceElevated)
+                .then(
+                    if (!alreadyAdded) Modifier.border(1.dp, EditorialBorder, RoundedCornerShape(4.dp))
+                    else Modifier,
+                ),
+        ) {
+            if (alreadyAdded) {
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = "Already selected",
+                    tint = DarkOnPrimary,
+                    modifier = Modifier.size(18.dp),
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Filled.Add,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
     }
 }

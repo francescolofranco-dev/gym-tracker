@@ -8,16 +8,23 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.ListAlt
@@ -42,39 +49,52 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.State
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.francescolofranco.gymtracker.R
 import dev.francescolofranco.gymtracker.data.backup.drive.DriveSnapshot
 import dev.francescolofranco.gymtracker.domain.WeightUnit
-import dev.francescolofranco.gymtracker.R
+import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
-import dev.francescolofranco.gymtracker.ui.components.ErrorPane
+import dev.francescolofranco.gymtracker.ui.theme.BrandLime
+import dev.francescolofranco.gymtracker.ui.theme.CardShape
+import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
+import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
+import dev.francescolofranco.gymtracker.ui.theme.OliveSubtext
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceControl
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
@@ -137,7 +157,10 @@ fun SettingsScreen(
         if (driveState.connected) driveViewModel.refreshSnapshots()
     }
 
-    Scaffold(snackbarHost = { SnackbarHost(snackbar) }) { padding ->
+    Scaffold(
+        containerColor = SurfaceDeep,
+        snackbarHost = { SnackbarHost(snackbar) },
+    ) { padding ->
         if (settings == null) {
             LoadingPane(modifier = Modifier.padding(padding))
             return@Scaffold
@@ -147,6 +170,7 @@ fun SettingsScreen(
                 .fillMaxSize()
                 .padding(padding),
             contentPadding = PaddingValues(vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
         ) {
             item { SectionHeader("Display") }
             item { UnitsRow(unit = settings.unit, onChange = settingsViewModel::setUnit) }
@@ -156,7 +180,6 @@ fun SettingsScreen(
                     onChange = settingsViewModel::setKeepScreenOnDuringSession,
                 )
             }
-            item { HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh) }
 
             item { SectionHeader("Workout") }
             item {
@@ -166,7 +189,6 @@ fun SettingsScreen(
                     subtitle = "Create, edit, delete reusable workouts.",
                     onClick = onOpenTemplates,
                 )
-                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
             }
             if (backupState.hasRecovery) {
                 item {
@@ -177,12 +199,10 @@ fun SettingsScreen(
                         onClick = { confirmRecovery = true },
                         enabled = !backupState.running,
                     )
-                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
                 }
             }
             item { NotificationRow() }
             item { FloatingTimerRow() }
-            item { HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh) }
 
             item { SectionHeader("Backup") }
             item {
@@ -193,7 +213,6 @@ fun SettingsScreen(
                     onClick = { createDoc.launch(backupViewModel.suggestedFilename()) },
                     enabled = !backupState.running,
                 )
-                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
             }
             item {
                 SettingsRow(
@@ -203,7 +222,6 @@ fun SettingsScreen(
                     onClick = { openDoc.launch(arrayOf("application/json", "text/plain", "*/*")) },
                     enabled = !backupState.running,
                 )
-                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
             }
             item(key = "drive_header") { SectionHeader("Google Drive") }
             item(key = "drive_account") {
@@ -212,7 +230,6 @@ fun SettingsScreen(
                     onConnect = driveViewModel::connect,
                     onDisconnect = driveViewModel::disconnect,
                 )
-                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
             }
             if (driveState.connected) {
                 item(key = "drive_backup_now") {
@@ -230,7 +247,6 @@ fun SettingsScreen(
                             onClick = { driveViewModel.backupNow() },
                             enabled = !driveState.running,
                         )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
                     }
                 }
                 if (driveState.snapshots.isEmpty()) {
@@ -247,7 +263,7 @@ fun SettingsScreen(
                             Text(
                                 text = "No Drive snapshots yet — daily 03:00 backups will populate them.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = OliveSubtext,
                             )
                         }
                     }
@@ -255,8 +271,8 @@ fun SettingsScreen(
                     item(key = "drive_recent_header") {
                         Text(
                             text = "Recent snapshots",
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            color = OliveSubtext,
                             modifier = Modifier
                                 .animateItem(
                                     fadeInSpec = GymMotion.ItemFadeIn,
@@ -279,7 +295,6 @@ fun SettingsScreen(
                                 onClick = { driveViewModel.inspectRestore(snap) },
                                 enabled = !driveState.running,
                             )
-                            HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
                         }
                     }
                 }
@@ -311,6 +326,7 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = backupViewModel::dismissPreview,
             shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
+            containerColor = SurfaceCard,
             title = { Text("Restore from this file?") },
             text = {
                 Text(
@@ -336,6 +352,7 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = { confirmRecovery = false },
             shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
+            containerColor = SurfaceCard,
             title = { Text("Undo the last restore?") },
             text = { Text("This replaces current data with the safety copy captured before the last restore.") },
             confirmButton = {
@@ -354,6 +371,7 @@ fun SettingsScreen(
         AlertDialog(
             onDismissRequest = driveViewModel::dismissRestorePreview,
             shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
+            containerColor = SurfaceCard,
             title = { Text("Restore from Drive?") },
             text = {
                 Text(
@@ -398,22 +416,25 @@ private fun DriveAccountRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
+                .padding(horizontal = 16.dp, vertical = 2.dp)
+                .clip(CardShape)
+                .background(SurfaceCard)
+                .border(1.dp, EditorialBorder.copy(alpha = 0.25f), CardShape)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Icon(
-                imageVector = Icons.Filled.CloudDone,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-            )
+            IconBox(icon = Icons.Filled.CloudDone, tint = BrandLime)
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = "Google Drive connected", style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = "Google Drive connected",
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                )
                 Text(
                     text = state.lastBackupAt?.let { "Last backup: ${formatRelativeTime(it)}" }
                         ?: "Connected — daily backup will run at 03:00.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = OliveSubtext,
                 )
             }
             TextButton(onClick = onDisconnect, enabled = !state.running) {
@@ -428,21 +449,25 @@ private fun SnapshotRow(snapshot: DriveSnapshot, onClick: () -> Unit, enabled: B
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 2.dp)
+            .clip(CardShape)
+            .background(SurfaceCard)
+            .border(1.dp, EditorialBorder.copy(alpha = 0.25f), CardShape)
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(imageVector = Icons.Filled.Restore, contentDescription = null)
+        IconBox(icon = Icons.Filled.Restore)
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = snapshot.createdAt?.let { formatRelativeTime(it) } ?: snapshot.name,
-                style = MaterialTheme.typography.bodyLarge,
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
             )
             Text(
                 text = snapshot.sizeBytes?.let { "${it / 1024} KB · ${snapshot.name}" } ?: snapshot.name,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = OliveSubtext,
             )
         }
     }
@@ -468,22 +493,35 @@ private fun KeepScreenOnRow(enabled: Boolean, onChange: (Boolean) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 2.dp)
+            .clip(CardShape)
+            .background(SurfaceCard)
+            .border(1.dp, EditorialBorder.copy(alpha = 0.25f), CardShape)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(imageVector = Icons.Filled.Visibility, contentDescription = null)
+        IconBox(icon = Icons.Filled.Visibility)
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = "Keep screen on during session", style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = "Keep screen on during session",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            )
             Text(
                 text = "Prevents the screen from sleeping while the active session screen is open.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = OliveSubtext,
             )
         }
-        androidx.compose.material3.Switch(
+        Switch(
             checked = enabled,
             onCheckedChange = onChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = DarkOnPrimary,
+                checkedTrackColor = BrandLime,
+                uncheckedThumbColor = OliveSubtext,
+                uncheckedTrackColor = SurfaceControl,
+            ),
         )
     }
 }
@@ -493,17 +531,24 @@ private fun UnitsRow(unit: WeightUnit, onChange: (WeightUnit) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 2.dp)
+            .clip(CardShape)
+            .background(SurfaceCard)
+            .border(1.dp, EditorialBorder.copy(alpha = 0.25f), CardShape)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(imageVector = Icons.Filled.Scale, contentDescription = null)
+        IconBox(icon = Icons.Filled.Scale)
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = "Units", style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = "Units",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            )
             Text(
                 text = "Used for weight steppers and total-volume figures.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = OliveSubtext,
             )
         }
         SingleChoiceSegmentedButtonRow {
@@ -511,14 +556,40 @@ private fun UnitsRow(unit: WeightUnit, onChange: (WeightUnit) -> Unit) {
                 selected = unit == WeightUnit.KG,
                 onClick = { onChange(WeightUnit.KG) },
                 shape = SegmentedButtonDefaults.itemShape(0, 2),
+                colors = SegmentedButtonDefaults.colors(
+                    activeContainerColor = BrandLime,
+                    activeContentColor = DarkOnPrimary,
+                    inactiveContainerColor = SurfaceElevated,
+                    inactiveContentColor = OliveSubtext,
+                    activeBorderColor = BrandLime,
+                    inactiveBorderColor = EditorialBorder.copy(alpha = 0.4f),
+                ),
                 modifier = Modifier.semantics { contentDescription = "Use kilograms" },
-            ) { Text("kg") }
+            ) {
+                Text(
+                    text = "kg",
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                )
+            }
             SegmentedButton(
                 selected = unit == WeightUnit.LBS,
                 onClick = { onChange(WeightUnit.LBS) },
                 shape = SegmentedButtonDefaults.itemShape(1, 2),
+                colors = SegmentedButtonDefaults.colors(
+                    activeContainerColor = BrandLime,
+                    activeContentColor = DarkOnPrimary,
+                    inactiveContainerColor = SurfaceElevated,
+                    inactiveContentColor = OliveSubtext,
+                    activeBorderColor = BrandLime,
+                    inactiveBorderColor = EditorialBorder.copy(alpha = 0.4f),
+                ),
                 modifier = Modifier.semantics { contentDescription = "Use pounds" },
-            ) { Text("lbs") }
+            ) {
+                Text(
+                    text = "lbs",
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                )
+            }
         }
     }
 }
@@ -606,17 +677,24 @@ private fun AboutRow() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp, vertical = 2.dp)
+            .clip(CardShape)
+            .background(SurfaceCard)
+            .border(1.dp, EditorialBorder.copy(alpha = 0.25f), CardShape)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(imageVector = Icons.Filled.Info, contentDescription = null)
+        IconBox(icon = Icons.Filled.Info)
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = "Gym Tracker", style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = "Gym Tracker",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            )
             Text(
                 text = "Version $version",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = OliveSubtext,
             )
         }
     }
@@ -624,12 +702,45 @@ private fun AboutRow() {
 
 @Composable
 private fun SectionHeader(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-    )
+    Row(
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .width(6.dp)
+                .height(14.dp)
+                .background(BrandLime),
+        )
+        Text(
+            text = text.uppercase(),
+            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+            color = OliveSubtext,
+        )
+    }
+}
+
+@Composable
+private fun IconBox(
+    icon: ImageVector,
+    tint: androidx.compose.ui.graphics.Color = OliveSubtext,
+) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(SurfaceDeep)
+            .border(1.dp, EditorialBorder.copy(alpha = 0.35f), RoundedCornerShape(4.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = tint,
+            modifier = Modifier.size(18.dp),
+        )
+    }
 }
 
 @Composable
@@ -643,25 +754,32 @@ private fun SettingsRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 2.dp)
+            .clip(CardShape)
+            .background(SurfaceCard)
+            .border(1.dp, EditorialBorder.copy(alpha = 0.25f), CardShape)
             .clickable(enabled = enabled, onClick = onClick)
             .semantics { role = Role.Button }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(imageVector = icon, contentDescription = null)
+        IconBox(icon = icon)
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = OliveSubtext,
             )
         }
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            tint = OliveSubtext,
         )
     }
 }

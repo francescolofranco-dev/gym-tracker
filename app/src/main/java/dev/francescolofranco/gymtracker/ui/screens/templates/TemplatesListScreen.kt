@@ -1,5 +1,7 @@
 package dev.francescolofranco.gymtracker.ui.screens.templates
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,8 +11,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -26,6 +30,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,14 +38,30 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.TemplateEntity
+import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
-import dev.francescolofranco.gymtracker.ui.components.ErrorPane
+import dev.francescolofranco.gymtracker.ui.theme.BrandLime
+import dev.francescolofranco.gymtracker.ui.theme.ButtonShape
+import dev.francescolofranco.gymtracker.ui.theme.CardShape
+import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
+import dev.francescolofranco.gymtracker.ui.theme.DestructiveCoral
+import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
+import dev.francescolofranco.gymtracker.ui.theme.OliveSubtext
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceBase
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -54,21 +75,39 @@ fun TemplatesListScreen(
     var pendingDelete by remember { mutableStateOf<TemplateEntity?>(null) }
 
     Scaffold(
+        containerColor = SurfaceDeep,
         topBar = {
-            TopAppBar(
-                title = { Text("Templates") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-            )
+            Column(modifier = Modifier.background(SurfaceBase)) {
+                TopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceBase),
+                    title = {
+                        Text(
+                            text = "Templates",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                )
+                HorizontalDivider(color = EditorialBorder.copy(alpha = 0.35f), thickness = 1.dp)
+            }
         },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = onCreate,
+                shape = ButtonShape,
+                containerColor = BrandLime,
+                contentColor = DarkOnPrimary,
                 icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                text = { Text("New template") },
+                text = {
+                    Text(
+                        text = "New template",
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                    )
+                },
             )
         },
     ) { padding ->
@@ -88,11 +127,14 @@ fun TemplatesListScreen(
                             verticalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.padding(32.dp),
                         ) {
-                            Text(text = "No templates yet", style = MaterialTheme.typography.titleLarge)
+                            Text(
+                                text = "No templates yet",
+                                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                            )
                             Text(
                                 text = "Build a template — e.g. Push, Pull, Legs — and the home screen will rotate suggestions for you.",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = OliveSubtext,
                             )
                         }
                     }
@@ -101,37 +143,52 @@ fun TemplatesListScreen(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(padding),
-                        contentPadding = PaddingValues(bottom = 96.dp),
+                        contentPadding = PaddingValues(top = 12.dp, bottom = 96.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         items(items = current.value, key = { it.id }) { template ->
-                            Column(
-                                modifier = Modifier.animateItem(
-                                    fadeInSpec = GymMotion.ItemFadeIn,
-                                    placementSpec = GymMotion.ItemPlacement,
-                                    fadeOutSpec = GymMotion.ItemFadeOut,
-                                ),
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable { onEdit(template.id) }
-                                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Text(
-                                        text = template.name,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        modifier = Modifier.weight(1f),
+                            Row(
+                                modifier = Modifier
+                                    .animateItem(
+                                        fadeInSpec = GymMotion.ItemFadeIn,
+                                        placementSpec = GymMotion.ItemPlacement,
+                                        fadeOutSpec = GymMotion.ItemFadeOut,
                                     )
-                                    IconButton(onClick = { pendingDelete = template }) {
-                                        Icon(
-                                            imageVector = Icons.Filled.Delete,
-                                            contentDescription = "Delete template",
-                                            tint = MaterialTheme.colorScheme.error,
-                                        )
-                                    }
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp)
+                                    .clip(CardShape)
+                                    .background(SurfaceCard)
+                                    .border(1.dp, EditorialBorder.copy(alpha = 0.3f), CardShape)
+                                    .clickable { onEdit(template.id) }
+                                    .padding(horizontal = 16.dp, vertical = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            ) {
+                                Text(
+                                    text = template.name,
+                                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                                    modifier = Modifier.weight(1f),
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .background(SurfaceDeep)
+                                        .border(1.dp, EditorialBorder.copy(alpha = 0.35f), RoundedCornerShape(4.dp))
+                                        .clickable { pendingDelete = template }
+                                        .semantics {
+                                            role = Role.Button
+                                            contentDescription = "Delete template"
+                                        },
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Filled.Delete,
+                                        contentDescription = null,
+                                        tint = DestructiveCoral,
+                                        modifier = Modifier.size(18.dp),
+                                    )
                                 }
-                                HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
                             }
                         }
                     }
@@ -144,6 +201,7 @@ fun TemplatesListScreen(
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
             shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
+            containerColor = SurfaceCard,
             title = { Text("Delete template?") },
             text = { Text("\"${target.name}\" will be removed. Past sessions started from this template stay intact.") },
             confirmButton = {

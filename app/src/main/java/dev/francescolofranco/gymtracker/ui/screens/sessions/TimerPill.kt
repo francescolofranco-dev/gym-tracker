@@ -1,13 +1,16 @@
 package dev.francescolofranco.gymtracker.ui.screens.sessions
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Refresh
@@ -30,66 +33,129 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.service.TimerState
+import dev.francescolofranco.gymtracker.ui.theme.BrandLime
+import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
+import dev.francescolofranco.gymtracker.ui.theme.MutedOlive
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
 import kotlinx.coroutines.delay
 import java.util.Locale
 
 /**
- * Prominent timer header for the active session screen. Tap to reset, mirrors the foreground
- * service's state, big enough to read across the room while you're mid-set.
+ * Prominent timer header / metric tile for the active session screen. Tap to reset, mirrors the
+ * foreground service's state, big enough to read across the room while you're mid-set.
  */
 @Composable
-fun TimerPill(viewModel: TimerPillViewModel = hiltViewModel()) {
+fun TimerPill(
+    modifier: Modifier = Modifier,
+    compact: Boolean = false,
+    viewModel: TimerPillViewModel = hiltViewModel(),
+) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val running = state is TimerState.Running
     val elapsedMs = rememberElapsed(state)
 
-    val (bg, fg) = if (running) {
-        MaterialTheme.colorScheme.primaryContainer to MaterialTheme.colorScheme.onPrimaryContainer
-    } else {
-        MaterialTheme.colorScheme.surfaceContainerHigh to MaterialTheme.colorScheme.onSurface
-    }
-
+    val borderColor = if (running) BrandLime else EditorialBorder
+    val valueColor = if (running) BrandLime else MaterialTheme.colorScheme.onSurface
     val clickModifier = if (running) Modifier.clickable { viewModel.reset() } else Modifier
 
+    if (compact) {
+        Column(
+            modifier = modifier
+                .clip(RoundedCornerShape(2.dp))
+                .background(SurfaceCard)
+                .border(1.dp, borderColor, RoundedCornerShape(2.dp))
+                .then(clickModifier)
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(6.dp)
+                        .clip(CircleShape)
+                        .background(if (running) BrandLime else MutedOlive),
+                )
+                Text(
+                    text = if (running) "ELAPSED" else "REST TIMER",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 9.sp,
+                        letterSpacing = 0.72.sp,
+                    ),
+                    color = MutedOlive,
+                )
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = formatElapsed(elapsedMs),
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontSize = 20.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    color = valueColor,
+                )
+                if (running) {
+                    Icon(
+                        imageVector = Icons.Filled.Refresh,
+                        contentDescription = "Reset timer",
+                        tint = BrandLime,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+        }
+        return
+    }
+
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(20.dp))
-            .background(bg)
+            .clip(RoundedCornerShape(4.dp))
+            .background(SurfaceCard)
+            .border(1.dp, borderColor, RoundedCornerShape(4.dp))
             .then(clickModifier)
-            .padding(horizontal = 20.dp, vertical = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Icon(
             imageVector = Icons.Filled.Timer,
             contentDescription = null,
-            tint = fg,
-            modifier = Modifier.size(32.dp),
+            tint = valueColor,
+            modifier = Modifier.size(28.dp),
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = formatElapsed(elapsedMs),
                 style = MaterialTheme.typography.displaySmall.copy(
                     fontWeight = FontWeight.Bold,
-                    fontSize = 40.sp,
+                    fontSize = 32.sp,
                 ),
-                color = fg,
+                color = valueColor,
             )
             Text(
-                text = if (running) "Running · tap to reset"
-                else "Starts on your first ✓",
-                style = MaterialTheme.typography.labelMedium,
-                color = fg.copy(alpha = 0.75f),
+                text = if (running) "RUNNING · TAP TO RESET"
+                else "STARTS ON YOUR FIRST ✓",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.sp,
+                    letterSpacing = 0.8.sp,
+                ),
+                color = MutedOlive,
             )
         }
         if (running) {
             Icon(
                 imageVector = Icons.Filled.Refresh,
                 contentDescription = "Reset timer",
-                tint = fg,
-                modifier = Modifier.size(28.dp),
+                tint = valueColor,
+                modifier = Modifier.size(24.dp),
             )
         }
     }

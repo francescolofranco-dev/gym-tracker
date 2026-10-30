@@ -14,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -28,13 +29,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -56,7 +62,9 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -70,12 +78,26 @@ import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
+import dev.francescolofranco.gymtracker.ui.theme.BrandLime
+import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
+import dev.francescolofranco.gymtracker.ui.theme.DestructiveCoral
+import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
+import dev.francescolofranco.gymtracker.ui.theme.MutedOlive
+import dev.francescolofranco.gymtracker.ui.theme.SlateSubtext
+import dev.francescolofranco.gymtracker.ui.theme.SubtleBorder
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceBase
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
 import kotlinx.coroutines.delay
+import java.text.NumberFormat
 import java.time.Duration
 import java.time.Instant
 import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
+import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -148,7 +170,7 @@ fun SessionsScreen(
         )
     }
 
-    Scaffold { padding ->
+    Scaffold(containerColor = SurfaceDeep) { padding ->
         when (val current = content) {
             Loadable.Loading -> LoadingPane(modifier = Modifier.padding(padding))
             is Loadable.Error -> ErrorPane(current.message, viewModel::retry, Modifier.padding(padding))
@@ -158,6 +180,7 @@ fun SessionsScreen(
                     AlertDialog(
                         onDismissRequest = { editGoal = false },
                         shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
+                        containerColor = SurfaceCard,
                         title = { Text("Weekly session goal") },
                         text = {
                             Column(Modifier.verticalScroll(rememberScrollState())) {
@@ -175,6 +198,7 @@ fun SessionsScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .background(SurfaceDeep)
                         .padding(padding),
                 ) {
                     // Only surface a "Session in progress" banner once the user has actually
@@ -212,11 +236,15 @@ fun SessionsScreen(
                                 WeeklyProgress(past, weeklyGoal, onEditGoal = { editGoal = true })
                             }
                             grouped.forEach { (label, group) ->
-                                item(key = "h-$label") { MonthHeader(label = label) }
-                                items(items = group, key = { it.session.id }) { summary ->
+                                item(key = "h-$label") {
+                                    MonthHeader(label = label, sessionCount = group.size)
+                                }
+                                itemsIndexed(items = group, key = { _, it -> it.session.id }) { index, summary ->
                                     PastSessionRow(
                                         summary = summary,
                                         unit = unit,
+                                        isFirst = index == 0,
+                                        isLast = index == group.lastIndex,
                                         onClick = { onOpenDetail(summary.session.id) },
                                         modifier = Modifier.animateItem(
                                             fadeInSpec = GymMotion.ItemFadeIn,
@@ -224,7 +252,6 @@ fun SessionsScreen(
                                             fadeOutSpec = GymMotion.ItemFadeOut,
                                         ),
                                     )
-                                    HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
                                 }
                             }
                         }
@@ -233,9 +260,39 @@ fun SessionsScreen(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
+                            .background(SurfaceDeep)
                             .padding(horizontal = 16.dp, vertical = 12.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
+                        Button(
+                            onClick = { startWithPermission { viewModel.startBlankSession() } },
+                            shape = RoundedCornerShape(2.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = BrandLime,
+                                contentColor = DarkOnPrimary,
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(54.dp),
+                        ) {
+                            Icon(
+                                imageVector = if (active != null) Icons.Filled.PlayArrow else Icons.Filled.Add,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = when {
+                                    active != null -> "RESUME WORKOUT"
+                                    else -> "START WORKOUT"
+                                },
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.9.sp,
+                                ),
+                            )
+                        }
                         AnimatedVisibility(
                             visible = active == null && suggestion != null,
                             enter = fadeIn(tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing)) +
@@ -252,23 +309,6 @@ fun SessionsScreen(
                                 )
                             }
                         }
-                        Button(
-                            onClick = { startWithPermission { viewModel.startBlankSession() } },
-                            shape = dev.francescolofranco.gymtracker.ui.theme.ButtonShape,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(56.dp),
-                        ) {
-                            Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = null)
-                            Spacer(Modifier.width(8.dp))
-                            Text(
-                                text = when {
-                                    active != null -> "Resume session"
-                                    suggestion != null -> "Start blank"
-                                    else -> "Start session"
-                                },
-                            )
-                        }
                     }
                 }
             }
@@ -278,31 +318,64 @@ fun SessionsScreen(
 
 @Composable
 private fun SuggestionBanner(template: TemplateEntity, onUseTemplate: () -> Unit) {
-    Box(
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.secondaryContainer)
+            .clip(RoundedCornerShape(2.dp))
+            .background(SurfaceElevated)
+            .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp))
             .clickable(onClick = onUseTemplate)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 14.dp, vertical = 10.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = "Today's suggestion",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                )
-                Text(
-                    text = "${template.name} — based on your rotation",
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
-                )
-            }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.weight(1f),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(6.dp)
+                    .clip(CircleShape)
+                    .background(BrandLime),
+            )
             Text(
-                text = "Use",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                text = "TEMPLATE:",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontSize = 11.sp,
+                    letterSpacing = 0.55.sp,
+                ),
+                color = SlateSubtext,
+            )
+            Text(
+                text = template.name.uppercase(),
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.55.sp,
+                ),
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+            )
+        }
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = "USE",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontSize = 11.sp,
+                    letterSpacing = 0.55.sp,
+                ),
+                color = BrandLime,
+            )
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = BrandLime,
+                modifier = Modifier.size(14.dp),
             )
         }
     }
@@ -319,9 +392,10 @@ private fun ActiveSessionBanner(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 12.dp)
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.primaryContainer)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .clip(RoundedCornerShape(4.dp))
+            .background(SurfaceCard)
+            .border(1.dp, BrandLime, RoundedCornerShape(4.dp))
+            .padding(horizontal = 14.dp, vertical = 12.dp),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -331,31 +405,57 @@ private fun ActiveSessionBanner(
                 modifier = Modifier
                     .weight(1f)
                     .clickable(onClick = onResume),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                Text(
-                    text = "Session in progress",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(BrandLime),
+                    )
+                    Text(
+                        text = "SESSION IN PROGRESS",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 10.sp,
+                            letterSpacing = 1.0.sp,
+                        ),
+                        color = BrandLime,
+                    )
+                }
                 Text(
                     text = formatDuration(elapsed),
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
                 )
             }
             TextButton(
                 onClick = onEnd,
-                colors = androidx.compose.material3.ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = DestructiveCoral,
                 ),
             ) {
-                Text("End")
+                Text(
+                    text = "END",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.8.sp,
+                    ),
+                )
             }
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.ArrowForward,
                 contentDescription = "Resume",
-                tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                modifier = Modifier.clickable(onClick = onResume).padding(8.dp),
+                tint = BrandLime,
+                modifier = Modifier
+                    .clickable(onClick = onResume)
+                    .padding(8.dp),
             )
         }
     }
@@ -365,37 +465,105 @@ private fun ActiveSessionBanner(
 private fun PastSessionRow(
     summary: SessionSummary,
     unit: WeightUnit,
+    isFirst: Boolean,
+    isLast: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val ended = summary.session.endedAt
     val duration = if (ended != null) summary.session.workoutDuration() else Duration.ZERO
+    val shape = RoundedCornerShape(
+        topStart = if (isFirst) 4.dp else 0.dp,
+        topEnd = if (isFirst) 4.dp else 0.dp,
+        bottomStart = if (isLast) 4.dp else 0.dp,
+        bottomEnd = if (isLast) 4.dp else 0.dp,
+    )
+    val convertedVolume = convertFromKg(summary.totalVolume, unit).roundToInt()
+    val formattedVolumeNumber = remember(convertedVolume) {
+        NumberFormat.getIntegerInstance(Locale.US).format(convertedVolume)
+    }
 
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 16.dp)
+            .clip(shape)
+            .background(SurfaceBase)
+            .border(1.dp, EditorialBorder, shape)
+            .clickable(onClick = onClick),
     ) {
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 14.dp),
         ) {
-            Text(
-                text = formatSessionDate(summary.session.workoutStartedAt()),
-                style = MaterialTheme.typography.titleMedium,
-            )
-            Text(
-                text = buildList {
-                    add("${summary.exerciseCount} exercise${if (summary.exerciseCount == 1) "" else "s"}")
-                    add("${summary.setCount} set${if (summary.setCount == 1) "" else "s"}")
-                    if (summary.totalVolume > 0) add(formatTotalVolume(summary.totalVolume, unit))
-                    if (ended != null) add(formatDuration(duration))
-                }.joinToString(" · "),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Text(
+                    text = formatSessionDate(summary.session.workoutStartedAt()),
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = buildList {
+                        add("${summary.exerciseCount} exercise${if (summary.exerciseCount == 1) "" else "s"}")
+                        add("${summary.setCount} set${if (summary.setCount == 1) "" else "s"}")
+                        if (ended != null) add(formatDuration(duration))
+                    }.joinToString("  •  "),
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                    color = SlateSubtext,
+                )
+            }
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Column(horizontalAlignment = Alignment.End) {
+                    Row(
+                        verticalAlignment = Alignment.Bottom,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                    ) {
+                        Text(
+                            text = formattedVolumeNumber,
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Text(
+                            text = unit.label().uppercase(),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            color = MutedOlive,
+                            modifier = Modifier.padding(bottom = 2.dp),
+                        )
+                    }
+                    Text(
+                        text = "TOTAL VOLUME",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 9.sp,
+                            letterSpacing = 0.72.sp,
+                        ),
+                        color = MutedOlive,
+                    )
+                }
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MutedOlive,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
         }
     }
 }
@@ -408,26 +576,65 @@ private fun EmptyState(modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.spacedBy(8.dp),
             modifier = Modifier.padding(32.dp),
         ) {
-            Text(text = "No sessions yet", style = MaterialTheme.typography.titleLarge)
             Text(
-                text = "Tap Start session to begin tracking your first workout.",
+                text = "NO SESSIONS YET",
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = "Tap Start Workout to begin tracking your first session.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = SlateSubtext,
             )
         }
     }
 }
 
 @Composable
-private fun MonthHeader(label: String) {
-    Text(
-        text = label,
-        style = MaterialTheme.typography.labelLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
+private fun MonthHeader(label: String, sessionCount: Int) {
+    Row(
+        verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-    )
+            .padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 10.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = label.uppercase(),
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.9.sp,
+                ),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                text = "MONTHLY LOG",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.sp,
+                    letterSpacing = 1.0.sp,
+                ),
+                color = MutedOlive,
+            )
+        }
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(2.dp))
+                .background(SurfaceElevated)
+                .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp))
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+        ) {
+            Text(
+                text = "$sessionCount SESSION${if (sessionCount == 1) "" else "S"}",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.sp,
+                    letterSpacing = 0.8.sp,
+                ),
+                color = SlateSubtext,
+            )
+        }
+    }
 }
 
 private val monthFormatter = DateTimeFormatter.ofPattern("LLLL yyyy")
@@ -463,35 +670,128 @@ private fun WeeklyProgress(past: List<SessionSummary>, goal: Int, onEditGoal: ()
     // Recompute on composition so returning home after midnight observes the new calendar week.
     val count = completedThisWeek(past.map { it.session })
     val progress = (count.toFloat() / goal).coerceIn(0f, 1f)
-    val accent = MaterialTheme.colorScheme.primary
-    val track = MaterialTheme.colorScheme.outlineVariant
-    Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 20.dp)) {
-        Text("SHOW UP. BUILD MORE.", style = MaterialTheme.typography.headlineLarge)
-        HorizontalDivider(Modifier.padding(top = 20.dp, bottom = 18.dp), color = track)
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Column(Modifier.weight(1f)) {
-                Text("THIS WEEK", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text("$count / $goal", style = MaterialTheme.typography.displayMedium)
-                TextButton(onClick = onEditGoal) { Text("Edit weekly goal") }
+    val remaining = (goal - count).coerceAtLeast(0)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, top = 16.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(SurfaceBase)
+            .border(1.dp, EditorialBorder, RoundedCornerShape(4.dp)),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .width(6.dp)
+                        .height(14.dp)
+                        .background(BrandLime),
+                )
+                Text(
+                    text = "WEEKLY SESSION GOAL",
+                    style = MaterialTheme.typography.titleSmall.copy(
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.7.sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
             }
-            Box(Modifier.size(88.dp).semantics { contentDescription = "$count of $goal weekly sessions completed" }, contentAlignment = Alignment.Center) {
-                Canvas(Modifier.size(80.dp)) {
-                    val stroke = Stroke(width = 7.dp.toPx(), cap = StrokeCap.Round)
-                    drawArc(track, -90f, 360f, false, style = stroke)
-                    if (progress > 0f) drawArc(accent, -90f, 360f * progress, false, style = stroke)
-                }
-                Text("${(progress * 100).toInt()}%", style = MaterialTheme.typography.titleLarge)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(2.dp))
+                    .clickable(onClick = onEditGoal)
+                    .padding(horizontal = 4.dp, vertical = 2.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Tune,
+                    contentDescription = null,
+                    tint = SlateSubtext,
+                    modifier = Modifier.size(14.dp),
+                )
+                Text(
+                    text = "EDIT GOAL",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontSize = 11.sp,
+                        letterSpacing = 0.88.sp,
+                    ),
+                    color = SlateSubtext,
+                )
             }
         }
-        val remaining = (goal - count).coerceAtLeast(0)
-        Text(
-            when (remaining) {
-                0 -> "Weekly goal reached. Keep building."
-                1 -> "One more session to your weekly goal"
-                else -> "$remaining more sessions to your weekly goal"
-            },
-            style = MaterialTheme.typography.bodyMedium,
-        )
-        HorizontalDivider(Modifier.padding(top = 18.dp), color = track)
+        HorizontalDivider(color = EditorialBorder, thickness = 1.dp)
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .semantics { contentDescription = "$count of $goal weekly sessions completed" },
+                contentAlignment = Alignment.Center,
+            ) {
+                Canvas(Modifier.size(80.dp)) {
+                    val stroke = Stroke(width = 6.dp.toPx(), cap = StrokeCap.Butt)
+                    drawArc(SubtleBorder, -90f, 360f, false, style = stroke)
+                    if (progress > 0f) drawArc(BrandLime, -90f, 360f * progress, false, style = stroke)
+                }
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "$count/$goal",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = "SESSIONS",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 8.sp,
+                            letterSpacing = 0.64.sp,
+                        ),
+                        color = MutedOlive,
+                    )
+                }
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    text = when (remaining) {
+                        0 -> "WEEKLY GOAL REACHED. KEEP BUILDING."
+                        1 -> "ONE MORE SESSION TO YOUR WEEKLY GOAL"
+                        else -> "$remaining MORE SESSIONS TO YOUR WEEKLY GOAL"
+                    },
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.3.sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                    text = "Keep your training momentum going",
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                    color = SlateSubtext,
+                )
+            }
+        }
     }
 }

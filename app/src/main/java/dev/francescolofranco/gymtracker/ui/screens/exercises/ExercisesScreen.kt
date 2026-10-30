@@ -1,13 +1,17 @@
 package dev.francescolofranco.gymtracker.ui.screens.exercises
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -32,6 +36,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -42,6 +48,15 @@ import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.components.matchesExerciseQuery
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
+import dev.francescolofranco.gymtracker.ui.theme.BrandLime
+import dev.francescolofranco.gymtracker.ui.theme.ButtonShape
+import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
+import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
+import dev.francescolofranco.gymtracker.ui.theme.OliveSubtext
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
+import dev.francescolofranco.gymtracker.ui.theme.TagShape
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -81,12 +96,21 @@ fun ExercisesScreen(
     }
 
     Scaffold(
+        containerColor = SurfaceDeep,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { viewModel.openCreate() },
+                shape = ButtonShape,
+                containerColor = BrandLime,
+                contentColor = DarkOnPrimary,
                 icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                text = { Text("New exercise") },
+                text = {
+                    Text(
+                        text = "New exercise",
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                    )
+                },
             )
         },
     ) { padding ->
@@ -146,7 +170,7 @@ fun ExercisesScreen(
                             ) {
                                 matchingGroups.forEach { (category, items) ->
                                     stickyHeader(key = "header-${category.name}") {
-                                        SectionHeader(text = category.displayName)
+                                        SectionHeader(text = category.displayName, count = items.size)
                                     }
                                     items(
                                         items = items,
@@ -189,6 +213,7 @@ fun ExercisesScreen(
         androidx.compose.material3.AlertDialog(
             onDismissRequest = { deleteConfirmTarget = null },
             shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
+            containerColor = SurfaceCard,
             title = { Text("Delete \"${target.name}\"?") },
             text = {
                 Text(
@@ -228,7 +253,7 @@ private fun NoSearchResults(
         Text(
             text = "Try another name or muscle.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = OliveSubtext,
         )
         TextButton(onClick = onClear) {
             Text("Clear search")
@@ -237,18 +262,44 @@ private fun NoSearchResults(
 }
 
 @Composable
-private fun SectionHeader(text: String) {
-    Box(
+private fun SectionHeader(text: String, count: Int) {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceContainerHighest)
-            .padding(horizontal = 16.dp, vertical = 6.dp),
+            .background(SurfaceDeep)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(6.dp)
+                    .height(14.dp)
+                    .background(BrandLime),
+            )
+            Text(
+                text = text.uppercase(),
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+        }
+        Box(
+            modifier = Modifier
+                .clip(TagShape)
+                .background(SurfaceElevated)
+                .border(1.dp, EditorialBorder.copy(alpha = 0.25f), TagShape)
+                .padding(horizontal = 6.dp, vertical = 2.dp),
+        ) {
+            Text(
+                text = "$count EXERCISE${if (count == 1) "" else "S"}",
+                style = MaterialTheme.typography.labelSmall,
+                color = OliveSubtext,
+            )
+        }
     }
 }
 
@@ -266,7 +317,7 @@ private fun EmptyState(modifier: Modifier = Modifier) {
         Text(
             text = "Tap the + button to create your first exercise.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = OliveSubtext,
         )
     }
 }

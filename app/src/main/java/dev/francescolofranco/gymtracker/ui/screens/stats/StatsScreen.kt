@@ -7,11 +7,12 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -22,12 +23,14 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -60,6 +63,17 @@ import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.screens.sessions.convertFromKg
 import dev.francescolofranco.gymtracker.ui.screens.sessions.formatWeightNumber
 import dev.francescolofranco.gymtracker.ui.screens.sessions.label
+import dev.francescolofranco.gymtracker.ui.theme.BrandLime
+import dev.francescolofranco.gymtracker.ui.theme.CardShape
+import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
+import dev.francescolofranco.gymtracker.ui.theme.DestructiveCoral
+import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
+import dev.francescolofranco.gymtracker.ui.theme.OliveSubtext
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
+import dev.francescolofranco.gymtracker.ui.theme.TagShape
+import dev.francescolofranco.gymtracker.ui.theme.VolumeGreen
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -81,7 +95,9 @@ fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
     var showAllMuscles by rememberSaveable { mutableStateOf(false) }
 
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(SurfaceDeep),
         contentPadding = PaddingValues(top = 12.dp, bottom = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -102,21 +118,25 @@ fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
         item(key = "kpis") {
             KpiStrip(
                 state,
-                Modifier.animateItem(
-                    fadeInSpec = GymMotion.ItemFadeIn,
-                    placementSpec = GymMotion.ItemPlacement,
-                    fadeOutSpec = GymMotion.ItemFadeOut,
-                ).padding(horizontal = 16.dp),
+                Modifier
+                    .animateItem(
+                        fadeInSpec = GymMotion.ItemFadeIn,
+                        placementSpec = GymMotion.ItemPlacement,
+                        fadeOutSpec = GymMotion.ItemFadeOut,
+                    )
+                    .padding(horizontal = 16.dp),
             )
         }
         item(key = "changes") {
             WhatChangedCard(
                 state,
-                Modifier.animateItem(
-                    fadeInSpec = GymMotion.ItemFadeIn,
-                    placementSpec = GymMotion.ItemPlacement,
-                    fadeOutSpec = GymMotion.ItemFadeOut,
-                ).padding(horizontal = 16.dp),
+                Modifier
+                    .animateItem(
+                        fadeInSpec = GymMotion.ItemFadeIn,
+                        placementSpec = GymMotion.ItemPlacement,
+                        fadeOutSpec = GymMotion.ItemFadeOut,
+                    )
+                    .padding(horizontal = 16.dp),
             )
         }
         item(key = "coverage") {
@@ -137,11 +157,13 @@ fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
         item(key = "progress") {
             ExerciseProgressCard(
                 state,
-                Modifier.animateItem(
-                    fadeInSpec = GymMotion.ItemFadeIn,
-                    placementSpec = GymMotion.ItemPlacement,
-                    fadeOutSpec = GymMotion.ItemFadeOut,
-                ).padding(horizontal = 16.dp),
+                Modifier
+                    .animateItem(
+                        fadeInSpec = GymMotion.ItemFadeIn,
+                        placementSpec = GymMotion.ItemPlacement,
+                        fadeOutSpec = GymMotion.ItemFadeOut,
+                    )
+                    .padding(horizontal = 16.dp),
             )
         }
     }
@@ -168,10 +190,25 @@ private fun HeaderControls(
     onExplain: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(modifier = modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
         PeriodToggle(period, onPeriodChange, Modifier.weight(1f))
-        IconButton(onClick = onExplain) {
-            Icon(Icons.Outlined.Info, contentDescription = "How statistics work")
+        IconButton(
+            onClick = onExplain,
+            modifier = Modifier
+                .size(40.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(SurfaceCard)
+                .border(1.dp, EditorialBorder.copy(alpha = 0.35f), RoundedCornerShape(4.dp)),
+        ) {
+            Icon(
+                imageVector = Icons.Outlined.Info,
+                contentDescription = "How statistics work",
+                tint = OliveSubtext,
+            )
         }
     }
 }
@@ -188,7 +225,20 @@ private fun PeriodToggle(
                 selected = period == option,
                 onClick = { onChange(option) },
                 shape = SegmentedButtonDefaults.itemShape(index, StatsPeriod.entries.size),
-            ) { Text(option.label) }
+                colors = SegmentedButtonDefaults.colors(
+                    activeContainerColor = BrandLime,
+                    activeContentColor = DarkOnPrimary,
+                    inactiveContainerColor = SurfaceCard,
+                    inactiveContentColor = OliveSubtext,
+                    activeBorderColor = BrandLime,
+                    inactiveBorderColor = EditorialBorder.copy(alpha = 0.4f),
+                ),
+            ) {
+                Text(
+                    text = option.label,
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                )
+            }
         }
     }
 }
@@ -198,12 +248,9 @@ private fun KpiStrip(state: StatsUiState, modifier: Modifier = Modifier) {
     val current = state.currentPeriod
     val previous = state.previousPeriod
     Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .padding(horizontal = 10.dp, vertical = 12.dp),
+        modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Kpi(
             label = "Workouts",
@@ -211,14 +258,12 @@ private fun KpiStrip(state: StatsUiState, modifier: Modifier = Modifier) {
             delta = signedNumber(current.sessions - previous.sessions),
             modifier = Modifier.weight(1f),
         )
-        KpiDivider()
         Kpi(
             label = "Logged sets",
             value = current.loggedSets.toString(),
             delta = signedNumber(current.loggedSets - previous.loggedSets),
             modifier = Modifier.weight(1f),
         )
-        KpiDivider()
         Kpi(
             label = "Training time",
             value = formatTrainingTime(current.trainingTime.seconds),
@@ -230,7 +275,21 @@ private fun KpiStrip(state: StatsUiState, modifier: Modifier = Modifier) {
 
 @Composable
 private fun Kpi(label: String, value: String, delta: SignedValue, modifier: Modifier = Modifier) {
-    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        modifier = modifier
+            .clip(CardShape)
+            .background(SurfaceCard)
+            .border(1.dp, EditorialBorder.copy(alpha = 0.3f), CardShape)
+            .padding(horizontal = 10.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.Start,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            color = OliveSubtext,
+            maxLines = 1,
+        )
         AnimatedContent(
             targetState = value,
             transitionSpec = {
@@ -245,39 +304,53 @@ private fun Kpi(label: String, value: String, delta: SignedValue, modifier: Modi
         ) { animatedValue ->
             Text(
                 text = animatedValue,
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
                 maxLines = 1,
             )
         }
-        Text(label, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        ChangeLabel(delta.text, delta.direction, Modifier.padding(top = 2.dp))
+        ChangeLabel(delta.text, delta.direction)
     }
-}
-
-@Composable
-private fun KpiDivider() {
-    Box(
-        modifier = Modifier
-            .padding(horizontal = 4.dp)
-            .width(1.dp)
-            .height(48.dp)
-            .background(MaterialTheme.colorScheme.outlineVariant),
-    )
 }
 
 @Composable
 private fun WhatChangedCard(state: StatsUiState, modifier: Modifier = Modifier) {
     val insights = remember(state) { buildInsights(state) }
     StatsCard(modifier) {
-        Text("What changed", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(4.dp)
+                    .height(16.dp)
+                    .background(BrandLime),
+            )
+            Text(
+                text = "What changed",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            )
+        }
         insights.forEach { insight ->
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(SurfaceElevated)
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 Text(
                     text = insight.symbol,
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = BrandLime,
                     modifier = Modifier.width(28.dp),
                 )
-                Text(insight.text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                Text(
+                    text = insight.text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.weight(1f),
+                )
             }
         }
     }
@@ -323,17 +396,20 @@ private fun MuscleCoverageCard(
     val visibleRows = if (showAll) rows else rows.take(6)
 
     StatsCard(modifier) {
-        Text("Muscle coverage", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
         Text(
-            "Average effective sets per week · tap for details",
+            text = "Muscle coverage",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+        )
+        Text(
+            text = "Average effective sets per week · tap for details",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = OliveSubtext,
         )
         if (rows.isEmpty()) {
             Text(
-                "No completed sets in this period.",
+                text = "No completed sets in this period.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = OliveSubtext,
                 modifier = Modifier.padding(vertical = 8.dp),
             )
         } else {
@@ -342,7 +418,11 @@ private fun MuscleCoverageCard(
             }
             if (rows.size > 6) {
                 TextButton(onClick = onToggleShowAll, modifier = Modifier.align(Alignment.CenterHorizontally)) {
-                    Text(if (showAll) "Show less" else "Show all ${rows.size}")
+                    Text(
+                        text = if (showAll) "Show less" else "Show all ${rows.size}",
+                        color = BrandLime,
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                    )
                 }
             }
         }
@@ -362,19 +442,23 @@ private fun WeeklyMuscleRow(row: CoverageRow, onClick: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(4.dp))
             .clickable(onClick = onClick)
             .semantics {
                 contentDescription = "${row.volume.muscle.displayName}, ${formatSetCount(row.currentWeekly)} effective sets per week"
             }
-            .padding(vertical = 3.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .padding(vertical = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(row.volume.muscle.displayName, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
             Text(
-                "${formatSetCount(row.currentWeekly)}/wk",
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+                text = row.volume.muscle.displayName,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = "${formatSetCount(row.currentWeekly)}/wk",
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
             )
             if (abs(delta) >= 0.05) {
                 ChangeLabel(formatSignedSets(delta), direction(delta), Modifier.padding(start = 8.dp))
@@ -383,15 +467,15 @@ private fun WeeklyMuscleRow(row: CoverageRow, onClick: () -> Unit) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(5.dp)
-                .clip(RoundedCornerShape(3.dp))
-                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                .height(6.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(SurfaceDeep),
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(animatedFraction)
-                    .height(5.dp)
-                    .clip(RoundedCornerShape(3.dp))
+                    .height(6.dp)
+                    .clip(RoundedCornerShape(2.dp))
                     .background(color),
             )
         }
@@ -403,32 +487,42 @@ private fun ExerciseProgressCard(state: StatsUiState, modifier: Modifier = Modif
     StatsCard(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
-                "Exercise progress",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                text = "Exercise progress",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 modifier = Modifier.weight(1f),
             )
             if (state.personalRecords.count > 0) {
-                Text(
-                    "${state.personalRecords.count} PR${if (state.personalRecords.count == 1) "" else "s"}",
-                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.primary,
-                )
+                Box(
+                    modifier = Modifier
+                        .clip(TagShape)
+                        .background(BrandLime.copy(alpha = 0.16f))
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text = "${state.personalRecords.count} PR${if (state.personalRecords.count == 1) "" else "s"}",
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        color = BrandLime,
+                    )
+                }
             }
         }
         Text(
-            "Best performance vs the previous ${state.period.days} days",
+            text = "Best performance vs the previous ${state.period.days} days",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = OliveSubtext,
         )
         if (state.exerciseProgress.isEmpty()) {
             Text(
-                "No comparable exercise performances yet.",
+                text = "No comparable exercise performances yet.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = OliveSubtext,
                 modifier = Modifier.padding(vertical = 8.dp),
             )
         } else {
-            state.exerciseProgress.take(5).forEach { signal ->
+            state.exerciseProgress.take(5).forEachIndexed { idx, signal ->
+                if (idx > 0) {
+                    HorizontalDivider(color = EditorialBorder.copy(alpha = 0.18f))
+                }
                 ProgressRow(
                     signal = signal,
                     unit = state.unit,
@@ -442,15 +536,20 @@ private fun ExerciseProgressCard(state: StatsUiState, modifier: Modifier = Modif
 @Composable
 private fun ProgressRow(signal: ExerciseProgressSignal, unit: WeightUnit, hasPr: Boolean) {
     Row(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 3.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(signal.name, style = MaterialTheme.typography.bodyMedium)
             Text(
-                if (signal.isBodyweight) "Best set" else "Estimated 1RM",
+                text = signal.name,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+            )
+            Text(
+                text = if (signal.isBodyweight) "Best set" else "Estimated 1RM",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = OliveSubtext,
             )
         }
         Text(
@@ -459,15 +558,22 @@ private fun ProgressRow(signal: ExerciseProgressSignal, unit: WeightUnit, hasPr:
             } else {
                 "${formatWeightNumber(convertFromKg(signal.currentValue, unit))} ${unit.label()}"
             },
-            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
         )
         if (hasPr) {
-            Text(
-                "PR",
-                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.padding(start = 8.dp),
-            )
+            Box(
+                modifier = Modifier
+                    .padding(start = 8.dp)
+                    .clip(TagShape)
+                    .background(BrandLime)
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+            ) {
+                Text(
+                    text = "PR",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = DarkOnPrimary,
+                )
+            }
         } else if (signal.percentChange != null) {
             ChangeLabel(
                 text = formatPercent(signal.percentChange),
@@ -476,9 +582,9 @@ private fun ProgressRow(signal: ExerciseProgressSignal, unit: WeightUnit, hasPr:
             )
         } else {
             Text(
-                "New",
+                text = "New",
                 style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = OliveSubtext,
                 modifier = Modifier.padding(start = 8.dp),
             )
         }
@@ -490,6 +596,7 @@ private fun StatsExplanationDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
         shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
+        containerColor = SurfaceCard,
         title = { Text("How statistics work") },
         text = {
             Text(
@@ -514,16 +621,17 @@ private fun StatsCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .clip(CardShape)
+            .background(SurfaceCard)
+            .border(1.dp, EditorialBorder.copy(alpha = 0.3f), CardShape)
             .animateContentSize(
                 animationSpec = spring(
                     dampingRatio = 0.9f,
                     stiffness = Spring.StiffnessMediumLow,
                 ),
             )
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
         content = content,
     )
 }
@@ -531,16 +639,22 @@ private fun StatsCard(
 @Composable
 private fun ChangeLabel(text: String, direction: Direction, modifier: Modifier = Modifier) {
     val color = when (direction) {
-        Direction.Up -> MaterialTheme.colorScheme.tertiary
-        Direction.Down -> MaterialTheme.colorScheme.error
-        Direction.Flat -> MaterialTheme.colorScheme.onSurfaceVariant
+        Direction.Up -> VolumeGreen
+        Direction.Down -> DestructiveCoral
+        Direction.Flat -> OliveSubtext
     }
     val arrow = when (direction) {
         Direction.Up -> "▲"
         Direction.Down -> "▼"
         Direction.Flat -> "→"
     }
-    Text("$arrow $text", style = MaterialTheme.typography.labelSmall, color = color, modifier = modifier, maxLines = 1)
+    Text(
+        text = "$arrow $text",
+        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+        color = color,
+        modifier = modifier,
+        maxLines = 1,
+    )
 }
 
 private data class Insight(val symbol: String, val text: String)

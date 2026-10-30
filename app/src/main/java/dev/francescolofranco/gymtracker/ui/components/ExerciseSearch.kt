@@ -9,6 +9,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -16,6 +17,10 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
+import dev.francescolofranco.gymtracker.ui.theme.BrandLime
+import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
+import dev.francescolofranco.gymtracker.ui.theme.MutedOlive
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
 import java.text.Normalizer
 import java.util.Locale
 
@@ -32,13 +37,22 @@ fun ExerciseSearchField(
         onValueChange = onQueryChange,
         modifier = modifier,
         singleLine = true,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(4.dp),
         label = { Text("Search exercises") },
         placeholder = { Text("Name or muscle") },
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedContainerColor = SurfaceDeep,
+            unfocusedContainerColor = SurfaceDeep,
+            focusedBorderColor = BrandLime,
+            unfocusedBorderColor = EditorialBorder,
+            focusedLabelColor = BrandLime,
+            unfocusedLabelColor = MutedOlive,
+        ),
         leadingIcon = {
             Icon(
                 imageVector = Icons.Filled.Search,
                 contentDescription = null,
+                tint = MutedOlive,
             )
         },
         trailingIcon = if (query.isNotEmpty()) {
@@ -47,6 +61,7 @@ fun ExerciseSearchField(
                     Icon(
                         imageVector = Icons.Filled.Clear,
                         contentDescription = "Clear search",
+                        tint = MutedOlive,
                     )
                 }
             }

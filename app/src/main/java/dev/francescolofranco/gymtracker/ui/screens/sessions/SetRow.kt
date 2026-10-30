@@ -3,6 +3,7 @@ package dev.francescolofranco.gymtracker.ui.screens.sessions
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -58,11 +59,20 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.francescolofranco.gymtracker.data.db.entities.SetLogEntity
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.ui.components.NumpadSheet
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
+import dev.francescolofranco.gymtracker.ui.theme.BrandLime
+import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
+import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
+import dev.francescolofranco.gymtracker.ui.theme.MutedOlive
 import dev.francescolofranco.gymtracker.ui.theme.RegressionAmber
+import dev.francescolofranco.gymtracker.ui.theme.SlateSubtext
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceControl
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
 import dev.francescolofranco.gymtracker.ui.theme.VolumeBlue
 import dev.francescolofranco.gymtracker.ui.theme.VolumeGreen
 import kotlinx.coroutines.delay
@@ -71,10 +81,10 @@ import kotlinx.coroutines.launch
 import kotlin.time.Duration.Companion.milliseconds
 
 // Shared column geometry so the header labels and every set row line up into a strict grid.
-private val ColIndexWidth = 40.dp
-private val ColCheckWidth = 52.dp
+private val ColIndexWidth = 42.dp
+private val ColCheckWidth = 48.dp
 private const val ColWeightWeight = 1f
-private const val ColRepsWeight = 1.3f
+private const val ColRepsWeight = 1.35f
 
 data class SetRowState(
     val log: SetLogEntity,
@@ -90,15 +100,20 @@ data class SetRowState(
     val showBilateralLabel: Boolean = false,
 )
 
-/** Column headers (# / WEIGHT / REPS) drawn once above the set rows; matches the row grid. */
+/** Column headers (# / WEIGHT / REPS / DONE) drawn once above the set rows; matches the row grid. */
 @Composable
 fun SetTableHeader() {
-    val style = MaterialTheme.typography.labelMedium
-    val color = MaterialTheme.colorScheme.onSurfaceVariant
+    val style = MaterialTheme.typography.labelSmall.copy(
+        fontSize = 10.sp,
+        fontWeight = FontWeight.Bold,
+        letterSpacing = 0.8.sp,
+    )
+    val color = MutedOlive
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(start = 4.dp, end = 4.dp, top = 2.dp, bottom = 4.dp),
+            .background(SurfaceDeep)
+            .padding(horizontal = 8.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text("#", style = style, color = color, modifier = Modifier.width(ColIndexWidth))
@@ -116,7 +131,13 @@ fun SetTableHeader() {
             textAlign = TextAlign.Center,
             modifier = Modifier.weight(ColRepsWeight),
         )
-        Spacer(Modifier.width(ColCheckWidth))
+        Text(
+            "DONE",
+            style = style,
+            color = color,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.width(ColCheckWidth),
+        )
     }
 }
 
@@ -168,13 +189,23 @@ fun SetRow(
     }
     val repsDeltaColor = (repsDelta?.tone ?: PercentTone.Same).color()
 
-    val indexColor = when {
-        isActiveSet -> MaterialTheme.colorScheme.primary
-        belowRange -> VolumeBlue
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    val indexBgColor = when {
+        isActiveSet -> BrandLime
+        else -> SurfaceElevated
     }
+    val indexTextColor = when {
+        isActiveSet -> DarkOnPrimary
+        belowRange -> VolumeBlue
+        isLogged -> MutedOlive
+        else -> SlateSubtext
+    }
+    val animatedIndexBg by animateColorAsState(
+        targetValue = indexBgColor,
+        animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
+        label = "active set bg",
+    )
     val animatedIndexColor by animateColorAsState(
-        targetValue = indexColor,
+        targetValue = indexTextColor,
         animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
         label = "active set",
     )
@@ -204,43 +235,70 @@ fun SetRow(
     ) {
         // # column
         Cell(modifier = Modifier.width(ColIndexWidth), captionText = null, horizontalAlignment = Alignment.Start) {
-            Text(
-                text = "${log.setNumber}" + when {
-                    log.side.shortLabel.isNotBlank() -> " ${log.side.shortLabel}"
-                    state.showBilateralLabel -> " B"
-                    else -> ""
-                },
-                modifier = Modifier.semantics {
-                    contentDescription = "Set ${log.setNumber}, ${log.side.displayName}"
-                },
-                style = MaterialTheme.typography.titleMedium.asNumber(),
-                color = animatedIndexColor,
-            )
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .height(28.dp)
+                    .width(34.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(animatedIndexBg)
+                    .then(
+                        if (!isActiveSet) Modifier.border(1.dp, EditorialBorder, RoundedCornerShape(2.dp))
+                        else Modifier,
+                    )
+                    .semantics {
+                        contentDescription = "Set ${log.setNumber}, ${log.side.displayName}"
+                    },
+            ) {
+                Text(
+                    text = "${log.setNumber}" + when {
+                        log.side.shortLabel.isNotBlank() -> log.side.shortLabel
+                        state.showBilateralLabel -> "B"
+                        else -> ""
+                    },
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                    ).asNumber(),
+                    color = animatedIndexColor,
+                )
+            }
         }
 
         // WEIGHT column — big value + small unit, tap to open the kg numpad.
         Cell(
-            modifier = Modifier.weight(ColWeightWeight),
+            modifier = Modifier
+                .weight(ColWeightWeight)
+                .padding(horizontal = 4.dp),
             captionText = kgDelta.text,
             captionColor = kgDeltaColor,
         ) {
             WeightValue(
                 number = formatWeightChip(displayKg, state.isBodyweight),
                 unit = state.unit.label(),
+                isActive = isActiveSet,
                 onClick = if (editable) ({ numpadFor = NumpadField.KG }) else null,
                 enabled = editable && !isSkipped,
             )
         }
 
-        // REPS column — ghost - / + keys around the tappable value.
+        // REPS column — bordered stepper box with - / + keys around the tappable value.
         Cell(
-            modifier = Modifier.weight(ColRepsWeight),
+            modifier = Modifier
+                .weight(ColRepsWeight)
+                .padding(horizontal = 4.dp),
             captionText = repsDelta?.text,
             captionColor = repsDeltaColor,
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterHorizontally),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(36.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(SurfaceControl)
+                    .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp)),
             ) {
                 GhostStepper(
                     icon = Icons.Filled.Remove,
@@ -354,15 +412,16 @@ private fun Cell(
     content: @Composable () -> Unit,
 ) {
     Column(modifier = modifier, horizontalAlignment = horizontalAlignment) {
-        Box(modifier = Modifier.height(34.dp), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.height(36.dp), contentAlignment = Alignment.Center) {
             content()
         }
-        Box(modifier = Modifier.height(16.dp), contentAlignment = Alignment.Center) {
+        Box(modifier = Modifier.height(14.dp), contentAlignment = Alignment.Center) {
             if (captionText != null) {
                 Text(
                     text = captionText,
                     style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Medium,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
                         platformStyle = PlatformTextStyle(includeFontPadding = false),
                     ),
                     color = captionColor,
@@ -378,13 +437,25 @@ private fun Cell(
 private fun WeightValue(
     number: String,
     unit: String,
+    isActive: Boolean,
     onClick: (() -> Unit)?,
     enabled: Boolean,
 ) {
     val haptic = LocalHapticFeedback.current
+    val shape = RoundedCornerShape(2.dp)
     Row(
         verticalAlignment = Alignment.Bottom,
+        horizontalArrangement = Arrangement.Center,
         modifier = Modifier
+            .fillMaxWidth()
+            .height(36.dp)
+            .clip(shape)
+            .background(if (isActive) SurfaceDeep else SurfaceControl)
+            .border(
+                width = if (isActive) 1.5.dp else 1.dp,
+                color = if (isActive) BrandLime else EditorialBorder,
+                shape = shape,
+            )
             .pointerInput(onClick, enabled) {
                 if (onClick == null || !enabled) return@pointerInput
                 awaitEachGesture {
@@ -402,15 +473,20 @@ private fun WeightValue(
                     role = Role.Button
                     this.onClick("Edit weight") { onClick.invoke(); true }
                 }
-            },
+            }
+            .padding(horizontal = 6.dp, vertical = 6.dp),
     ) {
         NumberValue(number)
-        Spacer(Modifier.width(2.dp))
+        Spacer(Modifier.width(3.dp))
         Text(
-            text = unit,
-            style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            text = unit.uppercase(),
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+            color = MutedOlive,
             maxLines = 1,
+            modifier = Modifier.padding(bottom = 1.dp),
         )
     }
 }
@@ -422,7 +498,8 @@ private fun RepsValue(reps: Int, onTap: (() -> Unit)?, enabled: Boolean) {
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .width(34.dp)
+            .width(32.dp)
+            .height(36.dp)
             .pointerInput(onTap, enabled) {
                 if (onTap == null || !enabled) return@pointerInput
                 awaitEachGesture {
@@ -450,7 +527,10 @@ private fun RepsValue(reps: Int, onTap: (() -> Unit)?, enabled: Boolean) {
 private fun NumberValue(value: String) {
     Text(
         text = value,
-        style = MaterialTheme.typography.titleLarge.asNumber(),
+        style = MaterialTheme.typography.titleMedium.copy(
+            fontSize = 16.sp,
+            fontWeight = FontWeight.Bold,
+        ).asNumber(),
         color = MaterialTheme.colorScheme.onSurface,
         maxLines = 1,
         textAlign = TextAlign.Center,
@@ -458,8 +538,7 @@ private fun NumberValue(value: String) {
 }
 
 /**
- * Flat "ghost" +/- key: just the accent glyph, no filled background, on a 40dp touch target. Tap to
- * step once, press-and-hold to scrub.
+ * Flat "ghost" +/- key inside the reps box. Tap to step once, press-and-hold to scrub.
  */
 @Composable
 private fun GhostStepper(
@@ -489,7 +568,7 @@ private fun GhostStepper(
 
     Box(
         modifier = Modifier
-            .size(48.dp)
+            .size(36.dp)
             .pointerInput(enabled) {
                 if (!enabled) return@pointerInput
                 awaitEachGesture {
@@ -511,18 +590,18 @@ private fun GhostStepper(
             imageVector = icon,
             contentDescription = null,
             tint = if (enabled) {
-                MaterialTheme.colorScheme.primary
+                SlateSubtext
             } else {
-                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                MutedOlive.copy(alpha = 0.35f)
             },
-            modifier = Modifier.size(22.dp),
+            modifier = Modifier.size(16.dp),
         )
     }
 }
 
 /**
- * Tap-to-toggle check, a rounded square. Logged sets fill lime with a dark tick;
- * un-logged sets are a muted square. Long-press toggles the skipped state.
+ * Tap-to-toggle check, a technical square. Logged sets fill lime with a dark tick;
+ * un-logged sets are a bordered dark square. Long-press toggles the skipped state.
  */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
@@ -534,11 +613,11 @@ private fun CheckSquare(
     onLongPress: () -> Unit,
 ) {
     val bg = when {
-        isSkipped -> MaterialTheme.colorScheme.surfaceContainerHighest
-        isLogged -> MaterialTheme.colorScheme.primary
-        else -> MaterialTheme.colorScheme.surfaceVariant
+        isSkipped -> SurfaceControl
+        isLogged -> BrandLime
+        else -> SurfaceDeep
     }
-    val tint = if (isLogged) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+    val tint = if (isLogged) DarkOnPrimary else MutedOlive.copy(alpha = 0.45f)
     val animatedBg by animateColorAsState(
         targetValue = bg,
         animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
@@ -554,11 +633,16 @@ private fun CheckSquare(
     } else {
         Modifier.clickable(enabled = false, onClick = {})
     }
+    val shape = RoundedCornerShape(2.dp)
     Box(
         modifier = Modifier
-            .size(44.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .size(36.dp)
+            .clip(shape)
             .background(animatedBg)
+            .then(
+                if (!isLogged) Modifier.border(1.5.dp, EditorialBorder, shape)
+                else Modifier,
+            )
             .then(clickModifier)
             .semantics {
                 role = Role.Checkbox
@@ -583,7 +667,7 @@ private fun CheckSquare(
             imageVector = Icons.Rounded.Check,
             contentDescription = null,
             tint = animatedTint,
-            modifier = Modifier.size(22.dp),
+            modifier = Modifier.size(18.dp),
         )
     }
 }

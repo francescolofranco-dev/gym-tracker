@@ -46,6 +46,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.NotInterested
 import androidx.compose.material.icons.filled.Stop
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -64,6 +66,7 @@ import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -79,8 +82,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetail
@@ -92,8 +97,23 @@ import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.screens.exercises.PersonalRecordType
+import dev.francescolofranco.gymtracker.ui.theme.BrandLime
+import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
+import dev.francescolofranco.gymtracker.ui.theme.DestructiveCoral
+import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
+import dev.francescolofranco.gymtracker.ui.theme.MutedOlive
+import dev.francescolofranco.gymtracker.ui.theme.OliveSubtext
+import dev.francescolofranco.gymtracker.ui.theme.SlateSubtext
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceBase
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceControl
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
 import dev.francescolofranco.gymtracker.ui.theme.VolumeGreen
 import kotlinx.coroutines.launch
+import java.text.NumberFormat
+import java.util.Locale
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -145,50 +165,124 @@ fun ActiveSessionScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            // Per-session progress = logged non-skipped sets / sum of planned sets across all
-            // non-skipped exercises. Skipped exercises drop out of both numerator and
-            // denominator so they don't drag the headline down.
-            val progressPct = remember(details) {
-                val plannedTotal = details
-                    .filter { !it.sessionExercise.isSkipped }
-                    .sumOf { d -> d.setLogs.count { !it.isSkipped } }
-                val loggedTotal = details
-                    .filter { !it.sessionExercise.isSkipped }
-                    .sumOf { d -> d.setLogs.count { it.loggedAt != null && it.reps != null && !it.isSkipped } }
-                if (plannedTotal == 0) 0 else (loggedTotal * 100 / plannedTotal).coerceIn(0, 100)
+    val plannedTotal = remember(details) {
+        details
+            .filter { !it.sessionExercise.isSkipped }
+            .sumOf { d -> d.setLogs.count { !it.isSkipped } }
+    }
+    val loggedTotal = remember(details) {
+        details
+            .filter { !it.sessionExercise.isSkipped }
+            .sumOf { d -> d.setLogs.count { it.loggedAt != null && it.reps != null && !it.isSkipped } }
+    }
+    val progressPct = remember(plannedTotal, loggedTotal) {
+        if (plannedTotal == 0) 0 else (loggedTotal * 100 / plannedTotal).coerceIn(0, 100)
+    }
+    val totalVolumeKg = remember(details) {
+        details
+            .filter { !it.sessionExercise.isSkipped }
+            .sumOf { d ->
+                d.setLogs
+                    .filter { it.loggedAt != null && it.reps != null && !it.isSkipped }
+                    .sumOf { (it.kg ?: 0.0) * (it.reps ?: 0) }
             }
-            TopAppBar(
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text("Session")
-                        Spacer(Modifier.width(8.dp))
-                        Text(
-                            text = sessionProgressLabel(progressPct, details.size),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { sessionNotesEditor = true }, enabled = content != null) {
-                        Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = "Session notes")
-                    }
-                    TextButton(onClick = { confirmEnd = true }, enabled = content != null) {
-                        Icon(Icons.Filled.Stop, contentDescription = null)
-                        Spacer(Modifier.width(4.dp))
-                        Text("End")
-                    }
-                },
-            )
+    }
+
+    Scaffold(
+        containerColor = SurfaceDeep,
+        topBar = {
+            Column(modifier = Modifier.background(SurfaceBase)) {
+                TopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        containerColor = SurfaceBase,
+                        titleContentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
+                    title = {
+                        Column {
+                            Text(
+                                text = "ACTIVE WORKOUT",
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.5.sp,
+                                ),
+                            )
+                            Text(
+                                text = sessionProgressLabel(progressPct, details.size),
+                                style = MaterialTheme.typography.labelSmall.copy(
+                                    fontSize = 11.sp,
+                                    letterSpacing = 0.4.sp,
+                                ),
+                                color = MutedOlive,
+                            )
+                        }
+                    },
+                    actions = {
+                        IconButton(
+                            onClick = { sessionNotesEditor = true },
+                            enabled = content != null,
+                            modifier = Modifier
+                                .padding(end = 6.dp)
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(SurfaceElevated)
+                                .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp)),
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Notes,
+                                contentDescription = "Session notes",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(18.dp),
+                            )
+                        }
+                        TextButton(
+                            onClick = { confirmEnd = true },
+                            enabled = content != null,
+                            shape = RoundedCornerShape(2.dp),
+                            colors = ButtonDefaults.textButtonColors(contentColor = DestructiveCoral),
+                            modifier = Modifier
+                                .padding(end = 12.dp)
+                                .height(38.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(SurfaceElevated)
+                                .border(1.dp, DestructiveCoral, RoundedCornerShape(2.dp)),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Stop,
+                                contentDescription = null,
+                                modifier = Modifier.size(14.dp),
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                text = "End",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.8.sp,
+                                ),
+                            )
+                        }
+                    },
+                )
+                HorizontalDivider(color = EditorialBorder, thickness = 1.dp)
+            }
         },
         floatingActionButton = {
             if (content != null) {
                 ExtendedFloatingActionButton(
                     onClick = { showPicker = true },
+                    shape = RoundedCornerShape(4.dp),
+                    containerColor = BrandLime,
+                    contentColor = DarkOnPrimary,
                     icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                    text = { Text("Add exercise") },
+                    text = {
+                        Text(
+                            text = "Add exercise",
+                            style = MaterialTheme.typography.labelLarge.copy(
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.6.sp,
+                            ),
+                        )
+                    },
                 )
             }
         },
@@ -201,6 +295,7 @@ fun ActiveSessionScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .background(SurfaceDeep)
                 .padding(padding),
         ) {
             // Draft state shows a prominent "Start workout" CTA in place of the timer pill —
@@ -224,7 +319,12 @@ fun ActiveSessionScreen(
                         onStart = { viewModel.acceptSession() },
                     )
                 } else {
-                    TimerPill()
+                    ActiveSessionMetricsBand(
+                        loggedSets = loggedTotal,
+                        plannedSets = plannedTotal,
+                        totalVolumeKg = totalVolumeKg,
+                        unit = unit,
+                    )
                 }
             }
 
@@ -334,6 +434,114 @@ fun ActiveSessionScreen(
     }
 }
 
+@Composable
+private fun ActiveSessionMetricsBand(
+    loggedSets: Int,
+    plannedSets: Int,
+    totalVolumeKg: Double,
+    unit: WeightUnit,
+) {
+    val convertedVolume = convertFromKg(totalVolumeKg, unit).roundToInt()
+    val formattedVol = remember(convertedVolume) {
+        NumberFormat.getIntegerInstance(Locale.US).format(convertedVolume)
+    }
+    Column(modifier = Modifier.fillMaxWidth().background(SurfaceBase)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TimerPill(
+                modifier = Modifier.weight(1.1f),
+                compact = true,
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(SurfaceCard)
+                    .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp))
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = "PROGRESS",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 9.sp,
+                        letterSpacing = 0.72.sp,
+                    ),
+                    color = MutedOlive,
+                )
+                Row(
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = "$loggedSets / $plannedSets",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = "SETS",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = SlateSubtext,
+                        modifier = Modifier.padding(bottom = 2.dp),
+                    )
+                }
+            }
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(SurfaceCard)
+                    .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp))
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = "TOTAL VOL",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 9.sp,
+                        letterSpacing = 0.72.sp,
+                    ),
+                    color = MutedOlive,
+                )
+                Row(
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = formattedVol,
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Text(
+                        text = unit.label().uppercase(),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 9.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = SlateSubtext,
+                        modifier = Modifier.padding(bottom = 2.dp),
+                    )
+                }
+            }
+        }
+        HorizontalDivider(color = EditorialBorder, thickness = 1.dp)
+    }
+}
+
 /**
  * Replaces the timer pill while the session is still a draft. Until the user taps Start
  * workout the session is invisible from the home screen banner and the past list, so this
@@ -341,25 +549,32 @@ fun ActiveSessionScreen(
  */
 @Composable
 private fun StartWorkoutBanner(enabled: Boolean, onStart: () -> Unit) {
-    androidx.compose.material3.Button(
+    Button(
         onClick = onStart,
         enabled = enabled,
-        shape = dev.francescolofranco.gymtracker.ui.theme.ButtonShape,
+        shape = RoundedCornerShape(2.dp),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = BrandLime,
+            contentColor = DarkOnPrimary,
+        ),
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp)
-            .height(72.dp),
+            .padding(horizontal = 12.dp, vertical = 8.dp)
+            .height(64.dp),
     ) {
         Icon(
             imageVector = Icons.Filled.PlayArrow,
             contentDescription = null,
-            modifier = Modifier.size(28.dp),
+            modifier = Modifier.size(24.dp),
         )
         Spacer(Modifier.width(12.dp))
         Column(horizontalAlignment = Alignment.Start) {
             Text(
-                text = "Start workout",
-                style = MaterialTheme.typography.titleMedium,
+                text = "START WORKOUT",
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.8.sp,
+                ),
             )
             Text(
                 text = if (enabled) "Begins the timer and counts this in your history."
@@ -380,9 +595,9 @@ private fun EmptyActiveSession(modifier: Modifier = Modifier) {
         Icon(
             imageVector = Icons.Filled.FitnessCenter,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
+            tint = BrandLime,
         )
-        Text(text = "Empty session", style = MaterialTheme.typography.titleLarge)
+        Text(text = "EMPTY SESSION", style = MaterialTheme.typography.titleLarge)
         Text(
             text = "Tap Add exercise to add the first one.",
             style = MaterialTheme.typography.bodyMedium,
@@ -396,16 +611,20 @@ private fun SessionNotesPreview(notes: String, onEdit: () -> Unit) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .clip(RoundedCornerShape(4.dp))
+            .background(SurfaceCard)
+            .border(1.dp, EditorialBorder, RoundedCornerShape(4.dp))
             .clickable(onClick = onEdit)
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
-        Column {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
-                text = "Notes",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = "SESSION NOTES",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.sp,
+                    letterSpacing = 0.8.sp,
+                ),
+                color = BrandLime,
             )
             Text(text = notes, style = MaterialTheme.typography.bodyMedium)
         }
@@ -420,9 +639,9 @@ private fun sessionProgressLabel(progressPct: Int, exerciseCount: Int): String =
 
 @Composable
 private fun Modifier.completionRail(isComplete: Boolean): Modifier {
-    val surface = MaterialTheme.colorScheme.surfaceContainer
+    val surface = SurfaceCard
     return if (isComplete) {
-        background(VolumeGreen)
+        background(BrandLime)
             .padding(start = 3.dp)
             .background(surface)
     } else {
@@ -490,9 +709,8 @@ internal fun LazyListScope.exerciseSection(
                 modifier = Modifier
                     .fillMaxWidth()
                     .completionRail(isComplete)
-                    .padding(horizontal = 12.dp),
+                    .border(width = 1.dp, color = EditorialBorder),
             ) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 SetTableHeader()
             }
         }
@@ -509,20 +727,19 @@ internal fun LazyListScope.exerciseSection(
         ) { log ->
             val hint = hints.firstOrNull { it.setNumber == log.setNumber && it.side == log.side }
             val isLast = log.id == sets.last().id
+            val shape = if (isLast) {
+                RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp)
+            } else {
+                RoundedCornerShape(0.dp)
+            }
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .then(
-                        if (isLast) {
-                            Modifier.clip(RoundedCornerShape(bottomStart = 16.dp, bottomEnd = 16.dp))
-                        } else {
-                            Modifier
-                        },
-                    )
+                    .clip(shape)
                     .completionRail(isComplete)
-                    .padding(horizontal = 12.dp),
+                    .border(1.dp, EditorialBorder, shape)
+                    .padding(horizontal = 8.dp),
             ) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 SetRow(
                     state = SetRowState(
                         log = log,
@@ -572,90 +789,126 @@ private fun ExerciseSectionHeader(
     val exercise = detail.exercise
     var menuExpanded by remember { mutableStateOf(false) }
     val shape = if (hasSets) {
-        RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+        RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
     } else {
-        RoundedCornerShape(16.dp)
+        RoundedCornerShape(4.dp)
     }
+    val pinnedNote = detail.sessionExercise.pinnedNotes?.takeIf { it.isNotBlank() }
+    val sessionNote = detail.sessionExercise.notes?.takeIf { it.isNotBlank() }
 
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(shape)
-            .completionRail(isComplete)
-            .padding(start = 12.dp, top = 10.dp, bottom = 6.dp),
-        verticalAlignment = Alignment.CenterVertically,
+            .background(SurfaceElevated)
+            .border(1.dp, EditorialBorder, shape)
+            .padding(start = 12.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            ExerciseNameAndBadges(
-                name = exercise.name,
-                isComplete = isComplete,
-                isFirstTime = hints.isEmpty(),
-                personalRecords = personalRecords,
-                note = detail.sessionExercise.notes?.takeIf { it.isNotBlank() },
-                pinnedNote = detail.sessionExercise.pinnedNotes?.takeIf { it.isNotBlank() },
-                isNoteCarried = !detail.sessionExercise.noteCarryForward,
-                onEditNote = onEditExerciseNotes,
-            )
-            Text(
-                text = buildList {
-                    add(exercise.primaryMuscles.sortedTopToBottom().joinToString(" + ") { it.displayName })
-                    if (exercise.isBodyweight) add("BW")
-                    add(detail.setPlanLabel())
-                    if (detail.sessionExercise.isSkipped) add("Skipped")
-                    else if (incomplete) add("Incomplete")
-                }.joinToString(" · "),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        IconButton(onClick = onOpenExerciseStats) {
-            Icon(Icons.Filled.BarChart, contentDescription = "Exercise stats")
-        }
-        Box {
-            IconButton(onClick = { menuExpanded = true }) {
-                Icon(Icons.Filled.MoreVert, contentDescription = "Exercise options")
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                ExerciseNameAndBadges(
+                    name = exercise.name,
+                    isComplete = isComplete,
+                    isFirstTime = hints.isEmpty(),
+                    personalRecords = personalRecords,
+                    note = sessionNote,
+                    pinnedNote = pinnedNote,
+                    isNoteCarried = !detail.sessionExercise.noteCarryForward,
+                    onEditNote = onEditExerciseNotes,
+                )
+                Text(
+                    text = buildList {
+                        add(exercise.primaryMuscles.sortedTopToBottom().joinToString(" + ") { it.displayName })
+                        if (exercise.isBodyweight) add("BW")
+                        add(detail.setPlanLabel())
+                        if (detail.sessionExercise.isSkipped) add("Skipped")
+                        else if (incomplete) add("Incomplete")
+                    }.joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                    color = OliveSubtext,
+                )
             }
-            DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
-                DropdownMenuItem(
-                    text = { Text("View stats") },
-                    leadingIcon = { Icon(Icons.Filled.BarChart, contentDescription = null) },
-                    onClick = {
-                        menuExpanded = false
-                        onOpenExerciseStats()
-                    },
+            IconButton(
+                onClick = onOpenExerciseStats,
+                modifier = Modifier
+                    .padding(end = 4.dp)
+                    .size(34.dp)
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(SurfaceControl)
+                    .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp)),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.BarChart,
+                    contentDescription = "Exercise stats",
+                    tint = SlateSubtext,
+                    modifier = Modifier.size(16.dp),
                 )
-                DropdownMenuItem(
-                    text = { Text(if (detail.sessionExercise.isSkipped) "Unskip" else "Skip exercise") },
-                    leadingIcon = { Icon(Icons.Filled.NotInterested, contentDescription = null) },
-                    onClick = {
-                        menuExpanded = false
-                        onSkipExercise(!detail.sessionExercise.isSkipped)
-                    },
-                )
-                DropdownMenuItem(
-                    text = {
-                        Text(
-                            when {
-                                detail.sessionExercise.notes.isNullOrBlank() &&
-                                    detail.sessionExercise.pinnedNotes.isNullOrBlank() -> "Add notes"
-                                else -> "Edit notes"
-                            },
-                        )
-                    },
-                    leadingIcon = { Icon(Icons.Filled.EditNote, contentDescription = null) },
-                    onClick = {
-                        menuExpanded = false
-                        onEditExerciseNotes()
-                    },
-                )
-                if (editable) {
+            }
+            Box {
+                IconButton(
+                    onClick = { menuExpanded = true },
+                    modifier = Modifier
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(SurfaceControl)
+                        .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp)),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.MoreVert,
+                        contentDescription = "Exercise options",
+                        tint = SlateSubtext,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+                DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                     DropdownMenuItem(
-                        text = { Text("Remove from session") },
+                        text = { Text("View stats") },
+                        leadingIcon = { Icon(Icons.Filled.BarChart, contentDescription = null) },
                         onClick = {
                             menuExpanded = false
-                            onRemoveExercise()
+                            onOpenExerciseStats()
                         },
                     )
+                    DropdownMenuItem(
+                        text = { Text(if (detail.sessionExercise.isSkipped) "Unskip" else "Skip exercise") },
+                        leadingIcon = { Icon(Icons.Filled.NotInterested, contentDescription = null) },
+                        onClick = {
+                            menuExpanded = false
+                            onSkipExercise(!detail.sessionExercise.isSkipped)
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                when {
+                                    detail.sessionExercise.notes.isNullOrBlank() &&
+                                        detail.sessionExercise.pinnedNotes.isNullOrBlank() -> "Add notes"
+                                    else -> "Edit notes"
+                                },
+                            )
+                        },
+                        leadingIcon = { Icon(Icons.Filled.EditNote, contentDescription = null) },
+                        onClick = {
+                            menuExpanded = false
+                            onEditExerciseNotes()
+                        },
+                    )
+                    if (editable) {
+                        DropdownMenuItem(
+                            text = { Text("Remove from session") },
+                            onClick = {
+                                menuExpanded = false
+                                onRemoveExercise()
+                            },
+                        )
+                    }
                 }
             }
         }
@@ -855,8 +1108,12 @@ private fun ExerciseNameAndBadges(
         itemVerticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = name,
-            style = MaterialTheme.typography.titleMedium,
+            text = name.uppercase(),
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.4.sp,
+            ),
         )
         when {
             isComplete -> CompletedBadge()
@@ -901,14 +1158,17 @@ private fun ExerciseNameAndBadges(
 private fun CompletedBadge() {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.secondaryContainer)
-            .padding(horizontal = 8.dp, vertical = 2.dp),
+            .clip(RoundedCornerShape(2.dp))
+            .background(BrandLime)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {
         Text(
-            text = "Completed",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSecondaryContainer,
+            text = "COMPLETED",
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+            color = DarkOnPrimary,
         )
     }
 }
@@ -917,14 +1177,18 @@ private fun CompletedBadge() {
 private fun FirstTimeBadge() {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(MaterialTheme.colorScheme.tertiaryContainer)
-            .padding(horizontal = 8.dp, vertical = 2.dp),
+            .clip(RoundedCornerShape(2.dp))
+            .background(SurfaceControl)
+            .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp))
+            .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {
         Text(
-            text = "First time",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onTertiaryContainer,
+            text = "FIRST TIME",
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+            color = SlateSubtext,
         )
     }
 }
@@ -933,14 +1197,17 @@ private fun FirstTimeBadge() {
 private fun PersonalRecordBadge(records: Set<PersonalRecordType>) {
     Box(
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(dev.francescolofranco.gymtracker.ui.theme.VolumeGreen.copy(alpha = 0.18f))
-            .padding(horizontal = 8.dp, vertical = 2.dp),
+            .clip(RoundedCornerShape(2.dp))
+            .background(BrandLime)
+            .padding(horizontal = 6.dp, vertical = 2.dp),
     ) {
         Text(
             text = records.joinToString(" · ") { it.shortLabel },
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurface,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+            color = DarkOnPrimary,
         )
     }
 }

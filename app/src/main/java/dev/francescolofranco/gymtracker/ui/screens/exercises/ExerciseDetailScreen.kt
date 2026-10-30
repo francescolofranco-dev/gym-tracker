@@ -1,6 +1,7 @@
 package dev.francescolofranco.gymtracker.ui.screens.exercises
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -31,6 +32,7 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -49,15 +51,25 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.domain.sortedTopToBottom
+import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
-import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.screens.sessions.convertFromKg
 import dev.francescolofranco.gymtracker.ui.screens.sessions.formatSessionDate
 import dev.francescolofranco.gymtracker.ui.screens.sessions.formatWeightNumber
 import dev.francescolofranco.gymtracker.ui.screens.sessions.label
+import dev.francescolofranco.gymtracker.ui.theme.BrandLime
+import dev.francescolofranco.gymtracker.ui.theme.CardShape
+import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
+import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
+import dev.francescolofranco.gymtracker.ui.theme.OliveSubtext
 import dev.francescolofranco.gymtracker.ui.theme.RegressionAmber
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceBase
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
+import dev.francescolofranco.gymtracker.ui.theme.TagShape
 import dev.francescolofranco.gymtracker.ui.theme.VolumeGreen
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -80,20 +92,30 @@ fun ExerciseDetailScreen(
     }
 
     Scaffold(
+        containerColor = SurfaceDeep,
         topBar = {
-            TopAppBar(
-                title = { Text(exercise?.name ?: "Exercise") },
-                navigationIcon = {
-                    IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                    }
-                },
-                actions = {
-                    IconButton(onClick = { showEdit = true }, enabled = exercise != null) {
-                        Icon(Icons.Filled.Edit, contentDescription = "Edit exercise")
-                    }
-                },
-            )
+            Column(modifier = Modifier.background(SurfaceBase)) {
+                TopAppBar(
+                    colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceBase),
+                    title = {
+                        Text(
+                            text = exercise?.name ?: "Exercise",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        }
+                    },
+                    actions = {
+                        IconButton(onClick = { showEdit = true }, enabled = exercise != null) {
+                            Icon(Icons.Filled.Edit, contentDescription = "Edit exercise")
+                        }
+                    },
+                )
+                HorizontalDivider(color = EditorialBorder.copy(alpha = 0.35f), thickness = 1.dp)
+            }
         },
     ) { padding ->
         if (content == null) {
@@ -112,7 +134,7 @@ fun ExerciseDetailScreen(
                 Text(
                     text = "This exercise is no longer available.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = OliveSubtext,
                 )
             }
             return@Scaffold
@@ -142,7 +164,7 @@ fun ExerciseDetailScreen(
                 .fillMaxSize()
                 .padding(padding),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item { Header(exercise = ex) }
             item { ProgressSection(points = progress, isBodyweight = ex.isBodyweight, unit = unit) }
@@ -156,11 +178,32 @@ fun ExerciseDetailScreen(
                 }
             }
             item {
-                Text(
-                    text = "History",
-                    style = MaterialTheme.typography.labelLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "History",
+                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        color = OliveSubtext,
+                    )
+                    if (historyRows.isNotEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .clip(TagShape)
+                                .background(SurfaceElevated)
+                                .border(1.dp, EditorialBorder.copy(alpha = 0.25f), TagShape)
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                        ) {
+                            Text(
+                                text = "${historyRows.size} SESSION${if (historyRows.size == 1) "" else "S"}",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = OliveSubtext,
+                            )
+                        }
+                    }
+                }
             }
             if (historyRows.isEmpty()) {
                 item { EmptyHistory() }
@@ -181,7 +224,6 @@ fun ExerciseDetailScreen(
                             records = recordsBySession[point.sessionId].orEmpty(),
                             onClick = { onOpenSession(point.sessionId) },
                         )
-                        HorizontalDivider(color = MaterialTheme.colorScheme.surfaceContainerHigh)
                     }
                 }
             }
@@ -206,35 +248,64 @@ fun ExerciseDetailScreen(
 
 @Composable
 private fun Header(exercise: ExerciseEntity) {
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .clip(CardShape)
+            .background(SurfaceCard)
+            .border(1.dp, EditorialBorder.copy(alpha = 0.3f), CardShape)
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = exercise.name, style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold))
-        Text(
-            text = buildList {
-                add(exercise.primaryMuscles.sortedTopToBottom().joinToString(" + ") { it.displayName })
-                if (exercise.secondaryMuscles.isNotEmpty()) {
-                    add(exercise.secondaryMuscles.sortedTopToBottom().joinToString(", ") { it.displayName })
-                }
-            }.joinToString(" · "),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-        Text(
-            text = buildList {
-                add("${exercise.targetSets}×${exercise.repRangeMin}–${exercise.repRangeMax}")
-                if (exercise.isBodyweight) add("Bodyweight")
-                if (exercise.isUnilateral) add("Unilateral · sets per side")
-                if (exercise.deletedAt != null) add("Deleted")
-            }.joinToString(" · "),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(
+                text = exercise.name,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            )
+            Text(
+                text = buildList {
+                    add(exercise.primaryMuscles.sortedTopToBottom().joinToString(" + ") { it.displayName })
+                    if (exercise.secondaryMuscles.isNotEmpty()) {
+                        add(exercise.secondaryMuscles.sortedTopToBottom().joinToString(", ") { it.displayName })
+                    }
+                }.joinToString(" · "),
+                style = MaterialTheme.typography.bodyMedium,
+                color = OliveSubtext,
+            )
+            Text(
+                text = buildList {
+                    add("${exercise.targetSets}×${exercise.repRangeMin}–${exercise.repRangeMax}")
+                    if (exercise.isBodyweight) add("Bodyweight")
+                    if (exercise.isUnilateral) add("Unilateral · sets per side")
+                    if (exercise.deletedAt != null) add("Deleted")
+                }.joinToString(" · "),
+                style = MaterialTheme.typography.bodySmall,
+                color = OliveSubtext,
+            )
+        }
+        Column(
+            modifier = Modifier
+                .clip(RoundedCornerShape(4.dp))
+                .background(SurfaceElevated)
+                .border(1.dp, EditorialBorder.copy(alpha = 0.25f), RoundedCornerShape(4.dp))
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.End,
+        ) {
+            Text(
+                text = "TARGET",
+                style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                color = OliveSubtext,
+            )
+            Text(
+                text = "${exercise.targetSets}×${exercise.repRangeMin}–${exercise.repRangeMax}",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = BrandLime,
+            )
+        }
     }
 }
 
@@ -251,23 +322,24 @@ private fun ProgressSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
-            .padding(12.dp),
+            .clip(CardShape)
+            .background(SurfaceCard)
+            .border(1.dp, EditorialBorder.copy(alpha = 0.3f), CardShape)
+            .padding(14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = "Progress",
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 modifier = Modifier.weight(1f),
             )
             val latest = points.lastOrNull { it.valueFor(metric) != null }?.valueFor(metric)
             if (latest != null) {
                 Text(
                     text = formatMetricValue(latest, metric, unit),
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                    color = MaterialTheme.colorScheme.primary,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = BrandLime,
                 )
             }
         }
@@ -288,6 +360,14 @@ private fun ProgressSection(
                         selected = i == selectedIndex,
                         onClick = { selectedIndex = i },
                         shape = SegmentedButtonDefaults.itemShape(i, metrics.size),
+                        colors = SegmentedButtonDefaults.colors(
+                            activeContainerColor = BrandLime,
+                            activeContentColor = DarkOnPrimary,
+                            inactiveContainerColor = SurfaceElevated,
+                            inactiveContentColor = OliveSubtext,
+                            activeBorderColor = BrandLime,
+                            inactiveBorderColor = EditorialBorder.copy(alpha = 0.4f),
+                        ),
                     ) { Text(m.label) }
                 }
             }
@@ -299,14 +379,14 @@ private fun ProgressSection(
                 Text(
                     text = "No completed sessions yet.",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = OliveSubtext,
                 )
             }
             series.size < 2 -> {
                 Text(
                     text = "Log a second session to see the trend.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = OliveSubtext,
                 )
             }
             else -> {
@@ -321,13 +401,10 @@ private fun ProgressSection(
 
 @Composable
 private fun OverloadVerdict(trend: TrendResult) {
-    // The saturated volume tokens read fine as an icon/tint accent but fail text contrast on the
-    // near-white light surface, so the label itself is drawn in onSurface; colour + arrow shape
-    // carry the up/down/flat meaning redundantly.
     val accent = when (trend.trend) {
         OverloadTrend.Progressing -> VolumeGreen
         OverloadTrend.Regressing -> RegressionAmber
-        else -> MaterialTheme.colorScheme.onSurfaceVariant
+        else -> OliveSubtext
     }
     val icon: ImageVector = when (trend.trend) {
         OverloadTrend.Progressing -> Icons.AutoMirrored.Filled.TrendingUp
@@ -336,8 +413,9 @@ private fun OverloadVerdict(trend: TrendResult) {
     }
     Row(
         modifier = Modifier
-            .clip(RoundedCornerShape(8.dp))
-            .background(accent.copy(alpha = 0.15f))
+            .clip(RoundedCornerShape(4.dp))
+            .background(accent.copy(alpha = 0.14f))
+            .border(1.dp, accent.copy(alpha = 0.35f), RoundedCornerShape(4.dp))
             .padding(horizontal = 10.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -345,7 +423,7 @@ private fun OverloadVerdict(trend: TrendResult) {
         Icon(imageVector = icon, contentDescription = null, tint = accent, modifier = Modifier.size(16.dp))
         Text(
             text = verdictLabel(trend),
-            style = MaterialTheme.typography.labelMedium,
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
             color = MaterialTheme.colorScheme.onSurface,
         )
     }
@@ -364,12 +442,22 @@ private fun HistoryRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clip(CardShape)
+            .background(SurfaceCard)
+            .border(1.dp, EditorialBorder.copy(alpha = 0.25f), CardShape)
             .clickable(onClick = onClick)
-            .padding(vertical = 12.dp, horizontal = 4.dp),
+            .padding(vertical = 12.dp, horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(text = formatSessionDate(point.startedAt), style = MaterialTheme.typography.bodyLarge)
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = formatSessionDate(point.startedAt),
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold),
+            )
             Text(
                 text = buildList {
                     add("${point.setsLogged} set${if (point.setsLogged == 1) "" else "s"}")
@@ -380,14 +468,22 @@ private fun HistoryRow(
                     }
                 }.joinToString(" · "),
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = OliveSubtext,
             )
             if (records.isNotEmpty()) {
-                Text(
-                    text = records.joinToString(" · ") { it.shortLabel },
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = VolumeGreen,
-                )
+                Box(
+                    modifier = Modifier
+                        .padding(top = 2.dp)
+                        .clip(TagShape)
+                        .background(BrandLime.copy(alpha = 0.16f))
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text = records.joinToString(" · ") { it.shortLabel },
+                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        color = BrandLime,
+                    )
+                }
             }
         }
         val value = point.valueFor(headline)
@@ -395,7 +491,7 @@ private fun HistoryRow(
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     text = formatMetricValue(value, headline, unit),
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 )
                 DeltaLabel(current = value, previous = previous?.valueFor(headline))
             }
@@ -412,12 +508,34 @@ private fun PersonalRecordsCard(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .clip(CardShape)
+            .background(SurfaceCard)
+            .border(1.dp, EditorialBorder.copy(alpha = 0.3f), CardShape)
             .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text("Personal records", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Personal records",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            )
+            Box(
+                modifier = Modifier
+                    .clip(TagShape)
+                    .background(BrandLime.copy(alpha = 0.14f))
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+            ) {
+                Text(
+                    text = "ALL-TIME BEST",
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = BrandLime,
+                )
+            }
+        }
         if (isBodyweight) {
             RecordLine("Best set", "${summary.bestReps} reps")
         } else {
@@ -429,16 +547,33 @@ private fun PersonalRecordsCard(
         Text(
             "PR badges in history mark sessions that beat an earlier result; the first session establishes the baseline.",
             style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = OliveSubtext,
         )
     }
 }
 
 @Composable
 private fun RecordLine(label: String, value: String) {
-    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-        Text(value, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.primary)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(4.dp))
+            .background(SurfaceElevated)
+            .border(1.dp, EditorialBorder.copy(alpha = 0.25f), RoundedCornerShape(4.dp))
+            .padding(horizontal = 12.dp, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = OliveSubtext,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            color = BrandLime,
+        )
     }
 }
 
@@ -450,9 +585,13 @@ private fun DeltaLabel(current: Double, previous: Double?) {
     val (text, color) = when {
         rounded > 0 -> "+$rounded%" to VolumeGreen
         rounded < 0 -> "$rounded%" to RegressionAmber
-        else -> "±0%" to MaterialTheme.colorScheme.onSurfaceVariant
+        else -> "±0%" to OliveSubtext
     }
-    Text(text = text, style = MaterialTheme.typography.labelSmall, color = color)
+    Text(
+        text = text,
+        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+        color = color,
+    )
 }
 
 @Composable
@@ -460,15 +599,16 @@ private fun EmptyHistory() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainer)
+            .clip(CardShape)
+            .background(SurfaceCard)
+            .border(1.dp, EditorialBorder.copy(alpha = 0.25f), CardShape)
             .padding(24.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = "Log this exercise in a session to see history here.",
             style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = OliveSubtext,
         )
     }
 }

@@ -9,6 +9,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
@@ -18,7 +19,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -42,11 +42,17 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
+import dev.francescolofranco.gymtracker.ui.theme.BrandLime
+import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
+import dev.francescolofranco.gymtracker.ui.theme.MutedOlive
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
 
 /**
  * Big-target stepper. Tap +/- once to step; press-and-hold to scrub fast.
@@ -89,9 +95,10 @@ fun NumberStepper(
 
         Box(
             modifier = Modifier
-                .defaultMinSize(minWidth = 96.dp, minHeight = 48.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .defaultMinSize(minWidth = 72.dp, minHeight = 40.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(SurfaceDeep)
+                .border(1.dp, EditorialBorder.copy(alpha = 0.35f), RoundedCornerShape(4.dp))
                 .pointerInput(onChipClick) {
                     if (onChipClick != null) {
                         awaitEachGesture {
@@ -104,7 +111,7 @@ fun NumberStepper(
                         }
                     }
                 }
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(horizontal = 14.dp, vertical = 6.dp)
                 .semantics { contentDescription = "Value $valueLabel" },
             contentAlignment = Alignment.Center
         ) {
@@ -116,7 +123,11 @@ fun NumberStepper(
                 },
                 label = "stepper value",
             ) { animatedValue ->
-                Text(text = animatedValue, style = MaterialTheme.typography.titleLarge)
+                Text(
+                    text = animatedValue,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
             }
         }
 
@@ -168,15 +179,17 @@ private fun StepperButton(
 
     Box(
         modifier = Modifier
-            .size(48.dp)
+            .size(40.dp)
             .graphicsLayer {
                 scaleX = pressScale
                 scaleY = pressScale
             }
-            .clip(CircleShape)
-            .background(
-                if (enabled) MaterialTheme.colorScheme.primaryContainer
-                else MaterialTheme.colorScheme.surfaceVariant
+            .clip(RoundedCornerShape(4.dp))
+            .background(if (enabled) SurfaceElevated else SurfaceDeep)
+            .border(
+                width = 1.dp,
+                color = if (pressed && enabled) BrandLime else EditorialBorder.copy(alpha = if (enabled) 0.5f else 0.2f),
+                shape = RoundedCornerShape(4.dp),
             )
             .pointerInput(enabled) {
                 if (!enabled) return@pointerInput
@@ -201,8 +214,9 @@ private fun StepperButton(
         Icon(
             imageVector = icon,
             contentDescription = null,
-            tint = if (enabled) MaterialTheme.colorScheme.onPrimaryContainer
-            else MaterialTheme.colorScheme.onSurfaceVariant
+            tint = if (enabled) MaterialTheme.colorScheme.onSurface
+            else MutedOlive.copy(alpha = 0.4f),
+            modifier = Modifier.size(18.dp),
         )
     }
 }

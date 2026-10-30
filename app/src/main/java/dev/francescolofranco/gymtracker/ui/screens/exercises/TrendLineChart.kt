@@ -1,21 +1,28 @@
 package dev.francescolofranco.gymtracker.ui.screens.exercises
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import dev.francescolofranco.gymtracker.ui.theme.BrandLime
+import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
 
 /**
  * Lightweight Compose-Canvas line chart for a per-session progress series. A hand-rolled chart
@@ -34,26 +41,40 @@ fun TrendLineChart(
     height: Dp = 160.dp,
     contentDescription: String = "Progress trend chart",
 ) {
-    val line = MaterialTheme.colorScheme.primary
-    val fill = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
-    val axis = MaterialTheme.colorScheme.outlineVariant
+    val line = BrandLime
+    val axis = EditorialBorder.copy(alpha = 0.35f)
+    val grid = EditorialBorder.copy(alpha = 0.18f)
 
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(height)
+            .clip(RoundedCornerShape(4.dp))
+            .background(SurfaceDeep)
+            .border(1.dp, EditorialBorder.copy(alpha = 0.25f), RoundedCornerShape(4.dp))
             .semantics {
                 this.contentDescription = if (values.isEmpty()) contentDescription else {
                     "$contentDescription. ${values.size} points, from ${values.first()} to ${values.last()}."
                 }
             }
-            .padding(horizontal = 8.dp, vertical = 8.dp),
+            .padding(horizontal = 12.dp, vertical = 12.dp),
     ) {
         Canvas(modifier = Modifier.fillMaxWidth().height(height)) {
             val padX = 12f
             val padY = 12f
             val w = size.width
             val h = size.height
+
+            // subtle horizontal grid lines
+            for (step in 1..3) {
+                val gy = padY + (h - 2 * padY) * (step / 4f)
+                drawLine(
+                    color = grid,
+                    start = Offset(padX, gy),
+                    end = Offset(w - padX, gy),
+                    strokeWidth = 1f,
+                )
+            }
 
             // baseline (x-axis at bottom)
             drawLine(
@@ -83,23 +104,32 @@ fun TrendLineChart(
                 lineTo(x(n - 1), h - padY)
                 close()
             }
-            drawPath(area, fill)
+            drawPath(
+                path = area,
+                brush = Brush.verticalGradient(
+                    colors = listOf(BrandLime.copy(alpha = 0.25f), Color.Transparent),
+                    startY = padY,
+                    endY = h - padY,
+                ),
+            )
 
             // line
             val curve = Path().apply {
                 moveTo(x(0), y(values.first()))
                 values.drop(1).forEachIndexed { i, v -> lineTo(x(i + 1), y(v)) }
             }
-            drawPath(curve, line, style = Stroke(width = 4f))
+            drawPath(curve, line, style = Stroke(width = 4.5f))
 
             // points (subtle dots)
             values.forEachIndexed { i, v ->
+                drawCircle(color = SurfaceDeep, radius = 6f, center = Offset(x(i), y(v)))
                 drawCircle(color = line, radius = 4f, center = Offset(x(i), y(v)))
             }
 
             // emphasise the last point
+            drawCircle(color = BrandLime.copy(alpha = 0.28f), radius = 12f, center = Offset(x(n - 1), y(values.last())))
             drawCircle(color = Color.White, radius = 7f, center = Offset(x(n - 1), y(values.last())))
-            drawCircle(color = line, radius = 5f, center = Offset(x(n - 1), y(values.last())))
+            drawCircle(color = line, radius = 4.5f, center = Offset(x(n - 1), y(values.last())))
         }
     }
 }

@@ -1,6 +1,9 @@
 package dev.francescolofranco.gymtracker.ui.screens.sessions
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,10 +19,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -34,12 +40,24 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import dev.francescolofranco.gymtracker.ui.theme.BrandLime
 import dev.francescolofranco.gymtracker.ui.theme.ButtonShape
+import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
+import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
+import dev.francescolofranco.gymtracker.ui.theme.OliveSubtext
+import dev.francescolofranco.gymtracker.ui.theme.SlateSubtext
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceBase
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceControl
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,32 +75,78 @@ internal fun ExerciseNoteSheet(
     ModalBottomSheet(
         onDismissRequest = onCancel,
         sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        containerColor = SurfaceCard,
+        shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .imePadding()
-                .padding(start = 24.dp, end = 24.dp, bottom = 16.dp),
+                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
         ) {
             // Keep the actions visible while the fields scroll above the keyboard.
             Column(
                 modifier = Modifier
                     .weight(1f, fill = false)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Exercise notes", style = MaterialTheme.typography.titleLarge)
-                    Text(
-                        exerciseName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                        modifier = Modifier.weight(1f),
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.Notes,
+                                contentDescription = null,
+                                tint = BrandLime,
+                                modifier = Modifier.size(18.dp),
+                            )
+                            Text(
+                                text = "EXERCISE NOTES",
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.5.sp,
+                                ),
+                            )
+                        }
+                        Text(
+                            text = exerciseName.uppercase(),
+                            style = MaterialTheme.typography.labelMedium.copy(
+                                fontSize = 11.sp,
+                                letterSpacing = 0.66.sp,
+                            ),
+                            color = OliveSubtext,
+                        )
+                    }
+                    IconButton(
+                        onClick = onCancel,
+                        modifier = Modifier
+                            .size(36.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(SurfaceControl),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Close,
+                            contentDescription = "Cancel",
+                            tint = OliveSubtext,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
                 }
 
                 NoteField(
                     title = "Pinned note",
+                    badge = "EVERGREEN",
                     description = "Shown every time you do this exercise.",
                     placeholder = "Seat height, grip, technique…",
                     icon = Icons.Filled.PushPin,
@@ -92,6 +156,7 @@ internal fun ExerciseNoteSheet(
                 )
                 NoteField(
                     title = "Session note",
+                    badge = "NEXT SESSION ONLY",
                     description = "Carries forward for one session.",
                     placeholder = "Something to remember next time…",
                     icon = Icons.AutoMirrored.Filled.Notes,
@@ -101,7 +166,7 @@ internal fun ExerciseNoteSheet(
                 )
             }
 
-            Spacer(Modifier.height(20.dp))
+            Spacer(Modifier.height(16.dp))
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -109,16 +174,37 @@ internal fun ExerciseNoteSheet(
             ) {
                 TextButton(
                     onClick = onCancel,
-                    modifier = Modifier.heightIn(min = 48.dp),
+                    shape = ButtonShape,
+                    modifier = Modifier
+                        .heightIn(min = 48.dp)
+                        .clip(ButtonShape)
+                        .background(SurfaceControl),
                 ) {
-                    Text("Cancel")
+                    Text(
+                        text = "CANCEL",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.8.sp,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
                 }
                 Button(
                     onClick = { onConfirm(value, pinnedValue) },
                     shape = ButtonShape,
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = BrandLime,
+                        contentColor = DarkOnPrimary,
+                    ),
                     modifier = Modifier.weight(1f).heightIn(min = 48.dp),
                 ) {
-                    Text("Save notes")
+                    Text(
+                        text = "SAVE NOTES",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.8.sp,
+                        ),
+                    )
                 }
             }
         }
@@ -128,6 +214,7 @@ internal fun ExerciseNoteSheet(
 @Composable
 private fun NoteField(
     title: String,
+    badge: String,
     description: String,
     placeholder: String,
     icon: ImageVector,
@@ -135,8 +222,20 @@ private fun NoteField(
     value: String,
     onValueChange: (String) -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(4.dp))
+            .background(SurfaceBase)
+            .border(1.dp, EditorialBorder, RoundedCornerShape(4.dp))
+            .padding(12.dp),
+    ) {
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
             Row(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -144,18 +243,39 @@ private fun NoteField(
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = if (isPinned) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(18.dp),
+                    tint = if (isPinned) BrandLime else SlateSubtext,
+                    modifier = Modifier.size(16.dp),
                 )
-                Text(title, style = MaterialTheme.typography.titleSmall)
+                Text(
+                    text = title.uppercase(),
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.6.sp,
+                    ),
+                )
             }
-            Text(
-                description,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(SurfaceControl)
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+            ) {
+                Text(
+                    text = badge,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 9.sp,
+                        letterSpacing = 0.6.sp,
+                    ),
+                    color = if (isPinned) BrandLime else SlateSubtext,
+                )
+            }
         }
+        Text(
+            description,
+            style = MaterialTheme.typography.bodySmall,
+            color = OliveSubtext,
+        )
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
@@ -163,12 +283,12 @@ private fun NoteField(
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
             minLines = 3,
             maxLines = 5,
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(4.dp),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
-                unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
-                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                focusedContainerColor = SurfaceDeep,
+                unfocusedContainerColor = SurfaceDeep,
+                unfocusedBorderColor = EditorialBorder,
+                focusedBorderColor = BrandLime,
             ),
             modifier = Modifier
                 .fillMaxWidth()
