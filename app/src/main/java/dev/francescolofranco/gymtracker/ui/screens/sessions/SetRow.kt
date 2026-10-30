@@ -12,8 +12,10 @@ import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -58,6 +60,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.francescolofranco.gymtracker.data.db.entities.SetLogEntity
@@ -70,6 +73,8 @@ import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
 import dev.francescolofranco.gymtracker.ui.theme.MutedOlive
 import dev.francescolofranco.gymtracker.ui.theme.RegressionAmber
 import dev.francescolofranco.gymtracker.ui.theme.SlateSubtext
+import dev.francescolofranco.gymtracker.ui.theme.SubtleBorder
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceControl
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
@@ -226,114 +231,139 @@ fun SetRow(
         }
     }
 
+    val rowBg by animateColorAsState(
+        targetValue = if (isActiveSet) SurfaceElevated else SurfaceDeep,
+        animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
+        label = "set row bg",
+    )
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (isSkipped) Modifier.alpha(0.45f) else Modifier)
-            .padding(horizontal = 4.dp, vertical = 6.dp),
+            .height(IntrinsicSize.Min)
+            .background(rowBg)
+            .then(if (isSkipped) Modifier.alpha(0.45f) else Modifier),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // # column
-        Cell(modifier = Modifier.width(ColIndexWidth), captionText = null, horizontalAlignment = Alignment.Start) {
+        if (isActiveSet) {
             Box(
-                contentAlignment = Alignment.Center,
                 modifier = Modifier
-                    .height(28.dp)
-                    .width(34.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(animatedIndexBg)
-                    .then(
-                        if (!isActiveSet) Modifier.border(1.dp, EditorialBorder, RoundedCornerShape(2.dp))
-                        else Modifier,
-                    )
-                    .semantics {
-                        contentDescription = "Set ${log.setNumber}, ${log.side.displayName}"
-                    },
-            ) {
-                Text(
-                    text = "${log.setNumber}" + when {
-                        log.side.shortLabel.isNotBlank() -> log.side.shortLabel
-                        state.showBilateralLabel -> "B"
-                        else -> ""
-                    },
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                    ).asNumber(),
-                    color = animatedIndexColor,
-                )
-            }
-        }
-
-        // WEIGHT column — big value + small unit, tap to open the kg numpad.
-        Cell(
-            modifier = Modifier
-                .weight(ColWeightWeight)
-                .padding(horizontal = 4.dp),
-            captionText = kgDelta.text,
-            captionColor = kgDeltaColor,
-        ) {
-            WeightValue(
-                number = formatWeightChip(displayKg, state.isBodyweight),
-                unit = state.unit.label(),
-                isActive = isActiveSet,
-                onClick = if (editable) ({ numpadFor = NumpadField.KG }) else null,
-                enabled = editable && !isSkipped,
+                    .width(4.dp)
+                    .fillMaxHeight()
+                    .background(BrandLime),
             )
         }
-
-        // REPS column — bordered stepper box with - / + keys around the tappable value.
-        Cell(
+        Row(
             modifier = Modifier
-                .weight(ColRepsWeight)
-                .padding(horizontal = 4.dp),
-            captionText = repsDelta?.text,
-            captionColor = repsDeltaColor,
+                .fillMaxWidth()
+                .padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
+            // # column
+            Cell(modifier = Modifier.width(ColIndexWidth), captionText = null, horizontalAlignment = Alignment.Start) {
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier
+                        .height(28.dp)
+                        .width(34.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(animatedIndexBg)
+                        .then(
+                            if (!isActiveSet) Modifier.border(1.dp, EditorialBorder, RoundedCornerShape(2.dp))
+                            else Modifier,
+                        )
+                        .semantics {
+                            contentDescription = "Set ${log.setNumber}, ${log.side.displayName}"
+                        },
+                ) {
+                    Text(
+                        text = "${log.setNumber}" + when {
+                            log.side.shortLabel.isNotBlank() -> log.side.shortLabel
+                            state.showBilateralLabel -> "B"
+                            else -> ""
+                        },
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            textDecoration = if (isSkipped) TextDecoration.LineThrough else TextDecoration.None,
+                        ).asNumber(),
+                        color = animatedIndexColor,
+                    )
+                }
+            }
+
+            // WEIGHT column — big value + small unit, tap to open the kg numpad.
+            Cell(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .height(36.dp)
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(SurfaceControl)
-                    .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp)),
+                    .weight(ColWeightWeight)
+                    .padding(horizontal = 4.dp),
+                captionText = kgDelta.text,
+                captionColor = kgDeltaColor,
             ) {
-                GhostStepper(
-                    icon = Icons.Filled.Remove,
-                    contentDescription = "Decrease reps",
-                    enabled = editable && !isSkipped && reps > 0,
-                    onTap = { bumpReps(-1) },
-                    onHoldStep = { bumpReps(-2) },
-                )
-                RepsValue(
-                    reps = reps,
-                    onTap = if (editable) ({ numpadFor = NumpadField.REPS }) else null,
+                WeightValue(
+                    number = formatWeightChip(displayKg, state.isBodyweight),
+                    unit = state.unit.label(),
+                    isActive = isActiveSet,
+                    isSkipped = isSkipped,
+                    onClick = if (editable) ({ numpadFor = NumpadField.KG }) else null,
                     enabled = editable && !isSkipped,
                 )
-                GhostStepper(
-                    icon = Icons.Filled.Add,
-                    contentDescription = "Increase reps",
-                    enabled = editable && !isSkipped && reps < 200,
-                    onTap = { bumpReps(1) },
-                    onHoldStep = { bumpReps(2) },
+            }
+
+            // REPS column — bordered stepper box with - / + keys around the tappable value.
+            Cell(
+                modifier = Modifier
+                    .weight(ColRepsWeight)
+                    .padding(horizontal = 4.dp),
+                captionText = repsDelta?.text,
+                captionColor = repsDeltaColor,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(36.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(SurfaceControl)
+                        .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp)),
+                ) {
+                    GhostStepper(
+                        icon = Icons.Filled.Remove,
+                        contentDescription = "Decrease reps",
+                        enabled = editable && !isSkipped && reps > 0,
+                        onTap = { bumpReps(-1) },
+                        onHoldStep = { bumpReps(-2) },
+                    )
+                    RepsValue(
+                        reps = reps,
+                        onTap = if (editable) ({ numpadFor = NumpadField.REPS }) else null,
+                        enabled = editable && !isSkipped,
+                    )
+                    GhostStepper(
+                        icon = Icons.Filled.Add,
+                        contentDescription = "Increase reps",
+                        enabled = editable && !isSkipped && reps < 200,
+                        onTap = { bumpReps(1) },
+                        onHoldStep = { bumpReps(2) },
+                    )
+                }
+            }
+
+            // Check column
+            Cell(modifier = Modifier.width(ColCheckWidth), captionText = null) {
+                CheckSquare(
+                    isLogged = isLogged,
+                    isActive = isActiveSet,
+                    isSkipped = isSkipped,
+                    editable = editable,
+                    onTap = {
+                        if (!editable) return@CheckSquare
+                        if (isLogged) onUncommit() else onCommit(reps, kgInternal)
+                    },
+                    onLongPress = { if (editable) onSkipToggle() },
                 )
             }
-        }
-
-        // Check column
-        Cell(modifier = Modifier.width(ColCheckWidth), captionText = null) {
-            CheckSquare(
-                isLogged = isLogged,
-                isSkipped = isSkipped,
-                editable = editable,
-                onTap = {
-                    if (!editable) return@CheckSquare
-                    if (isLogged) onUncommit() else onCommit(reps, kgInternal)
-                },
-                onLongPress = { if (editable) onSkipToggle() },
-            )
         }
     }
 
@@ -389,6 +419,7 @@ fun SetRow(
                 },
                 onDismiss = { finishNumpad() },
                 label = "${state.unit.label()} · set ${log.setNumber}",
+                unitLabel = state.unit.label().uppercase(),
                 minValue = 0.0,
                 maxValue = 9999.0,
             )
@@ -438,6 +469,7 @@ private fun WeightValue(
     number: String,
     unit: String,
     isActive: Boolean,
+    isSkipped: Boolean = false,
     onClick: (() -> Unit)?,
     enabled: Boolean,
 ) {
@@ -476,7 +508,7 @@ private fun WeightValue(
             }
             .padding(horizontal = 6.dp, vertical = 6.dp),
     ) {
-        NumberValue(number)
+        NumberValue(number, isSkipped = isSkipped)
         Spacer(Modifier.width(3.dp))
         Text(
             text = unit.uppercase(),
@@ -524,12 +556,13 @@ private fun RepsValue(reps: Int, onTap: (() -> Unit)?, enabled: Boolean) {
 }
 
 @Composable
-private fun NumberValue(value: String) {
+private fun NumberValue(value: String, isSkipped: Boolean = false) {
     Text(
         text = value,
         style = MaterialTheme.typography.titleMedium.copy(
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
+            textDecoration = if (isSkipped) TextDecoration.LineThrough else TextDecoration.None,
         ).asNumber(),
         color = MaterialTheme.colorScheme.onSurface,
         maxLines = 1,
@@ -601,12 +634,14 @@ private fun GhostStepper(
 
 /**
  * Tap-to-toggle check, a technical square. Logged sets fill lime with a dark tick;
- * un-logged sets are a bordered dark square. Long-press toggles the skipped state.
+ * the active set shows a lime border with an inner lime square; upcoming un-logged sets
+ * are an empty bordered dark square. Long-press toggles the skipped state.
  */
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun CheckSquare(
     isLogged: Boolean,
+    isActive: Boolean = false,
     isSkipped: Boolean,
     editable: Boolean,
     onTap: () -> Unit,
@@ -615,18 +650,12 @@ private fun CheckSquare(
     val bg = when {
         isSkipped -> SurfaceControl
         isLogged -> BrandLime
-        else -> SurfaceDeep
+        else -> SurfaceCard
     }
-    val tint = if (isLogged) DarkOnPrimary else MutedOlive.copy(alpha = 0.45f)
     val animatedBg by animateColorAsState(
         targetValue = bg,
         animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
         label = "set status background",
-    )
-    val animatedTint by animateColorAsState(
-        targetValue = tint,
-        animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
-        label = "set status icon",
     )
     val clickModifier = if (editable) {
         Modifier.combinedClickable(onClick = onTap, onLongClick = onLongPress)
@@ -634,15 +663,17 @@ private fun CheckSquare(
         Modifier.clickable(enabled = false, onClick = {})
     }
     val shape = RoundedCornerShape(2.dp)
+    val borderModifier = when {
+        isLogged -> Modifier
+        isActive && !isSkipped -> Modifier.border(2.dp, BrandLime, shape)
+        else -> Modifier.border(1.dp, EditorialBorder, shape)
+    }
     Box(
         modifier = Modifier
             .size(36.dp)
             .clip(shape)
             .background(animatedBg)
-            .then(
-                if (!isLogged) Modifier.border(1.5.dp, EditorialBorder, shape)
-                else Modifier,
-            )
+            .then(borderModifier)
             .then(clickModifier)
             .semantics {
                 role = Role.Checkbox
@@ -663,12 +694,24 @@ private fun CheckSquare(
             },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(
-            imageVector = Icons.Rounded.Check,
-            contentDescription = null,
-            tint = animatedTint,
-            modifier = Modifier.size(18.dp),
-        )
+        when {
+            isLogged -> {
+                Icon(
+                    imageVector = Icons.Rounded.Check,
+                    contentDescription = null,
+                    tint = DarkOnPrimary,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            isActive && !isSkipped -> {
+                Box(
+                    modifier = Modifier
+                        .size(10.dp)
+                        .clip(RoundedCornerShape(1.dp))
+                        .background(BrandLime),
+                )
+            }
+        }
     }
 }
 

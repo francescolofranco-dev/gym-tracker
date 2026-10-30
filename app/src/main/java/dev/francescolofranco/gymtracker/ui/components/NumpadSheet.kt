@@ -63,6 +63,7 @@ fun NumpadSheet(
     onValueChange: (Double) -> Unit,
     onDismiss: () -> Unit,
     label: String? = null,
+    unitLabel: String? = null,
     minValue: Double = 0.0,
     maxValue: Double = 9999.0
 ) {
@@ -171,6 +172,17 @@ fun NumpadSheet(
                             .height(36.dp)
                             .background(BrandLime),
                     )
+                    if (!unitLabel.isNullOrBlank()) {
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = unitLabel.uppercase(),
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            color = BrandLime,
+                        )
+                    }
                 }
             }
 

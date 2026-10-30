@@ -1,7 +1,6 @@
 package dev.francescolofranco.gymtracker.ui.screens.exercises
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,15 +9,21 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -38,6 +43,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.francescolofranco.gymtracker.ui.components.MuscleChips
 import dev.francescolofranco.gymtracker.ui.components.NumberStepper
 import dev.francescolofranco.gymtracker.ui.theme.BrandLime
@@ -47,8 +53,8 @@ import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
 import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
 import dev.francescolofranco.gymtracker.ui.theme.MutedOlive
 import dev.francescolofranco.gymtracker.ui.theme.OliveSubtext
-import dev.francescolofranco.gymtracker.ui.theme.SurfaceBase
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceChip
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceControl
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
@@ -87,19 +93,42 @@ fun ExerciseFormSheet(
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = title.uppercase(),
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontSize = 22.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 0.55.sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                )
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .size(36.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(SurfaceElevated),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = "Close",
+                        tint = OliveSubtext,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
 
             // Name card
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(CardShape)
-                    .background(SurfaceBase)
-                    .border(1.dp, EditorialBorder.copy(alpha = 0.25f), CardShape)
+                    .background(SurfaceElevated)
                     .padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -144,8 +173,7 @@ fun ExerciseFormSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(CardShape)
-                    .background(SurfaceBase)
-                    .border(1.dp, EditorialBorder.copy(alpha = 0.25f), CardShape)
+                    .background(SurfaceElevated)
                     .padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
@@ -223,8 +251,7 @@ fun ExerciseFormSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(CardShape)
-                    .background(SurfaceBase)
-                    .border(1.dp, EditorialBorder.copy(alpha = 0.25f), CardShape)
+                    .background(SurfaceElevated)
                     .padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -233,22 +260,23 @@ fun ExerciseFormSheet(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    SectionLabel("Primary muscles (up to ${ExerciseFormState.MAX_PRIMARY_MUSCLES})")
+                    SectionLabel("PRIMARY MUSCLES (UP TO ${ExerciseFormState.MAX_PRIMARY_MUSCLES})")
                     Box(
                         modifier = Modifier
                             .clip(TagShape)
-                            .background(SurfaceElevated)
+                            .background(SurfaceChip)
                             .padding(horizontal = 6.dp, vertical = 2.dp),
                     ) {
                         Text(
                             text = "${state.primaryMuscles.size} / ${ExerciseFormState.MAX_PRIMARY_MUSCLES} SELECTED",
                             style = MaterialTheme.typography.labelSmall,
-                            color = OliveSubtext,
+                            color = BrandLime,
                         )
                     }
                 }
                 MuscleChips(
                     selected = { it in state.primaryMuscles },
+                    isSecondary = false,
                     enabled = { m ->
                         // Allow toggling off any selected one; allow toggling on while under the cap.
                         m in state.primaryMuscles || state.primaryMuscles.size < ExerciseFormState.MAX_PRIMARY_MUSCLES
@@ -275,8 +303,7 @@ fun ExerciseFormSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(CardShape)
-                    .background(SurfaceBase)
-                    .border(1.dp, EditorialBorder.copy(alpha = 0.25f), CardShape)
+                    .background(SurfaceElevated)
                     .padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -285,11 +312,11 @@ fun ExerciseFormSheet(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    SectionLabel("Secondary muscles (optional)")
+                    SectionLabel("SECONDARY MUSCLES (OPTIONAL)")
                     Box(
                         modifier = Modifier
                             .clip(TagShape)
-                            .background(SurfaceElevated)
+                            .background(SurfaceChip)
                             .padding(horizontal = 6.dp, vertical = 2.dp),
                     ) {
                         Text(
@@ -301,6 +328,7 @@ fun ExerciseFormSheet(
                 }
                 MuscleChips(
                     selected = { it in state.secondaryMuscles },
+                    isSecondary = true,
                     enabled = { it !in state.primaryMuscles },
                     onTap = { m ->
                         val newSecondaries = if (m in state.secondaryMuscles) {
@@ -318,12 +346,22 @@ fun ExerciseFormSheet(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(CardShape)
-                    .background(SurfaceBase)
-                    .border(1.dp, EditorialBorder.copy(alpha = 0.25f), CardShape)
+                    .background(SurfaceElevated)
                     .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                SectionLabel("PRESCRIPTION DEFAULTS")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    SectionLabel("PRESCRIPTION DEFAULTS")
+                    Text(
+                        text = "Auto-fills new sessions",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = OliveSubtext,
+                    )
+                }
                 StepperRow(
                     label = if (state.isUnilateral) "Target sets per side" else "Target sets",
                     value = state.targetSets,
@@ -331,8 +369,6 @@ fun ExerciseFormSheet(
                     max = ExerciseFormState.MAX_SETS,
                     onChange = { state = state.copy(targetSets = it) },
                 )
-
-                HorizontalDivider(color = EditorialBorder.copy(alpha = 0.2f))
 
                 StepperRow(
                     label = "Rep range min",
@@ -345,8 +381,6 @@ fun ExerciseFormSheet(
                         state = state.copy(repRangeMin = newMin, repRangeMax = newMax)
                     },
                 )
-
-                HorizontalDivider(color = EditorialBorder.copy(alpha = 0.2f))
 
                 StepperRow(
                     label = "Rep range max",
@@ -369,11 +403,21 @@ fun ExerciseFormSheet(
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(48.dp),
+                    .height(52.dp),
             ) {
+                Icon(
+                    imageVector = Icons.Filled.Check,
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp),
+                )
+                Spacer(Modifier.width(8.dp))
                 Text(
-                    text = "Save",
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    text = "SAVE EXERCISE",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.75.sp,
+                    ),
                 )
             }
 
@@ -400,12 +444,21 @@ private fun StepperRow(
     onChange: (Int) -> Unit,
 ) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(4.dp))
+            .background(SurfaceChip)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+            text = label.uppercase(),
+            style = MaterialTheme.typography.labelMedium.copy(
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.66.sp,
+            ),
+            color = OliveSubtext,
             modifier = Modifier.weight(1f),
         )
         NumberStepper(

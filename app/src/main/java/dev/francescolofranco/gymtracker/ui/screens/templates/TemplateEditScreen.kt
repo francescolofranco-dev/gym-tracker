@@ -1,6 +1,5 @@
 package dev.francescolofranco.gymtracker.ui.screens.templates
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -9,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -25,7 +25,10 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -33,7 +36,6 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
@@ -52,25 +54,27 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
+import dev.francescolofranco.gymtracker.domain.MuscleCategory
 import dev.francescolofranco.gymtracker.domain.sortedTopToBottom
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.screens.sessions.ExercisePickerSheet
 import dev.francescolofranco.gymtracker.ui.theme.BrandLime
 import dev.francescolofranco.gymtracker.ui.theme.ButtonShape
-import dev.francescolofranco.gymtracker.ui.theme.CardShape
 import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
-import dev.francescolofranco.gymtracker.ui.theme.DestructiveCoral
+import dev.francescolofranco.gymtracker.ui.theme.DarkOnSurface
 import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
 import dev.francescolofranco.gymtracker.ui.theme.OliveSubtext
+import dev.francescolofranco.gymtracker.ui.theme.SlateSubtext
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceBase
-import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceChip
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceControl
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
-import dev.francescolofranco.gymtracker.ui.theme.TagShape
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -86,15 +90,19 @@ fun TemplateEditScreen(
     }
 
     Scaffold(
-        containerColor = SurfaceDeep,
+        containerColor = SurfaceBase,
         topBar = {
             Column(modifier = Modifier.background(SurfaceBase)) {
                 TopAppBar(
                     colors = TopAppBarDefaults.topAppBarColors(containerColor = SurfaceBase),
                     title = {
                         Text(
-                            text = if (viewModel.isNew) "New template" else "Edit template",
-                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                            text = "TEMPLATE BUILDER",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.5.sp,
+                            ),
                         )
                     },
                     navigationIcon = {
@@ -114,6 +122,18 @@ fun TemplateEditScreen(
         val totalSets = remember(state.exercises) {
             state.exercises.sumOf { it.targetSets * (if (it.isUnilateral) 2 else 1) }
         }
+        val targetBias = remember(state.exercises) {
+            val categories = state.exercises
+                .flatMap { it.primaryMuscles }
+                .mapNotNull { MuscleCategory.containing(it) }
+                .distinct()
+            when {
+                categories.isEmpty() -> "—"
+                categories.size == 1 -> categories.first().displayName.uppercase()
+                categories.size == 2 -> categories.joinToString(" / ") { it.displayName.uppercase() }
+                else -> "FULL BODY"
+            }
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -123,18 +143,65 @@ fun TemplateEditScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 12.dp)
-                    .clip(CardShape)
-                    .background(SurfaceCard)
-                    .border(1.dp, EditorialBorder.copy(alpha = 0.3f), CardShape)
-                    .padding(14.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(SurfaceElevated)
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "TEMPLATE NAME",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.0.sp,
+                        ),
+                        color = OliveSubtext,
+                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(SurfaceChip)
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                    ) {
+                        Text(
+                            text = if (viewModel.isNew) "DRAFT MODE" else "EDIT MODE",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.8.sp,
+                            ),
+                            color = BrandLime,
+                        )
+                    }
+                }
                 OutlinedTextField(
                     value = state.name,
                     onValueChange = viewModel::setName,
-                    label = { Text("Template name") },
+                    placeholder = {
+                        Text(
+                            text = "e.g. Push Hypertrophy A",
+                            color = OliveSubtext,
+                        )
+                    },
+                    trailingIcon = {
+                        if (state.name.isNotEmpty()) {
+                            IconButton(onClick = { viewModel.setName("") }) {
+                                Icon(
+                                    imageVector = Icons.Filled.Close,
+                                    contentDescription = "Clear template name",
+                                    tint = OliveSubtext,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                        }
+                    },
                     singleLine = true,
-                    shape = ButtonShape,
+                    shape = RoundedCornerShape(4.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedContainerColor = SurfaceDeep,
                         unfocusedContainerColor = SurfaceDeep,
@@ -145,20 +212,82 @@ fun TemplateEditScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Row(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(SurfaceDeep)
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(
-                        text = "${state.exercises.size} EXERCISE${if (state.exercises.size == 1) "" else "S"}",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = OliveSubtext,
-                    )
-                    Text(
-                        text = "$totalSets TARGET SETS",
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                        color = BrandLime,
-                    )
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Text(
+                            text = "EST. SETS",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.9.sp,
+                            ),
+                            color = OliveSubtext,
+                        )
+                        Text(
+                            text = totalSets.toString(),
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            color = BrandLime,
+                        )
+                    }
+                    Column(
+                        modifier = Modifier.weight(1.3f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Text(
+                            text = "TARGET BIAS",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.9.sp,
+                            ),
+                            color = OliveSubtext,
+                        )
+                        Text(
+                            text = targetBias,
+                            style = MaterialTheme.typography.titleSmall.copy(
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            color = DarkOnSurface,
+                            maxLines = 1,
+                        )
+                    }
+                    Column(
+                        modifier = Modifier.weight(0.9f),
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        Text(
+                            text = "EXERCISES",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.9.sp,
+                            ),
+                            color = OliveSubtext,
+                        )
+                        Text(
+                            text = state.exercises.size.toString(),
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            color = DarkOnSurface,
+                        )
+                    }
                 }
             }
 
@@ -174,16 +303,19 @@ fun TemplateEditScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
-                        text = "Exercises",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        text = "EXERCISES",
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.8.sp,
+                        ),
                         color = OliveSubtext,
                     )
                     Box(
                         modifier = Modifier
-                            .clip(TagShape)
-                            .background(SurfaceElevated)
-                            .border(1.dp, EditorialBorder.copy(alpha = 0.25f), TagShape)
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(SurfaceChip)
+                            .padding(horizontal = 8.dp, vertical = 2.dp),
                     ) {
                         Text(
                             text = state.exercises.size.toString(),
@@ -192,17 +324,25 @@ fun TemplateEditScreen(
                         )
                     }
                 }
-                OutlinedButton(
+                Button(
                     onClick = { showPicker = true },
-                    shape = ButtonShape,
-                    border = BorderStroke(1.dp, BrandLime.copy(alpha = 0.5f)),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        containerColor = BrandLime.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(4.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = SurfaceControl,
                         contentColor = BrandLime,
                     ),
+                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                 ) {
-                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                    Text(" Add")
+                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = "ADD EXERCISE",
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.8.sp,
+                        ),
+                    )
                 }
             }
 
@@ -215,7 +355,7 @@ fun TemplateEditScreen(
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = "Tap Add to pull exercises into this template.",
+                        text = "Tap ADD EXERCISE to pull exercises into this template.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = OliveSubtext,
                     )
@@ -267,11 +407,21 @@ fun TemplateEditScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp)
-                        .height(48.dp),
+                        .height(54.dp),
                 ) {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp),
+                    )
+                    Spacer(Modifier.width(8.dp))
                     Text(
-                        text = if (viewModel.isNew) "Create template" else "Save changes",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                        text = "SAVE TEMPLATE",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.8.sp,
+                        ),
                     )
                 }
             }
@@ -301,65 +451,104 @@ private fun TemplateExerciseRow(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .clip(CardShape)
-            .background(SurfaceCard)
-            .border(1.dp, EditorialBorder.copy(alpha = 0.25f), CardShape)
+            .clip(RoundedCornerShape(4.dp))
+            .background(SurfaceElevated)
             .height(IntrinsicSize.Min),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (isFirst) {
-            Box(
-                modifier = Modifier
-                    .width(4.dp)
-                    .fillMaxHeight()
-                    .background(BrandLime),
-            )
-        }
+        Box(
+            modifier = Modifier
+                .width(4.dp)
+                .fillMaxHeight()
+                .background(if (isFirst) BrandLime else SurfaceChip),
+        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 10.dp),
+                .padding(start = 12.dp, end = 4.dp, top = 12.dp, bottom = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Box(
                 modifier = Modifier
-                    .size(28.dp)
+                    .size(40.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(SurfaceDeep)
-                    .border(1.dp, EditorialBorder.copy(alpha = 0.3f), RoundedCornerShape(4.dp)),
+                    .background(SurfaceDeep),
                 contentAlignment = Alignment.Center,
             ) {
-                Text(
-                    text = "%02d".format(index),
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                    color = if (isFirst) BrandLime else OliveSubtext,
+                Icon(
+                    imageVector = Icons.Filled.FitnessCenter,
+                    contentDescription = null,
+                    tint = if (isFirst) BrandLime else OliveSubtext,
+                    modifier = Modifier.size(18.dp),
                 )
             }
-            Column(modifier = Modifier.weight(1f)) {
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text = "%02d".format(index),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = if (isFirst) BrandLime else OliveSubtext,
+                    )
+                    Text(
+                        text = exercise.name.uppercase(),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        maxLines = 1,
+                    )
+                }
                 Text(
-                    text = exercise.name,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                )
-                Text(
-                    text = "${exercise.primaryMuscles.sortedTopToBottom().joinToString(" + ") { it.displayName }} · " +
+                    text = "Primary: ${exercise.primaryMuscles.sortedTopToBottom().joinToString(", ") { it.displayName }} • " +
                         "${exercise.targetSets}×${exercise.repRangeMin}–${exercise.repRangeMax}" +
-                        if (exercise.isUnilateral) "/side · unilateral" else "",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = OliveSubtext,
+                        if (exercise.isUnilateral) "/side" else "",
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                    color = SlateSubtext,
                 )
             }
-            IconButton(onClick = onMoveUp, enabled = !isFirst) {
-                Icon(Icons.Filled.ArrowUpward, contentDescription = "Move up")
+            IconButton(
+                onClick = onMoveUp,
+                enabled = !isFirst,
+                modifier = Modifier.size(48.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.ArrowUpward,
+                    contentDescription = "Move up",
+                    tint = if (!isFirst) OliveSubtext else OliveSubtext.copy(alpha = 0.3f),
+                    modifier = Modifier.size(18.dp),
+                )
             }
-            IconButton(onClick = onMoveDown, enabled = !isLast) {
-                Icon(Icons.Filled.ArrowDownward, contentDescription = "Move down")
+            IconButton(
+                onClick = onMoveDown,
+                enabled = !isLast,
+                modifier = Modifier.size(48.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.ArrowDownward,
+                    contentDescription = "Move down",
+                    tint = if (!isLast) OliveSubtext else OliveSubtext.copy(alpha = 0.3f),
+                    modifier = Modifier.size(18.dp),
+                )
             }
-            IconButton(onClick = onRemove) {
+            IconButton(
+                onClick = onRemove,
+                modifier = Modifier.size(48.dp),
+            ) {
                 Icon(
                     imageVector = Icons.Filled.Delete,
                     contentDescription = "Remove",
-                    tint = DestructiveCoral,
+                    tint = OliveSubtext,
+                    modifier = Modifier.size(18.dp),
                 )
             }
         }

@@ -31,13 +31,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Notes
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.PlayArrow
@@ -57,6 +60,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RichTooltip
 import androidx.compose.material3.Scaffold
@@ -67,6 +71,7 @@ import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -138,6 +143,7 @@ fun ActiveSessionScreen(
     }
 
     var showPicker by remember { mutableStateOf(false) }
+    var showWorkoutActions by remember { mutableStateOf(false) }
     var confirmEnd by remember { mutableStateOf(false) }
     var sessionNotesEditor by remember { mutableStateOf(false) }
     var exerciseNotesTarget by remember { mutableStateOf<SessionExerciseDetail?>(null) }
@@ -241,7 +247,7 @@ fun ActiveSessionScreen(
                             shape = RoundedCornerShape(2.dp),
                             colors = ButtonDefaults.textButtonColors(contentColor = DestructiveCoral),
                             modifier = Modifier
-                                .padding(end = 12.dp)
+                                .padding(end = 6.dp)
                                 .height(38.dp)
                                 .clip(RoundedCornerShape(2.dp))
                                 .background(SurfaceElevated)
@@ -259,6 +265,23 @@ fun ActiveSessionScreen(
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 0.8.sp,
                                 ),
+                            )
+                        }
+                        IconButton(
+                            onClick = { showWorkoutActions = true },
+                            enabled = content != null,
+                            modifier = Modifier
+                                .padding(end = 12.dp)
+                                .size(38.dp)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(SurfaceCard)
+                                .border(1.dp, EditorialBorder, RoundedCornerShape(4.dp)),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.MoreVert,
+                                contentDescription = "Workout actions",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(18.dp),
                             )
                         }
                     },
@@ -387,6 +410,23 @@ fun ActiveSessionScreen(
             onDismiss = { showPicker = false },
             onPick = { e -> viewModel.addExercise(e.id) },
             onUnpick = { e -> viewModel.removeExercise(e.id) },
+        )
+    }
+
+    if (showWorkoutActions) {
+        WorkoutActionsSheet(
+            loggedSets = loggedTotal,
+            plannedSets = plannedTotal,
+            hasNotes = !session?.notes.isNullOrBlank(),
+            onDismiss = { showWorkoutActions = false },
+            onOpenNotes = {
+                showWorkoutActions = false
+                sessionNotesEditor = true
+            },
+            onEndWorkout = {
+                showWorkoutActions = false
+                confirmEnd = true
+            },
         )
     }
 
@@ -737,8 +777,7 @@ internal fun LazyListScope.exerciseSection(
                     .fillMaxWidth()
                     .clip(shape)
                     .completionRail(isComplete)
-                    .border(1.dp, EditorialBorder, shape)
-                    .padding(horizontal = 8.dp),
+                    .border(1.dp, EditorialBorder, shape),
             ) {
                 SetRow(
                     state = SetRowState(
@@ -757,7 +796,6 @@ internal fun LazyListScope.exerciseSection(
                     onSkipToggle = { onToggleSetSkipped(log.id, log.isSkipped) },
                     editable = editable,
                 )
-                if (isLast) Spacer(Modifier.height(4.dp))
             }
         }
     }
@@ -1293,6 +1331,179 @@ private fun NoteIndicator(
                     style = MaterialTheme.typography.labelMedium,
                     color = contentColor,
                 )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WorkoutActionsSheet(
+    loggedSets: Int,
+    plannedSets: Int,
+    hasNotes: Boolean,
+    onDismiss: () -> Unit,
+    onOpenNotes: () -> Unit,
+    onEndWorkout: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = SurfaceCard,
+        shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "WORKOUT ACTIONS",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp,
+                        ),
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(6.dp)
+                                .clip(CircleShape)
+                                .background(BrandLime),
+                        )
+                        Text(
+                            text = "ACTIVE SESSION · $loggedSets/$plannedSets SETS LOGGED",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 1.0.sp,
+                            ),
+                            color = OliveSubtext,
+                        )
+                    }
+                }
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(SurfaceElevated),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = "Close",
+                        tint = SlateSubtext,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(SurfaceElevated)
+                        .clickable(onClick = onOpenNotes)
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(SurfaceControl),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.Notes,
+                            contentDescription = null,
+                            tint = BrandLime,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "WORKOUT NOTES",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                        )
+                        Text(
+                            text = if (hasNotes) "Edit session readiness, cues & fatigue notes"
+                            else "Add session readiness, cues & fatigue notes",
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                            color = OliveSubtext,
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = SlateSubtext,
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(DestructiveCoral.copy(alpha = 0.08f))
+                        .border(1.dp, DestructiveCoral.copy(alpha = 0.35f), RoundedCornerShape(4.dp))
+                        .clickable(onClick = onEndWorkout)
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(DestructiveCoral.copy(alpha = 0.16f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Stop,
+                            contentDescription = null,
+                            tint = DestructiveCoral,
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "END WORKOUT",
+                            style = MaterialTheme.typography.titleMedium.copy(
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            color = DestructiveCoral,
+                        )
+                        Text(
+                            text = "Finish session and save logged sets to history",
+                            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                            color = DestructiveCoral.copy(alpha = 0.8f),
+                        )
+                    }
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        contentDescription = null,
+                        tint = DestructiveCoral,
+                    )
+                }
             }
         }
     }

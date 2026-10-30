@@ -1,7 +1,8 @@
 package dev.francescolofranco.gymtracker.ui.screens.exercises
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,6 +16,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -39,9 +42,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
+import dev.francescolofranco.gymtracker.domain.MuscleCategory
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.components.ExerciseSearchField
 import dev.francescolofranco.gymtracker.ui.components.Loadable
@@ -49,11 +54,11 @@ import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.components.matchesExerciseQuery
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.theme.BrandLime
-import dev.francescolofranco.gymtracker.ui.theme.ButtonShape
 import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
-import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
 import dev.francescolofranco.gymtracker.ui.theme.OliveSubtext
+import dev.francescolofranco.gymtracker.ui.theme.SlateSubtext
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceControl
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
 import dev.francescolofranco.gymtracker.ui.theme.TagShape
@@ -73,11 +78,22 @@ fun ExercisesScreen(
 
     var deleteConfirmTarget by remember { mutableStateOf<ExerciseEntity?>(null) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
+    var selectedCategoryName by rememberSaveable { mutableStateOf<String?>(null) }
+    val selectedCategory = remember(selectedCategoryName) {
+        selectedCategoryName?.let { name -> MuscleCategory.entries.firstOrNull { it.name == name } }
+    }
     val exerciseListState = rememberLazyListState()
 
     fun updateSearchQuery(query: String) {
         if (query == searchQuery) return
         searchQuery = query
+        scope.launch { exerciseListState.scrollToItem(0) }
+    }
+
+    fun updateCategory(category: MuscleCategory?) {
+        val nextName = category?.name
+        if (nextName == selectedCategoryName) return
+        selectedCategoryName = nextName
         scope.launch { exerciseListState.scrollToItem(0) }
     }
 
@@ -101,14 +117,18 @@ fun ExercisesScreen(
         floatingActionButton = {
             ExtendedFloatingActionButton(
                 onClick = { viewModel.openCreate() },
-                shape = ButtonShape,
+                shape = RoundedCornerShape(12.dp),
                 containerColor = BrandLime,
                 contentColor = DarkOnPrimary,
                 icon = { Icon(Icons.Filled.Add, contentDescription = null) },
                 text = {
                     Text(
-                        text = "New exercise",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        text = "NEW EXERCISE",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.75.sp,
+                        ),
                     )
                 },
             )
@@ -126,11 +146,16 @@ fun ExercisesScreen(
                             .padding(24.dp),
                     )
                 } else {
-                    val matchingGroups = remember(current.value, searchQuery) {
-                        if (searchQuery.isBlank()) {
+                    val matchingGroups = remember(current.value, searchQuery, selectedCategory) {
+                        val byCat = if (selectedCategory == null) {
                             current.value
                         } else {
-                            current.value
+                            current.value.filterKeys { it == selectedCategory }
+                        }
+                        if (searchQuery.isBlank()) {
+                            byCat
+                        } else {
+                            byCat
                                 .mapValues { (_, exercises) ->
                                     exercises.filter { it.matchesExerciseQuery(searchQuery) }
                                 }
@@ -146,15 +171,24 @@ fun ExercisesScreen(
                         ExerciseSearchField(
                             query = searchQuery,
                             onQueryChange = ::updateSearchQuery,
+                            containerColor = SurfaceControl,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 12.dp),
+                                .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp),
+                        )
+
+                        LibraryCategoryChipRow(
+                            selected = selectedCategory,
+                            onSelect = ::updateCategory,
                         )
 
                         if (matchingGroups.isEmpty()) {
                             NoSearchResults(
                                 query = searchQuery,
-                                onClear = { updateSearchQuery("") },
+                                onClear = {
+                                    updateSearchQuery("")
+                                    updateCategory(null)
+                                },
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .weight(1f)
@@ -183,7 +217,7 @@ fun ExercisesScreen(
                                                 fadeOutSpec = GymMotion.ItemFadeOut,
                                             ),
                                             exercise = exercise,
-                                            showPrimaryMuscles = searchQuery.isNotBlank(),
+                                            showPrimaryMuscles = true,
                                             onTap = { onOpenDetail(exercise.id) },
                                             onDeleteRequest = { deleteConfirmTarget = exercise },
                                         )
@@ -236,6 +270,60 @@ fun ExercisesScreen(
 }
 
 @Composable
+private fun LibraryCategoryChipRow(
+    selected: MuscleCategory?,
+    onSelect: (MuscleCategory?) -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        CategoryChip(
+            label = "ALL",
+            isSelected = selected == null,
+            onClick = { onSelect(null) },
+        )
+        MuscleCategory.entries.forEach { category ->
+            CategoryChip(
+                label = category.displayName.uppercase(),
+                isSelected = selected == category,
+                onClick = { onSelect(category) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun CategoryChip(
+    label: String,
+    isSelected: Boolean,
+    onClick: () -> Unit,
+) {
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .height(36.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(if (isSelected) BrandLime else SurfaceControl)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.7.sp,
+            ),
+            color = if (isSelected) DarkOnPrimary else SlateSubtext,
+        )
+    }
+}
+
+@Composable
 private fun NoSearchResults(
     query: String,
     onClear: () -> Unit,
@@ -247,7 +335,7 @@ private fun NoSearchResults(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = "No exercises match \"${query.trim()}\"",
+            text = if (query.isNotBlank()) "No exercises match \"${query.trim()}\"" else "No exercises in this category",
             style = MaterialTheme.typography.titleMedium,
         )
         Text(
@@ -277,13 +365,17 @@ private fun SectionHeader(text: String, count: Int) {
         ) {
             Box(
                 modifier = Modifier
-                    .width(6.dp)
-                    .height(14.dp)
+                    .width(4.dp)
+                    .height(20.dp)
                     .background(BrandLime),
             )
             Text(
                 text = text.uppercase(),
-                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 1.1.sp,
+                ),
                 color = MaterialTheme.colorScheme.onSurface,
             )
         }
@@ -291,13 +383,15 @@ private fun SectionHeader(text: String, count: Int) {
             modifier = Modifier
                 .clip(TagShape)
                 .background(SurfaceElevated)
-                .border(1.dp, EditorialBorder.copy(alpha = 0.25f), TagShape)
-                .padding(horizontal = 6.dp, vertical = 2.dp),
+                .padding(horizontal = 8.dp, vertical = 2.dp),
         ) {
             Text(
                 text = "$count EXERCISE${if (count == 1) "" else "S"}",
-                style = MaterialTheme.typography.labelSmall,
-                color = OliveSubtext,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 11.sp,
+                    letterSpacing = 0.66.sp,
+                ),
+                color = SlateSubtext,
             )
         }
     }

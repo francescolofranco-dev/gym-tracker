@@ -13,6 +13,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
@@ -20,7 +21,7 @@ import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.ui.theme.BrandLime
 import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
 import dev.francescolofranco.gymtracker.ui.theme.MutedOlive
-import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceControl
 import java.text.Normalizer
 import java.util.Locale
 
@@ -29,6 +30,7 @@ fun ExerciseSearchField(
     query: String,
     onQueryChange: (String) -> Unit,
     modifier: Modifier = Modifier,
+    containerColor: Color = SurfaceControl,
 ) {
     val focusManager = LocalFocusManager.current
 
@@ -38,15 +40,14 @@ fun ExerciseSearchField(
         modifier = modifier,
         singleLine = true,
         shape = RoundedCornerShape(4.dp),
-        label = { Text("Search exercises") },
-        placeholder = { Text("Name or muscle") },
+        placeholder = { Text("Search exercises...") },
         colors = OutlinedTextFieldDefaults.colors(
-            focusedContainerColor = SurfaceDeep,
-            unfocusedContainerColor = SurfaceDeep,
+            focusedContainerColor = containerColor,
+            unfocusedContainerColor = containerColor,
             focusedBorderColor = BrandLime,
-            unfocusedBorderColor = EditorialBorder,
-            focusedLabelColor = BrandLime,
-            unfocusedLabelColor = MutedOlive,
+            unfocusedBorderColor = EditorialBorder.copy(alpha = 0.2f),
+            focusedPlaceholderColor = MutedOlive,
+            unfocusedPlaceholderColor = MutedOlive,
         ),
         leadingIcon = {
             Icon(

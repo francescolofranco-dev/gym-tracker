@@ -1,7 +1,6 @@
 package dev.francescolofranco.gymtracker.ui.screens.exercises
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,14 +25,13 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.domain.sortedTopToBottom
 import dev.francescolofranco.gymtracker.ui.theme.CardShape
-import dev.francescolofranco.gymtracker.ui.theme.DestructiveCoral
-import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
-import dev.francescolofranco.gymtracker.ui.theme.OliveSubtext
+import dev.francescolofranco.gymtracker.ui.theme.MutedOlive
+import dev.francescolofranco.gymtracker.ui.theme.SlateSubtext
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
-import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
 
 @Composable
 fun ExerciseRow(
@@ -49,33 +47,34 @@ fun ExerciseRow(
             .padding(horizontal = 16.dp, vertical = 4.dp)
             .clip(CardShape)
             .background(SurfaceCard)
-            .border(1.dp, EditorialBorder.copy(alpha = 0.25f), CardShape)
             .clickable(onClick = onTap)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(start = 14.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
-                text = exercise.name,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                text = exercise.name.uppercase(),
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.36.sp,
+                ),
                 color = MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = exercise.summaryLine(showPrimaryMuscles),
                 style = MaterialTheme.typography.bodySmall,
-                color = OliveSubtext,
+                color = SlateSubtext,
             )
         }
         Box(
             modifier = Modifier
-                .size(36.dp)
+                .size(48.dp)
                 .clip(RoundedCornerShape(4.dp))
-                .background(SurfaceDeep)
-                .border(1.dp, EditorialBorder.copy(alpha = 0.35f), RoundedCornerShape(4.dp))
                 .clickable(onClick = onDeleteRequest)
                 .semantics {
                     role = Role.Button
@@ -86,7 +85,7 @@ fun ExerciseRow(
             Icon(
                 imageVector = Icons.Filled.DeleteOutline,
                 contentDescription = null,
-                tint = DestructiveCoral,
+                tint = MutedOlive,
                 modifier = Modifier.size(18.dp),
             )
         }

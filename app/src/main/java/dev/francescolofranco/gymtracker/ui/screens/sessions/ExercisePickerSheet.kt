@@ -23,6 +23,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
@@ -198,6 +200,7 @@ fun ExercisePickerSheet(
                             ExerciseSearchField(
                                 query = searchQuery,
                                 onQueryChange = ::updateSearchQuery,
+                                containerColor = SurfaceDeep,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(top = 4.dp),
@@ -270,6 +273,46 @@ fun ExercisePickerSheet(
                                 }
                             }
                         }
+
+                        val selectedCount = remember(rows, excludeIds, selectionOverrides) {
+                            rows.count { r ->
+                                val id = r.exercise.id
+                                selectionOverrides[id] ?: (id in excludeIds)
+                            }
+                        }
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(SurfaceCard),
+                        ) {
+                            HorizontalDivider(color = EditorialBorder, thickness = 1.dp)
+                            Button(
+                                onClick = onDismiss,
+                                shape = RoundedCornerShape(4.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = BrandLime,
+                                    contentColor = DarkOnPrimary,
+                                ),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                                    .height(48.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.Check,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                                Text(
+                                    text = if (selectedCount > 0) "  DONE ($selectedCount SELECTED)" else "  DONE",
+                                    style = MaterialTheme.typography.labelLarge.copy(
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.8.sp,
+                                    ),
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -336,11 +379,16 @@ private fun ExerciseFilters(
             selected = filter == PickerFilter.All,
             onClick = { onFilter(PickerFilter.All) },
             shape = RoundedCornerShape(12.dp),
+            border = null,
             colors = chipColors,
             label = {
                 Text(
-                    text = "All",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    text = "ALL",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.6.sp,
+                    ),
                 )
             },
         )
@@ -350,11 +398,16 @@ private fun ExerciseFilters(
                 selected = filter == categoryFilter,
                 onClick = { onFilter(categoryFilter) },
                 shape = RoundedCornerShape(12.dp),
+                border = null,
                 colors = chipColors,
                 label = {
                     Text(
-                        text = category.displayName,
-                        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                        text = category.displayName.uppercase(),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.6.sp,
+                        ),
                     )
                 },
             )
@@ -448,7 +501,7 @@ private fun PickerRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(
-                    text = exercise.name,
+                    text = exercise.name.uppercase(),
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontSize = 16.sp,
                         fontWeight = FontWeight.Bold,

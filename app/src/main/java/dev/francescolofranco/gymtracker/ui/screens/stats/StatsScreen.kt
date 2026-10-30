@@ -28,15 +28,14 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -48,10 +47,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.domain.Muscle
@@ -64,12 +69,12 @@ import dev.francescolofranco.gymtracker.ui.screens.sessions.convertFromKg
 import dev.francescolofranco.gymtracker.ui.screens.sessions.formatWeightNumber
 import dev.francescolofranco.gymtracker.ui.screens.sessions.label
 import dev.francescolofranco.gymtracker.ui.theme.BrandLime
-import dev.francescolofranco.gymtracker.ui.theme.CardShape
 import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
 import dev.francescolofranco.gymtracker.ui.theme.DestructiveCoral
-import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
 import dev.francescolofranco.gymtracker.ui.theme.OliveSubtext
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceChip
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceControl
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
 import dev.francescolofranco.gymtracker.ui.theme.TagShape
@@ -200,14 +205,14 @@ private fun HeaderControls(
             onClick = onExplain,
             modifier = Modifier
                 .size(40.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(SurfaceCard)
-                .border(1.dp, EditorialBorder.copy(alpha = 0.35f), RoundedCornerShape(4.dp)),
+                .clip(RoundedCornerShape(8.dp))
+                .background(SurfaceCard),
         ) {
             Icon(
                 imageVector = Icons.Outlined.Info,
                 contentDescription = "How statistics work",
                 tint = OliveSubtext,
+                modifier = Modifier.size(18.dp),
             )
         }
     }
@@ -219,24 +224,47 @@ private fun PeriodToggle(
     onChange: (StatsPeriod) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    SingleChoiceSegmentedButtonRow(modifier = modifier) {
-        StatsPeriod.entries.forEachIndexed { index, option ->
-            SegmentedButton(
-                selected = period == option,
-                onClick = { onChange(option) },
-                shape = SegmentedButtonDefaults.itemShape(index, StatsPeriod.entries.size),
-                colors = SegmentedButtonDefaults.colors(
-                    activeContainerColor = BrandLime,
-                    activeContentColor = DarkOnPrimary,
-                    inactiveContainerColor = SurfaceCard,
-                    inactiveContentColor = OliveSubtext,
-                    activeBorderColor = BrandLime,
-                    inactiveBorderColor = EditorialBorder.copy(alpha = 0.4f),
-                ),
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(8.dp))
+            .background(SurfaceCard)
+            .padding(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        StatsPeriod.entries.forEach { option ->
+            val isSelected = period == option
+            Row(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(32.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(if (isSelected) SurfaceControl else Color.Transparent)
+                    .clickable { onChange(option) }
+                    .semantics {
+                        role = Role.RadioButton
+                        selected = isSelected
+                    },
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
             ) {
+                if (isSelected) {
+                    Icon(
+                        imageVector = Icons.Filled.Check,
+                        contentDescription = null,
+                        tint = BrandLime,
+                        modifier = Modifier
+                            .padding(end = 4.dp)
+                            .size(12.dp),
+                    )
+                }
                 Text(
-                    text = option.label,
-                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                    text = option.label.uppercase(),
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontSize = 15.sp,
+                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
+                        letterSpacing = (-0.15).sp,
+                    ),
+                    color = if (isSelected) BrandLime else OliveSubtext,
                 )
             }
         }
@@ -248,24 +276,27 @@ private fun KpiStrip(state: StatsUiState, modifier: Modifier = Modifier) {
     val current = state.currentPeriod
     val previous = state.previousPeriod
     Row(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(SurfaceCard),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Kpi(
-            label = "Workouts",
+            label = "WORKOUTS",
             value = current.sessions.toString(),
             delta = signedNumber(current.sessions - previous.sessions),
             modifier = Modifier.weight(1f),
         )
         Kpi(
-            label = "Logged sets",
+            label = "LOGGED SETS",
             value = current.loggedSets.toString(),
             delta = signedNumber(current.loggedSets - previous.loggedSets),
+            highlighted = true,
             modifier = Modifier.weight(1f),
         )
         Kpi(
-            label = "Training time",
+            label = "TRAINING TIME",
             value = formatTrainingTime(current.trainingTime.seconds),
             delta = signedDuration(current.trainingTime.seconds - previous.trainingTime.seconds),
             modifier = Modifier.weight(1f),
@@ -274,22 +305,20 @@ private fun KpiStrip(state: StatsUiState, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun Kpi(label: String, value: String, delta: SignedValue, modifier: Modifier = Modifier) {
+private fun Kpi(
+    label: String,
+    value: String,
+    delta: SignedValue,
+    modifier: Modifier = Modifier,
+    highlighted: Boolean = false,
+) {
     Column(
         modifier = modifier
-            .clip(CardShape)
-            .background(SurfaceCard)
-            .border(1.dp, EditorialBorder.copy(alpha = 0.3f), CardShape)
-            .padding(horizontal = 10.dp, vertical = 12.dp),
-        horizontalAlignment = Alignment.Start,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+            .background(if (highlighted) SurfaceElevated.copy(alpha = 0.4f) else Color.Transparent)
+            .padding(horizontal = 4.dp, vertical = 12.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-            color = OliveSubtext,
-            maxLines = 1,
-        )
         AnimatedContent(
             targetState = value,
             transitionSpec = {
@@ -304,10 +333,26 @@ private fun Kpi(label: String, value: String, delta: SignedValue, modifier: Modi
         ) { animatedValue ->
             Text(
                 text = animatedValue,
-                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.headlineLarge.copy(
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.32.sp,
+                ),
+                textAlign = TextAlign.Center,
                 maxLines = 1,
             )
         }
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.8.sp,
+            ),
+            color = OliveSubtext,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
+        )
         ChangeLabel(delta.text, delta.direction)
     }
 }
@@ -324,11 +369,16 @@ private fun WhatChangedCard(state: StatsUiState, modifier: Modifier = Modifier) 
                 modifier = Modifier
                     .width(4.dp)
                     .height(16.dp)
+                    .clip(RoundedCornerShape(12.dp))
                     .background(BrandLime),
             )
             Text(
-                text = "What changed",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                text = "WHAT CHANGED",
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.36.sp,
+                ),
             )
         }
         insights.forEach { insight ->
@@ -396,15 +446,24 @@ private fun MuscleCoverageCard(
     val visibleRows = if (showAll) rows else rows.take(6)
 
     StatsCard(modifier) {
-        Text(
-            text = "Muscle coverage",
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-        )
-        Text(
-            text = "Average effective sets per week · tap for details",
-            style = MaterialTheme.typography.bodySmall,
-            color = OliveSubtext,
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = "MUSCLE COVERAGE",
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.36.sp,
+                ),
+            )
+            Text(
+                text = "AVERAGE EFFECTIVE SETS PER WEEK · TAP FOR DETAILS",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontSize = 11.sp,
+                    letterSpacing = 0.66.sp,
+                ),
+                color = OliveSubtext,
+            )
+        }
         if (rows.isEmpty()) {
             Text(
                 text = "No completed sets in this period.",
@@ -417,11 +476,32 @@ private fun MuscleCoverageCard(
                 WeeklyMuscleRow(row, onClick = { onMuscleClick(row.volume.muscle) })
             }
             if (rows.size > 6) {
-                TextButton(onClick = onToggleShowAll, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(SurfaceElevated)
+                        .clickable(onClick = onToggleShowAll)
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
                     Text(
-                        text = if (showAll) "Show less" else "Show all ${rows.size}",
+                        text = if (showAll) "SHOW LESS" else "SHOW ALL ${rows.size}",
                         color = BrandLime,
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = 0.66.sp,
+                        ),
+                    )
+                    Icon(
+                        imageVector = if (showAll) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                        contentDescription = null,
+                        tint = BrandLime,
+                        modifier = Modifier
+                            .padding(start = 4.dp)
+                            .size(16.dp),
                     )
                 }
             }
@@ -453,12 +533,15 @@ private fun WeeklyMuscleRow(row: CoverageRow, onClick: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 text = row.volume.muscle.displayName,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
                 modifier = Modifier.weight(1f),
             )
             Text(
                 text = "${formatSetCount(row.currentWeekly)}/wk",
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                ),
             )
             if (abs(delta) >= 0.05) {
                 ChangeLabel(formatSignedSets(delta), direction(delta), Modifier.padding(start = 8.dp))
@@ -468,14 +551,14 @@ private fun WeeklyMuscleRow(row: CoverageRow, onClick: () -> Unit) {
             modifier = Modifier
                 .fillMaxWidth()
                 .height(6.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .background(SurfaceDeep),
+                .clip(RoundedCornerShape(12.dp))
+                .background(SurfaceChip),
         ) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth(animatedFraction)
                     .height(6.dp)
-                    .clip(RoundedCornerShape(2.dp))
+                    .clip(RoundedCornerShape(12.dp))
                     .background(color),
             )
         }
@@ -485,32 +568,41 @@ private fun WeeklyMuscleRow(row: CoverageRow, onClick: () -> Unit) {
 @Composable
 private fun ExerciseProgressCard(state: StatsUiState, modifier: Modifier = Modifier) {
     StatsCard(modifier) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                text = "Exercise progress",
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                modifier = Modifier.weight(1f),
-            )
-            if (state.personalRecords.count > 0) {
-                Box(
-                    modifier = Modifier
-                        .clip(TagShape)
-                        .background(BrandLime.copy(alpha = 0.16f))
-                        .padding(horizontal = 6.dp, vertical = 2.dp),
-                ) {
-                    Text(
-                        text = "${state.personalRecords.count} PR${if (state.personalRecords.count == 1) "" else "s"}",
-                        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-                        color = BrandLime,
-                    )
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "EXERCISE PROGRESS",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 0.36.sp,
+                    ),
+                    modifier = Modifier.weight(1f),
+                )
+                if (state.personalRecords.count > 0) {
+                    Box(
+                        modifier = Modifier
+                            .clip(TagShape)
+                            .background(BrandLime.copy(alpha = 0.16f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Text(
+                            text = "${state.personalRecords.count} PR${if (state.personalRecords.count == 1) "" else "s"}",
+                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            color = BrandLime,
+                        )
+                    }
                 }
             }
+            Text(
+                text = "BEST PERFORMANCE VS PREVIOUS ${state.period.days} DAYS",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontSize = 11.sp,
+                    letterSpacing = 0.66.sp,
+                ),
+                color = OliveSubtext,
+            )
         }
-        Text(
-            text = "Best performance vs the previous ${state.period.days} days",
-            style = MaterialTheme.typography.bodySmall,
-            color = OliveSubtext,
-        )
         if (state.exerciseProgress.isEmpty()) {
             Text(
                 text = "No comparable exercise performances yet.",
@@ -519,15 +611,14 @@ private fun ExerciseProgressCard(state: StatsUiState, modifier: Modifier = Modif
                 modifier = Modifier.padding(vertical = 8.dp),
             )
         } else {
-            state.exerciseProgress.take(5).forEachIndexed { idx, signal ->
-                if (idx > 0) {
-                    HorizontalDivider(color = EditorialBorder.copy(alpha = 0.18f))
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                state.exerciseProgress.take(5).forEach { signal ->
+                    ProgressRow(
+                        signal = signal,
+                        unit = state.unit,
+                        hasPr = signal.exerciseId in state.personalRecords.exerciseIds,
+                    )
                 }
-                ProgressRow(
-                    signal = signal,
-                    unit = state.unit,
-                    hasPr = signal.exerciseId in state.personalRecords.exerciseIds,
-                )
             }
         }
     }
@@ -538,17 +629,22 @@ private fun ProgressRow(signal: ExerciseProgressSignal, unit: WeightUnit, hasPr:
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 6.dp),
+            .clip(RoundedCornerShape(4.dp))
+            .background(SurfaceElevated)
+            .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = signal.name,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
             )
             Text(
-                text = if (signal.isBodyweight) "Best set" else "Estimated 1RM",
-                style = MaterialTheme.typography.labelSmall,
+                text = if (signal.isBodyweight) "BEST SET" else "ESTIMATED 1RM",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontSize = 11.sp,
+                    letterSpacing = 0.66.sp,
+                ),
                 color = OliveSubtext,
             )
         }
@@ -558,7 +654,11 @@ private fun ProgressRow(signal: ExerciseProgressSignal, unit: WeightUnit, hasPr:
             } else {
                 "${formatWeightNumber(convertFromKg(signal.currentValue, unit))} ${unit.label()}"
             },
-            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+            ),
+            color = BrandLime,
         )
         if (hasPr) {
             Box(
@@ -582,7 +682,7 @@ private fun ProgressRow(signal: ExerciseProgressSignal, unit: WeightUnit, hasPr:
             )
         } else {
             Text(
-                text = "New",
+                text = "NEW",
                 style = MaterialTheme.typography.labelSmall,
                 color = OliveSubtext,
                 modifier = Modifier.padding(start = 8.dp),
@@ -621,16 +721,15 @@ private fun StatsCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(CardShape)
+            .clip(RoundedCornerShape(8.dp))
             .background(SurfaceCard)
-            .border(1.dp, EditorialBorder.copy(alpha = 0.3f), CardShape)
             .animateContentSize(
                 animationSpec = spring(
                     dampingRatio = 0.9f,
                     stiffness = Spring.StiffnessMediumLow,
                 ),
             )
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(12.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
         content = content,
     )
