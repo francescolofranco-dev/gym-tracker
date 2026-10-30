@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,22 +24,27 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.ListAlt
+import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.CloudSync
 import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.NotificationsOff
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Restore
-import androidx.compose.material.icons.filled.Scale
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -55,12 +61,14 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -69,8 +77,11 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
@@ -86,8 +97,13 @@ import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.theme.BrandLime
 import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
+import dev.francescolofranco.gymtracker.ui.theme.DarkOnSurface
+import dev.francescolofranco.gymtracker.ui.theme.DestructiveCoral
+import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
 import dev.francescolofranco.gymtracker.ui.theme.OliveSubtext
+import dev.francescolofranco.gymtracker.ui.theme.OswaldFontFamily
 import dev.francescolofranco.gymtracker.ui.theme.SlateSubtext
+import dev.francescolofranco.gymtracker.ui.theme.SpaceGroteskFontFamily
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceBase
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceChip
@@ -98,6 +114,8 @@ import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+
+private const val MAX_VISIBLE_SNAPSHOTS = 4
 
 @Composable
 fun SettingsScreen(
@@ -118,6 +136,7 @@ fun SettingsScreen(
     }
 
     var confirmRecovery by remember { mutableStateOf(false) }
+    var showAboutPopup by remember { mutableStateOf(false) }
 
     val createDoc = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json"),
@@ -164,20 +183,27 @@ fun SettingsScreen(
             LoadingPane(modifier = Modifier.padding(padding))
             return@Scaffold
         }
+        val recentSnapshots = remember(driveState.snapshots) {
+            driveState.snapshots.take(MAX_VISIBLE_SNAPSHOTS)
+        }
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(bottom = 28.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item(key = "settings_top_header") {
-                SettingsTopHeader()
+                SettingsTopHeader(driveConnected = driveState.connected)
             }
 
             item(key = "display_section") {
                 Column {
-                    SectionHeader("Display")
+                    SectionHeader(
+                        title = "TRAINING & DISPLAY PREFERENCES",
+                        rightLabel = "Calibration",
+                        rightLabelColor = BrandLime,
+                    )
                     SettingsGroupCard {
                         UnitsRow(unit = settings.unit, onChange = settingsViewModel::setUnit)
                         SettingsGroupDivider()
@@ -191,20 +217,29 @@ fun SettingsScreen(
 
             item(key = "workout_section") {
                 Column {
-                    SectionHeader("Workout")
+                    SectionHeader(
+                        title = "TEMPLATES & WORKOUT",
+                        rightLabel = "Routines & Alerts",
+                    )
                     SettingsGroupCard {
                         SettingsRow(
                             icon = Icons.AutoMirrored.Filled.ListAlt,
+                            iconTint = BrandLime,
                             title = "WORKOUT TEMPLATES",
-                            subtitle = "Create, edit, delete reusable workouts.",
+                            subtitle = "Create, edit, or reorder saved split routines",
+                            badgeText = "MANAGE",
+                            badgeColor = BrandLime,
                             onClick = onOpenTemplates,
                         )
                         if (backupState.hasRecovery) {
                             SettingsGroupDivider()
                             SettingsRow(
                                 icon = Icons.Filled.Restore,
+                                iconTint = DestructiveCoral,
                                 title = "UNDO LAST RESTORE",
-                                subtitle = "Recover the automatic safety copy made immediately before the last restore.",
+                                subtitle = "Recover the automatic safety copy made before the last restore",
+                                trailingIcon = Icons.Filled.WarningAmber,
+                                trailingIconTint = DestructiveCoral,
                                 onClick = { confirmRecovery = true },
                                 enabled = !backupState.running,
                             )
@@ -217,30 +252,7 @@ fun SettingsScreen(
                 }
             }
 
-            item(key = "backup_section") {
-                Column {
-                    SectionHeader("Backup")
-                    SettingsGroupCard {
-                        SettingsRow(
-                            icon = Icons.Filled.CloudUpload,
-                            title = "EXPORT TO FILE",
-                            subtitle = "Save a JSON snapshot of all workouts to a folder of your choice.",
-                            onClick = { createDoc.launch(backupViewModel.suggestedFilename()) },
-                            enabled = !backupState.running,
-                        )
-                        SettingsGroupDivider()
-                        SettingsRow(
-                            icon = Icons.Filled.CloudDownload,
-                            title = "RESTORE FROM FILE",
-                            subtitle = "Replace local data with a previously exported JSON backup.",
-                            onClick = { openDoc.launch(arrayOf("application/json", "text/plain", "*/*")) },
-                            enabled = !backupState.running,
-                        )
-                    }
-                }
-            }
-
-            item(key = "drive_section") {
+            item(key = "data_backup_section") {
                 Column(
                     modifier = Modifier.animateItem(
                         fadeInSpec = GymMotion.ItemFadeIn,
@@ -248,81 +260,93 @@ fun SettingsScreen(
                         fadeOutSpec = GymMotion.ItemFadeOut,
                     ),
                 ) {
-                    SectionHeader("Google Drive")
+                    SectionHeader(
+                        title = "DATA & BACKUP",
+                        rightLabel = if (driveState.connected) "Encrypted Sync" else "Local & Cloud Vault",
+                        rightLabelColor = BrandLime,
+                        showRightDot = driveState.connected,
+                    )
                     SettingsGroupCard {
                         DriveAccountRow(
                             state = driveState,
                             onConnect = driveViewModel::connect,
                             onDisconnect = driveViewModel::disconnect,
+                            onBackupNow = driveViewModel::backupNow,
                         )
-                        if (driveState.connected) {
-                            SettingsGroupDivider()
-                            SettingsRow(
-                                icon = Icons.Filled.CloudSync,
-                                title = "BACKUP NOW",
-                                subtitle = "Upload a fresh JSON snapshot to your Drive's appDataFolder.",
-                                onClick = { driveViewModel.backupNow() },
-                                enabled = !driveState.running,
-                            )
-                        }
+                        SettingsGroupDivider()
+                        SettingsRow(
+                            icon = Icons.Filled.CloudUpload,
+                            iconTint = BrandLime,
+                            title = "EXPORT WORKOUT DATA",
+                            subtitle = "Save full workout history as JSON snapshot",
+                            trailingLabel = "JSON",
+                            trailingIcon = Icons.Filled.CloudUpload,
+                            trailingIconTint = OliveSubtext,
+                            onClick = { createDoc.launch(backupViewModel.suggestedFilename()) },
+                            enabled = !backupState.running,
+                        )
+                        SettingsGroupDivider()
+                        SettingsRow(
+                            icon = Icons.Filled.CloudDownload,
+                            iconTint = DestructiveCoral,
+                            title = "RESTORE FROM BACKUP",
+                            subtitle = "Overwrite local database from backup file",
+                            trailingIcon = Icons.Filled.WarningAmber,
+                            trailingIconTint = DestructiveCoral,
+                            onClick = { openDoc.launch(arrayOf("application/json", "text/plain", "*/*")) },
+                            enabled = !backupState.running,
+                        )
                     }
                 }
             }
 
             if (driveState.connected) {
-                if (driveState.snapshots.isEmpty()) {
-                    item(key = "drive_empty") {
-                        Column(
-                            modifier = Modifier
-                                .animateItem(
-                                    fadeInSpec = GymMotion.ItemFadeIn,
-                                    placementSpec = GymMotion.ItemPlacement,
-                                    fadeOutSpec = GymMotion.ItemFadeOut,
-                                )
-                                .padding(horizontal = 16.dp, vertical = 4.dp),
-                        ) {
-                            Text(
-                                text = "No Drive snapshots yet — daily 03:00 backups will populate them.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = OliveSubtext,
-                            )
-                        }
-                    }
-                } else {
-                    item(key = "drive_recent_header") {
-                        Text(
-                            text = "RECENT SNAPSHOTS",
-                            style = MaterialTheme.typography.labelLarge.copy(
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.0.sp,
-                            ),
-                            color = OliveSubtext,
-                            modifier = Modifier
-                                .animateItem(
-                                    fadeInSpec = GymMotion.ItemFadeIn,
-                                    placementSpec = GymMotion.ItemPlacement,
-                                    fadeOutSpec = GymMotion.ItemFadeOut,
-                                )
-                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                item(key = "drive_snapshots_section") {
+                    Column(
+                        modifier = Modifier.animateItem(
+                            fadeInSpec = GymMotion.ItemFadeIn,
+                            placementSpec = GymMotion.ItemPlacement,
+                            fadeOutSpec = GymMotion.ItemFadeOut,
+                        ),
+                    ) {
+                        SectionHeader(
+                            title = "RECENT SNAPSHOTS",
+                            rightLabel = if (recentSnapshots.isEmpty()) "Awaiting Sync"
+                            else "Last ${recentSnapshots.size} of $MAX_VISIBLE_SNAPSHOTS",
                         )
-                    }
-                    items(items = driveState.snapshots, key = { "drive_snapshot_${it.id}" }) { snap ->
-                        Column(
-                            modifier = Modifier
-                                .animateItem(
-                                    fadeInSpec = GymMotion.ItemFadeIn,
-                                    placementSpec = GymMotion.ItemPlacement,
-                                    fadeOutSpec = GymMotion.ItemFadeOut,
-                                )
-                                .padding(horizontal = 16.dp),
-                        ) {
-                            SettingsGroupCard(horizontalPadding = 0.dp) {
-                                SnapshotRow(
-                                    snapshot = snap,
-                                    onClick = { driveViewModel.inspectRestore(snap) },
-                                    enabled = !driveState.running,
-                                )
+                        if (recentSnapshots.isEmpty()) {
+                            SettingsGroupCard {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 14.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    IconBox(icon = Icons.Filled.CloudSync, tint = OliveSubtext)
+                                    Text(
+                                        text = "No Drive snapshots yet — daily 03:00 backups or tapping sync above will populate them.",
+                                        style = MaterialTheme.typography.bodySmall.copy(
+                                            fontFamily = SpaceGroteskFontFamily,
+                                            fontSize = 12.sp,
+                                        ),
+                                        color = OliveSubtext,
+                                    )
+                                }
+                            }
+                        } else {
+                            SettingsGroupCard {
+                                recentSnapshots.forEachIndexed { index, snap ->
+                                    if (index > 0) {
+                                        SettingsGroupDivider()
+                                    }
+                                    SnapshotRow(
+                                        snapshot = snap,
+                                        isLatest = index == 0,
+                                        onClick = { driveViewModel.inspectRestore(snap) },
+                                        enabled = !driveState.running,
+                                    )
+                                }
                             }
                         }
                     }
@@ -337,13 +361,24 @@ fun SettingsScreen(
                         fadeOutSpec = GymMotion.ItemFadeOut,
                     ),
                 ) {
-                    SectionHeader("About")
+                    SectionHeader(
+                        title = "APP INFO & DIAGNOSTICS",
+                        rightLabel = "Production Build",
+                    )
                     SettingsGroupCard {
-                        AboutRow()
+                        AboutRow(onClick = { showAboutPopup = true })
                     }
                 }
             }
+
+            item(key = "settings_footer") {
+                SettingsFooter()
+            }
         }
+    }
+
+    if (showAboutPopup) {
+        GymTrackerAboutDialog(onDismiss = { showAboutPopup = false })
     }
 
     backupState.preview?.let { preview ->
@@ -416,7 +451,7 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SettingsTopHeader() {
+private fun SettingsTopHeader(driveConnected: Boolean) {
     val context = LocalContext.current
     val version = remember {
         runCatching {
@@ -428,52 +463,138 @@ private fun SettingsTopHeader() {
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+            verticalAlignment = Alignment.Bottom,
         ) {
-            Text(
-                text = "SETTINGS",
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp,
-                ),
-            )
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(SurfaceElevated)
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-            ) {
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    text = "v$version",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontSize = 11.sp,
+                    text = "SETTINGS",
+                    style = MaterialTheme.typography.headlineLarge.copy(
+                        fontFamily = OswaldFontFamily,
+                        fontSize = 32.sp,
                         fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.6.sp,
+                    ),
+                    color = DarkOnSurface,
+                )
+                Text(
+                    text = "Kinetic Discipline System • Calibration",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = SpaceGroteskFontFamily,
+                        fontSize = 12.sp,
                     ),
                     color = OliveSubtext,
                 )
             }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(SurfaceControl)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    text = "V$version",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = SpaceGroteskFontFamily,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.1.sp,
+                    ),
+                    color = BrandLime,
+                )
+            }
         }
-        Text(
-            text = "SYSTEM PREFERENCES & DATA VAULT",
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.1.sp,
-            ),
-            color = OliveSubtext,
-        )
+
+        // Figma 1:2105 Status Card
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(4.dp))
+                .background(SurfaceElevated)
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(SurfaceChip),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Bolt,
+                    contentDescription = null,
+                    tint = BrandLime,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text = "ATHLETE TELEMETRY TIER",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontFamily = SpaceGroteskFontFamily,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.4.sp,
+                        ),
+                        color = DarkOnSurface,
+                    )
+                    Icon(
+                        imageVector = Icons.Filled.Verified,
+                        contentDescription = null,
+                        tint = BrandLime,
+                        modifier = Modifier.size(14.dp),
+                    )
+                }
+                Text(
+                    text = if (driveConnected) {
+                        "Cloud backup & automated telemetry active"
+                    } else {
+                        "Offline-first local SQLite vault & telemetry active"
+                    },
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = SpaceGroteskFontFamily,
+                        fontSize = 12.sp,
+                    ),
+                    color = OliveSubtext,
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(SurfaceChip)
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    text = "ACTIVE",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = SpaceGroteskFontFamily,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.1.sp,
+                    ),
+                    color = BrandLime,
+                )
+            }
+        }
     }
 }
 
 @Composable
 private fun SettingsGroupCard(
-    horizontalPadding: androidx.compose.ui.unit.Dp = 16.dp,
+    horizontalPadding: Dp = 16.dp,
     content: @Composable () -> Unit,
 ) {
     Column(
@@ -497,20 +618,25 @@ private fun DriveAccountRow(
     state: DriveUiState,
     onConnect: () -> Unit,
     onDisconnect: () -> Unit,
+    onBackupNow: () -> Unit,
 ) {
     if (state.checkingConnection) {
         SettingsRow(
             icon = Icons.Filled.CloudSync,
+            iconTint = BrandLime,
             title = "CHECKING GOOGLE DRIVE…",
-            subtitle = "Looking for an existing backup connection.",
+            subtitle = "Looking for an existing backup connection",
             onClick = {},
             enabled = false,
         )
     } else if (!state.connected) {
         SettingsRow(
             icon = Icons.Filled.CloudOff,
-            title = "CONNECT GOOGLE DRIVE",
-            subtitle = "Daily 03:00 backups upload to your Drive's appDataFolder; keeps the last 7 snapshots.",
+            iconTint = BrandLime,
+            title = "GOOGLE DRIVE SYNC",
+            subtitle = "Daily 03:00 backups to your Drive appDataFolder",
+            badgeText = "CONNECT",
+            badgeColor = BrandLime,
             onClick = onConnect,
             enabled = !state.running,
         )
@@ -527,29 +653,79 @@ private fun DriveAccountRow(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = "GOOGLE DRIVE SYNC",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontFamily = OswaldFontFamily,
+                            fontSize = 18.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = 0.45.sp,
+                        ),
+                        color = DarkOnSurface,
+                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(SurfaceChip)
+                            .clickable(enabled = !state.running, onClick = onDisconnect)
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Text(
+                            text = "DISCONNECT",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = SpaceGroteskFontFamily,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.8.sp,
+                            ),
+                            color = OliveSubtext,
+                        )
+                    }
+                }
                 Text(
-                    text = "GOOGLE DRIVE CONNECTED",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
+                    text = state.lastBackupAt?.let { "Last backup: ${formatRelativeTime(it)} • Auto-sync ON" }
+                        ?: "Connected • Daily backup at 03:00",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = SpaceGroteskFontFamily,
+                        fontSize = 12.sp,
                     ),
-                )
-                Text(
-                    text = state.lastBackupAt?.let { "Last backup: ${formatRelativeTime(it)}" }
-                        ?: "Connected — daily backup will run at 03:00.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = SlateSubtext,
+                    color = OliveSubtext,
                 )
             }
-            TextButton(onClick = onDisconnect, enabled = !state.running) {
-                Text("Disconnect")
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(SurfaceChip)
+                    .clickable(enabled = !state.running, onClick = onBackupNow)
+                    .semantics {
+                        role = Role.Button
+                        contentDescription = "Backup now to Google Drive"
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Sync,
+                    contentDescription = null,
+                    tint = BrandLime,
+                    modifier = Modifier.size(18.dp),
+                )
             }
         }
     }
 }
 
 @Composable
-private fun SnapshotRow(snapshot: DriveSnapshot, onClick: () -> Unit, enabled: Boolean) {
+private fun SnapshotRow(
+    snapshot: DriveSnapshot,
+    isLatest: Boolean,
+    onClick: () -> Unit,
+    enabled: Boolean,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -558,22 +734,72 @@ private fun SnapshotRow(snapshot: DriveSnapshot, onClick: () -> Unit, enabled: B
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        IconBox(icon = Icons.Filled.Restore)
+        IconBox(
+            icon = Icons.Filled.Restore,
+            tint = if (isLatest) BrandLime else OliveSubtext,
+        )
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = (snapshot.createdAt?.let { formatRelativeTime(it) } ?: snapshot.name).uppercase(),
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontFamily = OswaldFontFamily,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 0.45.sp,
+                    ),
+                    color = DarkOnSurface,
+                )
+                if (isLatest) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(SurfaceChip)
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Text(
+                            text = "LATEST",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = SpaceGroteskFontFamily,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.8.sp,
+                            ),
+                            color = BrandLime,
+                        )
+                    }
+                }
+            }
             Text(
-                text = (snapshot.createdAt?.let { formatRelativeTime(it) } ?: snapshot.name).uppercase(),
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.SemiBold,
+                text = snapshot.sizeBytes?.let { "${it / 1024} KB • ${snapshot.name}" } ?: snapshot.name,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontFamily = SpaceGroteskFontFamily,
+                    fontSize = 12.sp,
                 ),
+                color = OliveSubtext,
             )
+        }
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(2.dp))
+                .background(SurfaceChip)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
+        ) {
             Text(
-                text = snapshot.sizeBytes?.let { "${it / 1024} KB · ${snapshot.name}" } ?: snapshot.name,
-                style = MaterialTheme.typography.bodySmall,
-                color = SlateSubtext,
+                text = "RESTORE",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = SpaceGroteskFontFamily,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.0.sp,
+                ),
+                color = DarkOnSurface,
             )
         }
     }
@@ -603,22 +829,27 @@ private fun KeepScreenOnRow(enabled: Boolean, onChange: (Boolean) -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        IconBox(icon = Icons.Filled.Visibility, tint = BrandLime)
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
                 text = "KEEP SCREEN AWAKE",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontSize = 16.sp,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontFamily = OswaldFontFamily,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.45.sp,
                 ),
+                color = DarkOnSurface,
             )
             Text(
-                text = "Prevents sleep during active workout sessions.",
-                style = MaterialTheme.typography.bodySmall,
-                color = SlateSubtext,
+                text = "Prevent display sleep during active workout session",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontFamily = SpaceGroteskFontFamily,
+                    fontSize = 12.sp,
+                ),
+                color = OliveSubtext,
             )
         }
         Switch(
@@ -643,29 +874,35 @@ private fun UnitsRow(unit: WeightUnit, onChange: (WeightUnit) -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        IconBox(icon = Icons.Filled.Scale, tint = BrandLime)
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
                 text = "WEIGHT UNITS",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontSize = 16.sp,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontFamily = OswaldFontFamily,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.45.sp,
                 ),
+                color = DarkOnSurface,
             )
             Text(
-                text = "Used for weight steppers and total-volume figures.",
-                style = MaterialTheme.typography.bodySmall,
-                color = SlateSubtext,
+                text = "Primary load measurement across all templates",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontFamily = SpaceGroteskFontFamily,
+                    fontSize = 12.sp,
+                ),
+                color = OliveSubtext,
             )
         }
         Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(4.dp))
+                .height(40.dp)
+                .clip(RoundedCornerShape(2.dp))
                 .background(SurfaceChip)
-                .padding(3.dp),
+                .padding(4.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -678,19 +915,21 @@ private fun UnitsRow(unit: WeightUnit, onChange: (WeightUnit) -> Unit) {
                 Box(
                     contentAlignment = Alignment.Center,
                     modifier = Modifier
+                        .height(32.dp)
                         .clip(RoundedCornerShape(2.dp))
-                        .background(if (selected) SurfaceElevated else androidx.compose.ui.graphics.Color.Transparent)
+                        .background(if (selected) SurfaceElevated else Color.Transparent)
                         .clickable { onChange(option) }
                         .semantics {
                             role = Role.RadioButton
                             contentDescription = a11yLabel
                         }
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        .padding(horizontal = 14.dp),
                 ) {
                     Text(
                         text = shortLabel,
                         style = MaterialTheme.typography.labelLarge.copy(
-                            fontSize = 12.sp,
+                            fontFamily = SpaceGroteskFontFamily,
+                            fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
                             letterSpacing = 0.6.sp,
                         ),
@@ -718,10 +957,13 @@ private fun FloatingTimerRow() {
     }
     SettingsRow(
         icon = Icons.Filled.Visibility,
+        iconTint = if (granted) BrandLime else OliveSubtext,
         title = stringResource(R.string.timer_overlay_title).uppercase(),
         subtitle = stringResource(
             if (granted) R.string.timer_overlay_enabled else R.string.timer_overlay_disabled,
         ),
+        badgeText = if (granted) "ON" else "OFF",
+        badgeColor = if (granted) BrandLime else OliveSubtext,
         onClick = {
             context.startActivity(
                 Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")),
@@ -736,9 +978,12 @@ private fun NotificationRow() {
     val granted by rememberNotificationGranted()
     SettingsRow(
         icon = if (granted) Icons.Filled.Notifications else Icons.Filled.NotificationsOff,
+        iconTint = if (granted) BrandLime else DestructiveCoral,
         title = "TIMER NOTIFICATION",
-        subtitle = if (granted) "Allowed — the workout timer notification is visible."
-        else "Disabled — Android won't show the timer's persistent notification. Tap to fix in system settings.",
+        subtitle = if (granted) "Allowed — persistent rest timer notification active"
+        else "Disabled — tap to enable rest timer alerts in system settings",
+        badgeText = if (granted) "ALLOWED" else "BLOCKED",
+        badgeColor = if (granted) BrandLime else DestructiveCoral,
         onClick = {
             val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).apply {
                 putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
@@ -774,7 +1019,7 @@ private fun checkNotificationGranted(context: android.content.Context): Boolean 
 }
 
 @Composable
-private fun AboutRow() {
+private fun AboutRow(onClick: () -> Unit) {
     val context = LocalContext.current
     val version = remember {
         runCatching {
@@ -785,66 +1030,467 @@ private fun AboutRow() {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .semantics {
+                role = Role.Button
+                contentDescription = "Gym Tracker system manifesto and diagnostics"
+            }
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        IconBox(icon = Icons.Filled.Info)
+        IconBox(icon = Icons.Filled.Info, tint = BrandLime)
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
                 text = "GYM TRACKER",
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontSize = 16.sp,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontFamily = OswaldFontFamily,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.45.sp,
                 ),
+                color = DarkOnSurface,
             )
             Text(
-                text = "Version $version",
-                style = MaterialTheme.typography.bodySmall,
-                color = SlateSubtext,
+                text = "Kinetic Brutalist Framework • Tap to inspect engine",
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontFamily = SpaceGroteskFontFamily,
+                    fontSize = 12.sp,
+                ),
+                color = OliveSubtext,
             )
+        }
+        Text(
+            text = "v$version",
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontFamily = SpaceGroteskFontFamily,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+            color = BrandLime,
+        )
+    }
+}
+
+@Composable
+private fun SettingsFooter() {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp, bottom = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Icon(
+                imageVector = Icons.Filled.FitnessCenter,
+                contentDescription = null,
+                tint = OliveSubtext,
+                modifier = Modifier.size(14.dp),
+            )
+            Text(
+                text = "CRAFTED FOR SERIOUS LIFTERS UNDER HEAVY LOAD",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = SpaceGroteskFontFamily,
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.1.sp,
+                ),
+                color = OliveSubtext,
+            )
+        }
+        Text(
+            text = "Kinetic Architecture • Offline First Engine",
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontFamily = SpaceGroteskFontFamily,
+                fontSize = 12.sp,
+            ),
+            color = OliveSubtext.copy(alpha = 0.7f),
+        )
+    }
+}
+
+private data class IronMaxim(
+    val code: String,
+    val quote: String,
+    val directive: String,
+)
+
+private val IRON_MAXIMS = listOf(
+    IronMaxim(
+        code = "PROTOCOL 01 // OVERLOAD",
+        quote = "THE BARBELL DOES NOT NEGOTIATE. PROGRESSIVE OVERLOAD IS THE ONLY METRIC THAT MATTERS.",
+        directive = "Log every working set. Beat the previous session by one rep or one kilo.",
+    ),
+    IronMaxim(
+        code = "PROTOCOL 02 // SOVEREIGNTY",
+        quote = "ZERO ADS. ZERO PAYWALLS. ZERO TELEMETRY LEAKS. YOUR TRAINING LOG BELONGS TO YOUR IRON VAULT.",
+        directive = "Offline-first SQLite engine with deterministic JSON snapshots.",
+    ),
+    IronMaxim(
+        code = "PROTOCOL 03 // EFFECTIVE VOLUME",
+        quote = "JUNK VOLUME IS NOISE. STIMULUS IS EARNED IN PROXIMITY TO MECHANICAL FAILURE.",
+        directive = "Primary movers count 1.0x; secondary synergists count 0.5x across 14 muscle groups.",
+    ),
+    IronMaxim(
+        code = "PROTOCOL 04 // KINETIC DISCIPLINE",
+        quote = "MOTIVATION IGNITES THE FIRST SESSION. CALIBRATED SYSTEMS FORGE THE THOUSANDTH.",
+        directive = "Show up, load the plates, start the rest timer, and execute.",
+    ),
+)
+
+@Composable
+private fun GymTrackerAboutDialog(onDismiss: () -> Unit) {
+    val context = LocalContext.current
+    val version = remember {
+        runCatching {
+            val pi = context.packageManager.getPackageInfo(context.packageName, 0)
+            pi.versionName ?: "?"
+        }.getOrDefault("?")
+    }
+    var maximIndex by remember { mutableIntStateOf(0) }
+    val currentMaxim = IRON_MAXIMS[maximIndex]
+
+    Dialog(onDismissRequest = onDismiss) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(4.dp))
+                .background(SurfaceCard)
+                .border(1.dp, BrandLime.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                .padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            // Top tactical header
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(BrandLime),
+                    )
+                    Text(
+                        text = "KINETIC CORE // DIAGNOSTICS",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = SpaceGroteskFontFamily,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.2.sp,
+                        ),
+                        color = BrandLime,
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(SurfaceChip)
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
+                ) {
+                    Text(
+                        text = "BUILD v$version",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = SpaceGroteskFontFamily,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                        color = OliveSubtext,
+                    )
+                }
+            }
+
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "GYM TRACKER ENGINE",
+                    style = MaterialTheme.typography.headlineMedium.copy(
+                        fontFamily = OswaldFontFamily,
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.0.sp,
+                    ),
+                    color = DarkOnSurface,
+                )
+                Text(
+                    text = "Engineered for high-output hypertrophy & strength logging without cloud lock-in.",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = SpaceGroteskFontFamily,
+                        fontSize = 12.sp,
+                    ),
+                    color = SlateSubtext,
+                )
+            }
+
+            // Telemetry spec grid
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(SurfaceDeep)
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    DiagnosticMetricCell(
+                        label = "STORAGE VAULT",
+                        value = "ROOM SQLITE",
+                        modifier = Modifier.weight(1f),
+                    )
+                    DiagnosticMetricCell(
+                        label = "1RM FORMULA",
+                        value = "EPLEY (≤12 REPS)",
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                HorizontalDivider(color = EditorialBorder, thickness = 1.dp)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    DiagnosticMetricCell(
+                        label = "VOLUME MODEL",
+                        value = "1.0x / 0.5x SPLIT",
+                        modifier = Modifier.weight(1f),
+                    )
+                    DiagnosticMetricCell(
+                        label = "EXTERNAL TRACKERS",
+                        value = "0 DETECTED",
+                        valueColor = BrandLime,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+            }
+
+            // Interactive Iron Creed card (tap to cycle)
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(SurfaceElevated)
+                    .border(1.dp, EditorialBorder, RoundedCornerShape(4.dp))
+                    .clickable { maximIndex = (maximIndex + 1) % IRON_MAXIMS.size }
+                    .padding(14.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = currentMaxim.code,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = SpaceGroteskFontFamily,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.0.sp,
+                        ),
+                        color = BrandLime,
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Refresh,
+                            contentDescription = "Cycle protocol",
+                            tint = OliveSubtext,
+                            modifier = Modifier.size(12.dp),
+                        )
+                        Text(
+                            text = "${maximIndex + 1} / ${IRON_MAXIMS.size}",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = SpaceGroteskFontFamily,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            color = OliveSubtext,
+                        )
+                    }
+                }
+                Text(
+                    text = "\"${currentMaxim.quote}\"",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontFamily = OswaldFontFamily,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 0.4.sp,
+                        lineHeight = 21.sp,
+                    ),
+                    color = DarkOnSurface,
+                )
+                Text(
+                    text = currentMaxim.directive,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontFamily = SpaceGroteskFontFamily,
+                        fontSize = 11.sp,
+                    ),
+                    color = OliveSubtext,
+                )
+            }
+
+            // Actions
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(42.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(SurfaceChip)
+                        .clickable { maximIndex = (maximIndex + 1) % IRON_MAXIMS.size },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "NEXT TRANSMIT",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontFamily = OswaldFontFamily,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.8.sp,
+                        ),
+                        color = DarkOnSurface,
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(42.dp)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(BrandLime)
+                        .clickable(onClick = onDismiss),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "BACK TO THE IRON",
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontFamily = OswaldFontFamily,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.8.sp,
+                        ),
+                        color = DarkOnPrimary,
+                    )
+                }
+            }
         }
     }
 }
 
 @Composable
-private fun SectionHeader(text: String) {
-    Row(
-        modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+private fun DiagnosticMetricCell(
+    label: String,
+    value: String,
+    modifier: Modifier = Modifier,
+    valueColor: Color = DarkOnSurface,
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .width(6.dp)
-                .height(14.dp)
-                .background(BrandLime),
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontFamily = SpaceGroteskFontFamily,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 0.8.sp,
+            ),
+            color = OliveSubtext,
         )
         Text(
-            text = text.uppercase(),
+            text = value,
             style = MaterialTheme.typography.labelLarge.copy(
+                fontFamily = OswaldFontFamily,
+                fontSize = 15.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.5.sp,
+            ),
+            color = valueColor,
+        )
+    }
+}
+
+@Composable
+private fun SectionHeader(
+    title: String,
+    rightLabel: String? = null,
+    rightLabelColor: Color = OliveSubtext,
+    showRightDot: Boolean = false,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = title.uppercase(),
+            style = MaterialTheme.typography.labelLarge.copy(
+                fontFamily = SpaceGroteskFontFamily,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.1.sp,
             ),
             color = OliveSubtext,
         )
+        if (rightLabel != null) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                if (showRightDot) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(BrandLime),
+                    )
+                }
+                Text(
+                    text = rightLabel.uppercase(),
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = SpaceGroteskFontFamily,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 1.1.sp,
+                    ),
+                    color = rightLabelColor,
+                    textAlign = TextAlign.End,
+                )
+            }
+        }
     }
 }
 
 @Composable
 private fun IconBox(
     icon: ImageVector,
-    tint: androidx.compose.ui.graphics.Color = SlateSubtext,
+    tint: Color = BrandLime,
 ) {
     Box(
         modifier = Modifier
-            .size(40.dp)
-            .clip(RoundedCornerShape(4.dp))
-            .background(SurfaceDeep),
+            .size(36.dp)
+            .clip(RoundedCornerShape(2.dp))
+            .background(SurfaceChip),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
@@ -862,6 +1508,12 @@ private fun SettingsRow(
     title: String,
     subtitle: String,
     onClick: () -> Unit,
+    iconTint: Color = BrandLime,
+    badgeText: String? = null,
+    badgeColor: Color = BrandLime,
+    trailingLabel: String? = null,
+    trailingIcon: ImageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+    trailingIconTint: Color = OliveSubtext,
     enabled: Boolean = true,
 ) {
     Row(
@@ -873,28 +1525,70 @@ private fun SettingsRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        IconBox(icon = icon)
+        IconBox(icon = icon, tint = iconTint)
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
                 text = title.uppercase(),
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontSize = 16.sp,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontFamily = OswaldFontFamily,
+                    fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.45.sp,
                 ),
+                color = DarkOnSurface,
             )
             Text(
                 text = subtitle,
-                style = MaterialTheme.typography.bodySmall,
-                color = SlateSubtext,
+                style = MaterialTheme.typography.bodySmall.copy(
+                    fontFamily = SpaceGroteskFontFamily,
+                    fontSize = 12.sp,
+                ),
+                color = OliveSubtext,
             )
         }
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-            contentDescription = null,
-            tint = OliveSubtext,
-        )
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            if (badgeText != null) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(SurfaceChip)
+                        .padding(horizontal = 8.dp, vertical = 4.dp),
+                ) {
+                    Text(
+                        text = badgeText,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = SpaceGroteskFontFamily,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.1.sp,
+                        ),
+                        color = badgeColor,
+                    )
+                }
+            }
+            if (trailingLabel != null) {
+                Text(
+                    text = trailingLabel,
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontFamily = SpaceGroteskFontFamily,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    color = DarkOnSurface,
+                )
+            }
+            Icon(
+                imageVector = trailingIcon,
+                contentDescription = null,
+                tint = trailingIconTint,
+                modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }
