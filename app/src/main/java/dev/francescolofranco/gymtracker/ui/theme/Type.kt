@@ -31,13 +31,13 @@ val SpaceGroteskFontFamily: FontFamily = variableFontFamily(
     weights = listOf(FontWeight.Normal, FontWeight.Medium, FontWeight.SemiBold, FontWeight.Bold),
 )
 
-// Strong editorial headings (Oswald); technical metrics/labels (Space Grotesk); readable body (SansSerif).
+// Strong editorial headings (Oswald); technical metrics, labels, and body (Space Grotesk).
 private fun type(
     size: Int,
     weight: FontWeight,
     tracking: Double = 0.0,
     tabular: Boolean = false,
-    family: FontFamily = FontFamily.SansSerif,
+    family: FontFamily = SpaceGroteskFontFamily,
 ) = TextStyle(
     fontFamily = family,
     fontWeight = weight,

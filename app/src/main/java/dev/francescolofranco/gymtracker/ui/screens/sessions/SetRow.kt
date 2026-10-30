@@ -201,7 +201,7 @@ fun SetRow(
     }
     val indexTextColor = when {
         isActiveSet -> DarkOnPrimary
-        belowRange -> VolumeBlue
+        belowRange -> RegressionAmber
         isLogged -> MutedOlive
         else -> SlateSubtext
     }
@@ -772,10 +772,7 @@ private data class PercentDelta(val text: String, val tone: PercentTone)
 
 @Composable
 private fun PercentTone.color(): Color = when (this) {
-    // Green = progress, amber = regression. Amber is its own token (not the brand primary, now
-    // cyan, nor Material error red) so the up/down deltas keep the green/amber semantics without
-    // colliding with the primary action colour.
-    PercentTone.Up -> VolumeGreen
+    PercentTone.Up -> BrandLime
     PercentTone.Down -> RegressionAmber
     PercentTone.Same -> MaterialTheme.colorScheme.onSurfaceVariant
 }

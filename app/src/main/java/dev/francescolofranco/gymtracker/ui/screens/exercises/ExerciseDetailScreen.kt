@@ -874,7 +874,7 @@ private fun DeltaLabel(current: Double, previous: Double?) {
     val pct = (current - previous) / previous * 100
     val rounded = pct.roundToInt()
     val (text, color) = when {
-        rounded > 0 -> "+$rounded%" to VolumeGreen
+        rounded > 0 -> "+$rounded%" to BrandLime
         rounded < 0 -> "$rounded%" to RegressionAmber
         else -> "±0%" to OliveSubtext
     }

@@ -116,6 +116,7 @@ fun GymApp() {
                             onOpenActive = { id -> nav.navigate(SessionRoutes.active(id)) },
                             onOpenCompleted = { id -> nav.navigate(SessionRoutes.complete(id)) },
                             onOpenDetail = { id -> nav.navigate(SessionRoutes.detail(id)) },
+                            onOpenTemplates = { nav.navigate(TemplateRoutes.LIST) },
                         )
                     }
                 }

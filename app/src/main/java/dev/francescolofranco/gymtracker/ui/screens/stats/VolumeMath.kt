@@ -9,10 +9,9 @@ import dev.francescolofranco.gymtracker.domain.ExerciseSide
 import dev.francescolofranco.gymtracker.ui.screens.exercises.aggregateSessions
 import dev.francescolofranco.gymtracker.ui.screens.exercises.detectPersonalRecords
 import dev.francescolofranco.gymtracker.ui.screens.exercises.epley1Rm
-import dev.francescolofranco.gymtracker.ui.theme.VolumeBlue
-import dev.francescolofranco.gymtracker.ui.theme.VolumeGreen
-import dev.francescolofranco.gymtracker.ui.theme.VolumeGrey
-import dev.francescolofranco.gymtracker.ui.theme.VolumeRed
+import dev.francescolofranco.gymtracker.ui.theme.BrandLime
+import dev.francescolofranco.gymtracker.ui.theme.SlateSubtext
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceChip
 import java.time.DayOfWeek
 import java.time.Duration
 import java.time.Instant
@@ -160,16 +159,14 @@ private data class ExerciseAccumulator(val exerciseId: Long, val name: String, v
     var sets: Double = 0.0
 }
 
-/** The 3-10 traffic-light: 0 grey, 1-2 blue (under), 3-10 green (in range), 11+ red (over). */
+/** Editorial volume bar palette: 0 muted track, 1-2 slate (low), 3+ chartreuse lime (active). */
 fun volumeColor(total: Double, periodDays: Long = 7): Color {
     val scale = periodDays / 7.0
     val low = 2 * scale
-    val high = Muscle.WEEKLY_MAX * scale
     return when {
-    total <= 0 -> VolumeGrey
-    total <= low -> VolumeBlue
-    total <= high -> VolumeGreen
-    else -> VolumeRed
+        total <= 0 -> SurfaceChip
+        total <= low -> SlateSubtext
+        else -> BrandLime
     }
 }
 

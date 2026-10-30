@@ -32,6 +32,7 @@ data class SessionsContent(
     val unit: WeightUnit,
     val suggestion: TemplateEntity?,
     val weeklyGoal: Int,
+    val templates: List<TemplateEntity> = emptyList(),
 )
 
 @HiltViewModel
@@ -45,13 +46,16 @@ class SessionsViewModel @Inject constructor(
 
     @OptIn(FlowPreview::class)
     val content: StateFlow<Loadable<SessionsContent>> = combine(
-        repo.observeActive(),
-        repo.observeAllSummaries(),
-        userPrefs.unit,
+        combine(
+            repo.observeActive(),
+            repo.observeAllSummaries(),
+            userPrefs.unit,
+        ) { active, past, unit -> Triple(active, past, unit) },
         templates.observeNextSuggestion(),
         userPrefs.weeklyGoal,
-    ) { active, past, unit, suggestion, weeklyGoal ->
-        SessionsContent(active, past, unit, suggestion, weeklyGoal)
+        templates.observeAll(),
+    ) { (active, past, unit), suggestion, weeklyGoal, allTemplates ->
+        SessionsContent(active, past, unit, suggestion, weeklyGoal, allTemplates)
     }.debounce(24L)
         .asLoadableState(viewModelScope)
 

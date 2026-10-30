@@ -38,6 +38,8 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
@@ -46,10 +48,13 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -108,12 +113,14 @@ fun SessionsScreen(
     onOpenActive: (Long) -> Unit,
     onOpenCompleted: (Long) -> Unit,
     onOpenDetail: (Long) -> Unit,
+    onOpenTemplates: () -> Unit = {},
     viewModel: SessionsViewModel = hiltViewModel(),
 ) {
     val content by viewModel.content.collectAsStateWithLifecycle()
 
     var editGoal by remember { mutableStateOf(false) }
     var confirmEnd by remember { mutableStateOf(false) }
+    var showTemplatePicker by remember { mutableStateOf(false) }
 
     val context = LocalContext.current
     var pendingStart by remember { mutableStateOf<(() -> Unit)?>(null) }
@@ -177,7 +184,22 @@ fun SessionsScreen(
             Loadable.Loading -> LoadingPane(modifier = Modifier.padding(padding))
             is Loadable.Error -> ErrorPane(current.message, viewModel::retry, Modifier.padding(padding))
             is Loadable.Ready -> {
-                val (active, past, unit, suggestion, weeklyGoal) = current.value
+                val (active, past, unit, suggestion, weeklyGoal, templates) = current.value
+                if (showTemplatePicker) {
+                    TemplatePickerSheet(
+                        templates = templates,
+                        suggestion = suggestion,
+                        onDismiss = { showTemplatePicker = false },
+                        onSelectTemplate = { template ->
+                            showTemplatePicker = false
+                            startWithPermission { viewModel.startWithTemplate(template.id) }
+                        },
+                        onManageTemplates = {
+                            showTemplatePicker = false
+                            onOpenTemplates()
+                        },
+                    )
+                }
                 if (editGoal) {
                     AlertDialog(
                         onDismissRequest = { editGoal = false },
@@ -288,7 +310,7 @@ fun SessionsScreen(
                                     active != null -> "RESUME WORKOUT"
                                     else -> "START WORKOUT"
                                 },
-                                style = MaterialTheme.typography.titleMedium.copy(
+                                style = MaterialTheme.typography.titleLarge.copy(
                                     fontSize = 18.sp,
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 0.9.sp,
@@ -296,20 +318,17 @@ fun SessionsScreen(
                             )
                         }
                         AnimatedVisibility(
-                            visible = active == null && suggestion != null,
+                            visible = active == null,
                             enter = fadeIn(tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing)) +
                                 expandVertically(tween(GymMotion.Emphasized, easing = GymMotion.EmphasizedEasing)),
                             exit = fadeOut(tween(GymMotion.Quick, easing = GymMotion.ExitEasing)) +
                                 shrinkVertically(tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing)),
                         ) {
-                            suggestion?.let { template ->
-                                SuggestionBanner(
-                                    template = template,
-                                    onUseTemplate = {
-                                        startWithPermission { viewModel.startWithTemplate(template.id) }
-                                    },
-                                )
-                            }
+                            TemplateLaunchButton(
+                                suggestion = suggestion,
+                                templateCount = templates.size,
+                                onClick = { showTemplatePicker = true },
+                            )
                         }
                     }
                 }
@@ -319,17 +338,22 @@ fun SessionsScreen(
 }
 
 @Composable
-private fun SuggestionBanner(template: TemplateEntity, onUseTemplate: () -> Unit) {
+private fun TemplateLaunchButton(
+    suggestion: TemplateEntity?,
+    templateCount: Int,
+    onClick: () -> Unit,
+) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
         modifier = Modifier
             .fillMaxWidth()
+            .height(42.dp)
             .clip(RoundedCornerShape(2.dp))
-            .background(SurfaceElevated)
+            .background(SurfaceCard)
             .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp))
-            .clickable(onClick = onUseTemplate)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp),
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -339,19 +363,11 @@ private fun SuggestionBanner(template: TemplateEntity, onUseTemplate: () -> Unit
             Icon(
                 imageVector = Icons.Filled.BookmarkBorder,
                 contentDescription = null,
-                tint = MutedOlive,
+                tint = BrandLime,
                 modifier = Modifier.size(16.dp),
             )
             Text(
-                text = "TEMPLATE:",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontSize = 11.sp,
-                    letterSpacing = 0.55.sp,
-                ),
-                color = SlateSubtext,
-            )
-            Text(
-                text = template.name.uppercase(),
+                text = "START WORKOUT FROM A TEMPLATE",
                 style = MaterialTheme.typography.labelMedium.copy(
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
@@ -363,22 +379,294 @@ private fun SuggestionBanner(template: TemplateEntity, onUseTemplate: () -> Unit
         }
         Row(
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(2.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            Text(
-                text = "USE",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontSize = 11.sp,
-                    letterSpacing = 0.55.sp,
-                ),
-                color = BrandLime,
-            )
+            if (suggestion != null) {
+                Text(
+                    text = suggestion.name.uppercase(),
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.5.sp,
+                    ),
+                    color = BrandLime,
+                    maxLines = 1,
+                )
+            } else if (templateCount > 0) {
+                Text(
+                    text = "$templateCount",
+                    style = MaterialTheme.typography.labelMedium.copy(
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                    ),
+                    color = SlateSubtext,
+                )
+            }
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                imageVector = Icons.Filled.KeyboardArrowDown,
                 contentDescription = null,
                 tint = BrandLime,
-                modifier = Modifier.size(14.dp),
+                modifier = Modifier.size(16.dp),
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TemplatePickerSheet(
+    templates: List<TemplateEntity>,
+    suggestion: TemplateEntity?,
+    onDismiss: () -> Unit,
+    onSelectTemplate: (TemplateEntity) -> Unit,
+    onManageTemplates: () -> Unit,
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val orderedTemplates = remember(templates, suggestion) {
+        if (suggestion == null) templates
+        else listOfNotNull(templates.firstOrNull { it.id == suggestion.id }) +
+            templates.filter { it.id != suggestion.id }
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = SurfaceCard,
+        shape = RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 28.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "START FROM TEMPLATE",
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.5.sp,
+                        ),
+                    )
+                    Text(
+                        text = "SELECT A TEMPLATE TO LAUNCH WORKOUT",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.8.sp,
+                        ),
+                        color = SlateSubtext,
+                    )
+                }
+                IconButton(
+                    onClick = onDismiss,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(SurfaceElevated),
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = "Close",
+                        tint = SlateSubtext,
+                        modifier = Modifier.size(16.dp),
+                    )
+                }
+            }
+
+            if (orderedTemplates.isEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(SurfaceElevated)
+                        .border(1.dp, EditorialBorder, RoundedCornerShape(4.dp))
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(
+                        text = "NO TEMPLATES YET",
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                        ),
+                    )
+                    Text(
+                        text = "Create reusable routines (e.g. Upper Body A, Push, Pull, Legs) to start workouts in one tap.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = SlateSubtext,
+                    )
+                    Button(
+                        onClick = onManageTemplates,
+                        shape = RoundedCornerShape(2.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = BrandLime,
+                            contentColor = DarkOnPrimary,
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(46.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp),
+                        )
+                        Spacer(Modifier.width(6.dp))
+                        Text(
+                            text = "CREATE TEMPLATE",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.8.sp,
+                            ),
+                        )
+                    }
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    orderedTemplates.forEach { template ->
+                        val isSuggested = suggestion?.id == template.id
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(SurfaceElevated)
+                                .border(
+                                    width = 1.dp,
+                                    color = if (isSuggested) BrandLime.copy(alpha = 0.65f) else EditorialBorder,
+                                    shape = RoundedCornerShape(4.dp),
+                                )
+                                .clickable { onSelectTemplate(template) }
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(36.dp)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(if (isSuggested) BrandLime.copy(alpha = 0.16f) else SurfaceCard),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Filled.BookmarkBorder,
+                                    contentDescription = null,
+                                    tint = if (isSuggested) BrandLime else SlateSubtext,
+                                    modifier = Modifier.size(18.dp),
+                                )
+                            }
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(2.dp),
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                ) {
+                                    Text(
+                                        text = template.name.uppercase(),
+                                        style = MaterialTheme.typography.titleLarge.copy(
+                                            fontSize = 17.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            letterSpacing = 0.4.sp,
+                                        ),
+                                    )
+                                    if (isSuggested) {
+                                        Box(
+                                            modifier = Modifier
+                                                .clip(RoundedCornerShape(2.dp))
+                                                .background(BrandLime)
+                                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                                        ) {
+                                            Text(
+                                                text = "NEXT UP",
+                                                style = MaterialTheme.typography.labelSmall.copy(
+                                                    fontSize = 9.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    letterSpacing = 0.5.sp,
+                                                ),
+                                                color = DarkOnPrimary,
+                                            )
+                                        }
+                                    }
+                                }
+                                Text(
+                                    text = if (isSuggested) "Suggested next in your rotation" else "Tap to start workout with this template",
+                                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
+                                    color = SlateSubtext,
+                                )
+                            }
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            ) {
+                                Text(
+                                    text = "START",
+                                    style = MaterialTheme.typography.labelMedium.copy(
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        letterSpacing = 0.6.sp,
+                                    ),
+                                    color = BrandLime,
+                                )
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                    contentDescription = null,
+                                    tint = BrandLime,
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(SurfaceDeep)
+                            .border(1.dp, EditorialBorder.copy(alpha = 0.6f), RoundedCornerShape(4.dp))
+                            .clickable(onClick = onManageTemplates)
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Tune,
+                                contentDescription = null,
+                                tint = MutedOlive,
+                                modifier = Modifier.size(16.dp),
+                            )
+                            Text(
+                                text = "MANAGE WORKOUT TEMPLATES",
+                                style = MaterialTheme.typography.labelMedium.copy(
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    letterSpacing = 0.6.sp,
+                                ),
+                                color = SlateSubtext,
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            contentDescription = null,
+                            tint = MutedOlive,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    }
+                }
+            }
         }
     }
 }

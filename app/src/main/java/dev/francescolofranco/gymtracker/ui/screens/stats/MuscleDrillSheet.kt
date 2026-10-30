@@ -31,12 +31,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.francescolofranco.gymtracker.ui.theme.BrandLime
-import dev.francescolofranco.gymtracker.ui.theme.DestructiveCoral
 import dev.francescolofranco.gymtracker.ui.theme.OliveSubtext
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceChip
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceControl
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
-import dev.francescolofranco.gymtracker.ui.theme.VolumeGreen
 import kotlin.math.abs
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -234,41 +232,45 @@ private fun CountBlock(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(
-            text = formatSetCount(count),
-            style = MaterialTheme.typography.headlineSmall.copy(
-                fontSize = 22.sp,
-                fontWeight = FontWeight.SemiBold,
-            ),
-            color = if (highlightValue) BrandLime else MaterialTheme.colorScheme.onSurface,
-        )
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 0.8.sp,
-            ),
-            color = OliveSubtext,
-        )
-        if (hasPrevious) {
-            val text = when {
-                delta > 0 -> "+${formatSetCount(delta)}"
-                delta < 0 -> "−${formatSetCount(abs(delta))}"
-                else -> "0"
-            }
             Text(
-                text = text,
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 11.sp,
+                text = formatSetCount(count),
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontSize = 22.sp,
                     fontWeight = FontWeight.SemiBold,
                 ),
                 color = when {
-                    delta > 0 -> VolumeGreen
-                    delta < 0 -> DestructiveCoral
-                    else -> OliveSubtext
+                    highlightValue -> BrandLime
+                    count <= 0.0 -> OliveSubtext
+                    else -> MaterialTheme.colorScheme.onSurface
                 },
             )
-        }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 0.8.sp,
+                ),
+                color = OliveSubtext,
+            )
+            if (hasPrevious) {
+                val text = when {
+                    delta > 0.05 -> "+${formatSetCount(delta)}"
+                    delta < -0.05 -> "−${formatSetCount(abs(delta))}"
+                    else -> "0"
+                }
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.66.sp,
+                    ),
+                    color = when {
+                        delta > 0.05 -> BrandLime
+                        else -> OliveSubtext
+                    },
+                )
+            }
     }
 }

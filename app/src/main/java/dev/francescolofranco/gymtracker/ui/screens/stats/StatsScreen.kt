@@ -28,16 +28,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -48,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -69,16 +70,16 @@ import dev.francescolofranco.gymtracker.ui.screens.sessions.convertFromKg
 import dev.francescolofranco.gymtracker.ui.screens.sessions.formatWeightNumber
 import dev.francescolofranco.gymtracker.ui.screens.sessions.label
 import dev.francescolofranco.gymtracker.ui.theme.BrandLime
-import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
-import dev.francescolofranco.gymtracker.ui.theme.DestructiveCoral
+import dev.francescolofranco.gymtracker.ui.theme.DarkOnSurface
 import dev.francescolofranco.gymtracker.ui.theme.OliveSubtext
+import dev.francescolofranco.gymtracker.ui.theme.OswaldFontFamily
+import dev.francescolofranco.gymtracker.ui.theme.SpaceGroteskFontFamily
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceChip
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceControl
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
 import dev.francescolofranco.gymtracker.ui.theme.TagShape
-import dev.francescolofranco.gymtracker.ui.theme.VolumeGreen
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -96,7 +97,6 @@ fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
         return
     }
 
-    var showExplanation by rememberSaveable { mutableStateOf(false) }
     var showAllMuscles by rememberSaveable { mutableStateOf(false) }
 
     LazyColumn(
@@ -110,7 +110,6 @@ fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
             HeaderControls(
                 period = state.period,
                 onPeriodChange = viewModel::setPeriod,
-                onExplain = { showExplanation = true },
                 modifier = Modifier
                     .animateItem(
                         fadeInSpec = GymMotion.ItemFadeIn,
@@ -182,40 +181,15 @@ fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
             onDismiss = { viewModel.selectMuscle(null) },
         )
     }
-
-    if (showExplanation) {
-        StatsExplanationDialog(onDismiss = { showExplanation = false })
-    }
 }
 
 @Composable
 private fun HeaderControls(
     period: StatsPeriod,
     onPeriodChange: (StatsPeriod) -> Unit,
-    onExplain: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        PeriodToggle(period, onPeriodChange, Modifier.weight(1f))
-        IconButton(
-            onClick = onExplain,
-            modifier = Modifier
-                .size(40.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(SurfaceCard),
-        ) {
-            Icon(
-                imageVector = Icons.Outlined.Info,
-                contentDescription = "How statistics work",
-                tint = OliveSubtext,
-                modifier = Modifier.size(18.dp),
-            )
-        }
-    }
+    PeriodToggle(period, onPeriodChange, modifier.fillMaxWidth())
 }
 
 @Composable
@@ -236,7 +210,7 @@ private fun PeriodToggle(
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .height(32.dp)
+                    .height(34.dp)
                     .clip(RoundedCornerShape(4.dp))
                     .background(if (isSelected) SurfaceControl else Color.Transparent)
                     .clickable { onChange(option) }
@@ -254,15 +228,16 @@ private fun PeriodToggle(
                         tint = BrandLime,
                         modifier = Modifier
                             .padding(end = 4.dp)
-                            .size(12.dp),
+                            .size(13.dp),
                     )
                 }
                 Text(
                     text = option.label.uppercase(),
-                    style = MaterialTheme.typography.labelLarge.copy(
-                        fontSize = 15.sp,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
-                        letterSpacing = (-0.15).sp,
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontFamily = OswaldFontFamily,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Medium,
+                        letterSpacing = 0.65.sp,
                     ),
                     color = if (isSelected) BrandLime else OliveSubtext,
                 )
@@ -279,8 +254,10 @@ private fun KpiStrip(state: StatsUiState, modifier: Modifier = Modifier) {
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(SurfaceCard),
+            .background(SurfaceCard)
+            .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Kpi(
             label = "WORKOUTS",
@@ -299,6 +276,7 @@ private fun KpiStrip(state: StatsUiState, modifier: Modifier = Modifier) {
             label = "TRAINING TIME",
             value = formatTrainingTime(current.trainingTime.seconds),
             delta = signedDuration(current.trainingTime.seconds - previous.trainingTime.seconds),
+            compactValue = true,
             modifier = Modifier.weight(1f),
         )
     }
@@ -311,13 +289,15 @@ private fun Kpi(
     delta: SignedValue,
     modifier: Modifier = Modifier,
     highlighted: Boolean = false,
+    compactValue: Boolean = false,
 ) {
     Column(
         modifier = modifier
+            .clip(RoundedCornerShape(4.dp))
             .background(if (highlighted) SurfaceElevated.copy(alpha = 0.4f) else Color.Transparent)
-            .padding(horizontal = 4.dp, vertical = 12.dp),
+            .padding(horizontal = 4.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         AnimatedContent(
             targetState = value,
@@ -334,10 +314,12 @@ private fun Kpi(
             Text(
                 text = animatedValue,
                 style = MaterialTheme.typography.headlineLarge.copy(
-                    fontSize = 32.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.32.sp,
+                    fontFamily = OswaldFontFamily,
+                    fontSize = if (compactValue) 24.sp else 32.sp,
+                    fontWeight = if (compactValue) FontWeight.SemiBold else FontWeight.Bold,
+                    letterSpacing = if (compactValue) 0.22.sp else 0.64.sp,
                 ),
+                color = DarkOnSurface,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
             )
@@ -345,9 +327,10 @@ private fun Kpi(
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall.copy(
+                fontFamily = SpaceGroteskFontFamily,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
-                letterSpacing = 0.8.sp,
+                letterSpacing = 0.5.sp,
             ),
             color = OliveSubtext,
             textAlign = TextAlign.Center,
@@ -361,46 +344,43 @@ private fun Kpi(
 private fun WhatChangedCard(state: StatsUiState, modifier: Modifier = Modifier) {
     val insights = remember(state) { buildInsights(state) }
     StatsCard(modifier) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        Text(
+            text = "WHAT CHANGED",
+            style = MaterialTheme.typography.titleLarge.copy(
+                fontFamily = OswaldFontFamily,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.45.sp,
+            ),
+            color = DarkOnSurface,
+        )
+        Column(
+            modifier = Modifier.padding(top = 2.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .width(4.dp)
-                    .height(16.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(BrandLime),
-            )
-            Text(
-                text = "WHAT CHANGED",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.36.sp,
-                ),
-            )
-        }
-        insights.forEach { insight ->
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(SurfaceElevated)
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = insight.symbol,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = BrandLime,
-                    modifier = Modifier.width(28.dp),
-                )
-                Text(
-                    text = insight.text,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f),
-                )
+            insights.forEach { insight ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Icon(
+                        imageVector = insight.icon,
+                        contentDescription = null,
+                        tint = if (insight.emphasized) BrandLime else OliveSubtext,
+                        modifier = Modifier.size(15.dp),
+                    )
+                    Text(
+                        text = insight.text,
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontFamily = SpaceGroteskFontFamily,
+                            fontSize = 14.sp,
+                            fontWeight = if (insight.emphasized) FontWeight.Medium else FontWeight.Normal,
+                        ),
+                        color = if (insight.emphasized) DarkOnSurface else OliveSubtext,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
         }
     }
@@ -408,20 +388,44 @@ private fun WhatChangedCard(state: StatsUiState, modifier: Modifier = Modifier) 
 
 private fun buildInsights(state: StatsUiState): List<Insight> {
     if (state.currentPeriod.sessions == 0) {
-        return listOf(Insight("—", "No workouts logged in this period."))
+        return listOf(
+            Insight(
+                icon = Icons.AutoMirrored.Filled.ArrowForward,
+                text = "No workouts logged in this period.",
+                emphasized = false,
+            ),
+        )
     }
     val result = mutableListOf<Insight>()
     if (state.personalRecords.count > 0) {
         val suffix = if (state.personalRecords.count == 1) "record" else "records"
-        result += Insight("🏆", "${state.personalRecords.count} personal $suffix")
+        result += Insight(
+            icon = Icons.AutoMirrored.Filled.TrendingUp,
+            text = "${state.personalRecords.count} personal $suffix",
+            emphasized = true,
+        )
     }
     state.muscleChanges.filter { it.deltaWeeklySets < 0 }.minByOrNull { it.deltaWeeklySets }?.let {
-        result += Insight("↓", "${it.muscle.displayName} received ${abs(it.percentChange ?: 0.0).roundToInt()}% less work")
+        result += Insight(
+            icon = Icons.Filled.ArrowDownward,
+            text = "${it.muscle.displayName} received ${abs(it.percentChange ?: 0.0).roundToInt()}% less work",
+            emphasized = false,
+        )
     }
     state.muscleChanges.filter { it.deltaWeeklySets > 0 }.maxByOrNull { it.deltaWeeklySets }?.let {
-        result += Insight("↑", "${it.muscle.displayName} received ${abs(it.percentChange ?: 0.0).roundToInt()}% more work")
+        result += Insight(
+            icon = Icons.Filled.ArrowUpward,
+            text = "${it.muscle.displayName} received ${abs(it.percentChange ?: 0.0).roundToInt()}% more work",
+            emphasized = true,
+        )
     }
-    if (result.isEmpty()) result += Insight("→", "Training stayed close to the previous ${state.period.days} days.")
+    if (result.isEmpty()) {
+        result += Insight(
+            icon = Icons.AutoMirrored.Filled.ArrowForward,
+            text = "Training stayed close to the previous ${state.period.days} days.",
+            emphasized = false,
+        )
+    }
     return result.take(3)
 }
 
@@ -450,15 +454,19 @@ private fun MuscleCoverageCard(
             Text(
                 text = "MUSCLE COVERAGE",
                 style = MaterialTheme.typography.titleLarge.copy(
+                    fontFamily = OswaldFontFamily,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.36.sp,
+                    letterSpacing = 0.45.sp,
                 ),
+                color = DarkOnSurface,
             )
             Text(
                 text = "AVERAGE EFFECTIVE SETS PER WEEK · TAP FOR DETAILS",
                 style = MaterialTheme.typography.labelMedium.copy(
+                    fontFamily = SpaceGroteskFontFamily,
                     fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
                     letterSpacing = 0.66.sp,
                 ),
                 color = OliveSubtext,
@@ -467,32 +475,39 @@ private fun MuscleCoverageCard(
         if (rows.isEmpty()) {
             Text(
                 text = "No completed sets in this period.",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceGroteskFontFamily),
                 color = OliveSubtext,
                 modifier = Modifier.padding(vertical = 8.dp),
             )
         } else {
-            visibleRows.forEach { row ->
-                WeeklyMuscleRow(row, onClick = { onMuscleClick(row.volume.muscle) })
+            Column(
+                modifier = Modifier.padding(top = 2.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                visibleRows.forEach { row ->
+                    WeeklyMuscleRow(row, onClick = { onMuscleClick(row.volume.muscle) })
+                }
             }
             if (rows.size > 6) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
+                        .padding(top = 2.dp)
                         .clip(RoundedCornerShape(4.dp))
                         .background(SurfaceElevated)
                         .clickable(onClick = onToggleShowAll)
-                        .padding(vertical = 8.dp),
+                        .padding(vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
                 ) {
                     Text(
                         text = if (showAll) "SHOW LESS" else "SHOW ALL ${rows.size}",
                         color = BrandLime,
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            letterSpacing = 0.66.sp,
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontFamily = OswaldFontFamily,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            letterSpacing = 0.7.sp,
                         ),
                     )
                     Icon(
@@ -526,25 +541,53 @@ private fun WeeklyMuscleRow(row: CoverageRow, onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .semantics {
                 contentDescription = "${row.volume.muscle.displayName}, ${formatSetCount(row.currentWeekly)} effective sets per week"
-            }
-            .padding(vertical = 4.dp),
+            },
         verticalArrangement = Arrangement.spacedBy(5.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
             Text(
                 text = row.volume.muscle.displayName,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                style = MaterialTheme.typography.titleMedium.copy(
+                    fontFamily = SpaceGroteskFontFamily,
+                    fontSize = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = (-0.15).sp,
+                ),
+                color = DarkOnSurface,
                 modifier = Modifier.weight(1f),
             )
-            Text(
-                text = "${formatSetCount(row.currentWeekly)}/wk",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                ),
-            )
-            if (abs(delta) >= 0.05) {
-                ChangeLabel(formatSignedSets(delta), direction(delta), Modifier.padding(start = 8.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    text = "${formatSetCount(row.currentWeekly)}/wk",
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontFamily = OswaldFontFamily,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = (-0.15).sp,
+                    ),
+                    color = DarkOnSurface,
+                )
+                if (abs(delta) >= 0.05) {
+                    ChangeLabel(formatSignedSets(delta), direction(delta))
+                } else {
+                    Text(
+                        text = "0",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = SpaceGroteskFontFamily,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.66.sp,
+                        ),
+                        color = OliveSubtext,
+                    )
+                }
             }
         }
         Box(
@@ -554,13 +597,15 @@ private fun WeeklyMuscleRow(row: CoverageRow, onClick: () -> Unit) {
                 .clip(RoundedCornerShape(12.dp))
                 .background(SurfaceChip),
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth(animatedFraction)
-                    .height(6.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(color),
-            )
+            if (animatedFraction > 0f) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(animatedFraction)
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(color),
+                )
+            }
         }
     }
 }
@@ -573,22 +618,29 @@ private fun ExerciseProgressCard(state: StatsUiState, modifier: Modifier = Modif
                 Text(
                     text = "EXERCISE PROGRESS",
                     style = MaterialTheme.typography.titleLarge.copy(
+                        fontFamily = OswaldFontFamily,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 0.36.sp,
+                        letterSpacing = 0.45.sp,
                     ),
+                    color = DarkOnSurface,
                     modifier = Modifier.weight(1f),
                 )
                 if (state.personalRecords.count > 0) {
                     Box(
                         modifier = Modifier
                             .clip(TagShape)
-                            .background(BrandLime.copy(alpha = 0.16f))
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                            .background(BrandLime.copy(alpha = 0.2f))
+                            .padding(horizontal = 8.dp, vertical = 2.dp),
                     ) {
                         Text(
-                            text = "${state.personalRecords.count} PR${if (state.personalRecords.count == 1) "" else "s"}",
-                            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
+                            text = "${state.personalRecords.count} PR${if (state.personalRecords.count == 1) "" else "S"}",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontFamily = SpaceGroteskFontFamily,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.5.sp,
+                            ),
                             color = BrandLime,
                         )
                     }
@@ -597,7 +649,9 @@ private fun ExerciseProgressCard(state: StatsUiState, modifier: Modifier = Modif
             Text(
                 text = "BEST PERFORMANCE VS PREVIOUS ${state.period.days} DAYS",
                 style = MaterialTheme.typography.labelMedium.copy(
+                    fontFamily = SpaceGroteskFontFamily,
                     fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
                     letterSpacing = 0.66.sp,
                 ),
                 color = OliveSubtext,
@@ -606,12 +660,15 @@ private fun ExerciseProgressCard(state: StatsUiState, modifier: Modifier = Modif
         if (state.exerciseProgress.isEmpty()) {
             Text(
                 text = "No comparable exercise performances yet.",
-                style = MaterialTheme.typography.bodyMedium,
+                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceGroteskFontFamily),
                 color = OliveSubtext,
                 modifier = Modifier.padding(vertical = 8.dp),
             )
         } else {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Column(
+                modifier = Modifier.padding(top = 2.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 state.exerciseProgress.take(5).forEach { signal ->
                     ProgressRow(
                         signal = signal,
@@ -633,84 +690,86 @@ private fun ProgressRow(signal: ExerciseProgressSignal, unit: WeightUnit, hasPr:
             .background(SurfaceElevated)
             .padding(horizontal = 10.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .padding(end = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
             Text(
                 text = signal.name,
-                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontFamily = SpaceGroteskFontFamily,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                ),
+                color = DarkOnSurface,
             )
             Text(
                 text = if (signal.isBodyweight) "BEST SET" else "ESTIMATED 1RM",
                 style = MaterialTheme.typography.labelMedium.copy(
+                    fontFamily = SpaceGroteskFontFamily,
                     fontSize = 11.sp,
+                    fontWeight = FontWeight.Bold,
                     letterSpacing = 0.66.sp,
                 ),
                 color = OliveSubtext,
             )
         }
-        Text(
-            text = if (signal.isBodyweight) {
-                "${signal.currentValue.roundToInt()} reps"
-            } else {
-                "${formatWeightNumber(convertFromKg(signal.currentValue, unit))} ${unit.label()}"
-            },
-            style = MaterialTheme.typography.titleLarge.copy(
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-            ),
-            color = BrandLime,
-        )
-        if (hasPr) {
-            Box(
-                modifier = Modifier
-                    .padding(start = 8.dp)
-                    .clip(TagShape)
-                    .background(BrandLime)
-                    .padding(horizontal = 6.dp, vertical = 2.dp),
-            ) {
-                Text(
-                    text = "PR",
-                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
-                    color = DarkOnPrimary,
-                )
-            }
-        } else if (signal.percentChange != null) {
-            ChangeLabel(
-                text = formatPercent(signal.percentChange),
-                direction = direction(signal.percentChange),
-                modifier = Modifier.padding(start = 8.dp),
-            )
-        } else {
+        Column(
+            horizontalAlignment = Alignment.End,
+            verticalArrangement = Arrangement.spacedBy(1.dp),
+        ) {
             Text(
-                text = "NEW",
-                style = MaterialTheme.typography.labelSmall,
-                color = OliveSubtext,
-                modifier = Modifier.padding(start = 8.dp),
+                text = if (signal.isBodyweight) {
+                    "${signal.currentValue.roundToInt()} reps"
+                } else {
+                    "${formatWeightNumber(convertFromKg(signal.currentValue, unit))} ${unit.label()}"
+                },
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontFamily = OswaldFontFamily,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.36.sp,
+                ),
+                color = BrandLime,
             )
+            when {
+                hasPr -> {
+                    Text(
+                        text = if (signal.percentChange != null) "${formatPercent(signal.percentChange)} (PR)" else "PR",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = SpaceGroteskFontFamily,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.66.sp,
+                        ),
+                        color = OliveSubtext,
+                    )
+                }
+                signal.percentChange != null -> {
+                    ChangeLabel(
+                        text = formatPercent(signal.percentChange),
+                        direction = direction(signal.percentChange),
+                    )
+                }
+                else -> {
+                    Text(
+                        text = "NEW",
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontFamily = SpaceGroteskFontFamily,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.66.sp,
+                        ),
+                        color = OliveSubtext,
+                    )
+                }
+            }
         }
     }
-}
-
-@Composable
-private fun StatsExplanationDialog(onDismiss: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
-        containerColor = SurfaceCard,
-        title = { Text("How statistics work") },
-        text = {
-            Text(
-                "The selected range is compared with the immediately preceding range of the same length. " +
-                    "Logged sets counts every completed row, including left and right rows separately. " +
-                    "Muscle coverage uses effective sets: a primary muscle gets 1, a secondary muscle 0.5, " +
-                    "and each unilateral side 0.5. Coverage is normalized to an average week so 7d, 28d, " +
-                    "and 90d remain comparable. Exercise progress compares estimated 1RM for loaded movements " +
-                    "and best-set reps for bodyweight movements. Estimated 1RM uses the Epley formula.",
-                style = MaterialTheme.typography.bodyMedium,
-            )
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("Got it") } },
-    )
 }
 
 @Composable
@@ -738,8 +797,8 @@ private fun StatsCard(
 @Composable
 private fun ChangeLabel(text: String, direction: Direction, modifier: Modifier = Modifier) {
     val color = when (direction) {
-        Direction.Up -> VolumeGreen
-        Direction.Down -> DestructiveCoral
+        Direction.Up -> BrandLime
+        Direction.Down -> OliveSubtext
         Direction.Flat -> OliveSubtext
     }
     val arrow = when (direction) {
@@ -749,14 +808,19 @@ private fun ChangeLabel(text: String, direction: Direction, modifier: Modifier =
     }
     Text(
         text = "$arrow $text",
-        style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
+        style = MaterialTheme.typography.labelSmall.copy(
+            fontFamily = SpaceGroteskFontFamily,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 0.66.sp,
+        ),
         color = color,
         modifier = modifier,
         maxLines = 1,
     )
 }
 
-private data class Insight(val symbol: String, val text: String)
+private data class Insight(val icon: ImageVector, val text: String, val emphasized: Boolean)
 private data class CoverageRow(val volume: MuscleVolume, val currentWeekly: Double, val previousWeekly: Double)
 private data class SignedValue(val text: String, val direction: Direction)
 private enum class Direction { Up, Down, Flat }
