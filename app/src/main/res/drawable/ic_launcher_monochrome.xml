@@ -6,7 +6,7 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Two-tone cyan dumbbell on a -35 diagonal, scaled into the adaptive-icon safe zone. -->
+    <!-- Same silhouette as the foreground, tinted by the launcher or Quick Settings. -->
     <group
         android:pivotX="54"
         android:pivotY="54"
