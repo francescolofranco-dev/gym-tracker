@@ -17,6 +17,7 @@ import javax.inject.Inject
 data class SettingsContent(
     val unit: WeightUnit,
     val keepScreenOnDuringSession: Boolean,
+    val timerOverlayEnabled: Boolean,
 )
 
 @HiltViewModel
@@ -27,11 +28,16 @@ class SettingsViewModel @Inject constructor(
     val content: StateFlow<Loadable<SettingsContent>> = combine(
         prefs.unit,
         prefs.keepScreenOnDuringSession,
-    ) { unit, keepScreenOn ->
-        SettingsContent(unit, keepScreenOn)
+        prefs.timerOverlayEnabled,
+    ) { unit, keepScreenOn, timerOverlayEnabled ->
+        SettingsContent(unit, keepScreenOn, timerOverlayEnabled)
     }.asLoadableState(viewModelScope)
 
     fun setUnit(u: WeightUnit) = viewModelScope.launch { prefs.setUnit(u) }
+
+    fun setTimerOverlayEnabled(enabled: Boolean) = viewModelScope.launch {
+        prefs.setTimerOverlayEnabled(enabled)
+    }
 
     fun setKeepScreenOnDuringSession(enabled: Boolean) = viewModelScope.launch {
         prefs.setKeepScreenOnDuringSession(enabled)

@@ -26,6 +26,7 @@ class UserPrefs(private val context: Context) {
         val DRIVE_BACKUP_ENABLED = booleanPreferencesKey("drive_backup_enabled")
         val LAST_BACKUP_AT = longPreferencesKey("last_backup_at")
         val HAS_OFFERED_DRIVE_RESTORE = booleanPreferencesKey("has_offered_drive_restore")
+        val TIMER_OVERLAY_ENABLED = booleanPreferencesKey("timer_overlay_enabled")
         val KEEP_SCREEN_ON_DURING_SESSION = booleanPreferencesKey("keep_screen_on_during_session")
     }
 
@@ -57,6 +58,14 @@ class UserPrefs(private val context: Context) {
 
     val keepScreenOnDuringSession: Flow<Boolean> = context.dataStore.data.map { p ->
         p[Keys.KEEP_SCREEN_ON_DURING_SESSION] ?: false
+    }
+
+    val timerOverlayEnabled: Flow<Boolean> = context.dataStore.data.map { p ->
+        p[Keys.TIMER_OVERLAY_ENABLED] ?: true
+    }
+
+    suspend fun setTimerOverlayEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[Keys.TIMER_OVERLAY_ENABLED] = enabled }
     }
 
     suspend fun setUnit(unit: WeightUnit) {

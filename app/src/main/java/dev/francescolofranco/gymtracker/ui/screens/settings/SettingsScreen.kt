@@ -247,7 +247,10 @@ fun SettingsScreen(
                         SettingsGroupDivider()
                         NotificationRow()
                         SettingsGroupDivider()
-                        FloatingTimerRow()
+                        FloatingTimerRow(
+                            enabled = settings.timerOverlayEnabled,
+                            onChange = settingsViewModel::setTimerOverlayEnabled,
+                        )
                     }
                 }
             }
@@ -822,6 +825,21 @@ private fun formatRelativeTime(at: Instant): String {
 
 @Composable
 private fun KeepScreenOnRow(enabled: Boolean, onChange: (Boolean) -> Unit) {
+    SettingsSwitchRow(
+        title = "KEEP SCREEN AWAKE",
+        subtitle = "Prevent display sleep during active workout session",
+        enabled = enabled,
+        onChange = onChange,
+    )
+}
+
+@Composable
+private fun SettingsSwitchRow(
+    title: String,
+    subtitle: String,
+    enabled: Boolean,
+    onChange: (Boolean) -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -834,7 +852,7 @@ private fun KeepScreenOnRow(enabled: Boolean, onChange: (Boolean) -> Unit) {
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
-                text = "KEEP SCREEN AWAKE",
+                text = title,
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontFamily = OswaldFontFamily,
                     fontSize = 18.sp,
@@ -844,7 +862,7 @@ private fun KeepScreenOnRow(enabled: Boolean, onChange: (Boolean) -> Unit) {
                 color = DarkOnSurface,
             )
             Text(
-                text = "Prevent display sleep during active workout session",
+                text = subtitle,
                 style = MaterialTheme.typography.bodySmall.copy(
                     fontFamily = SpaceGroteskFontFamily,
                     fontSize = 12.sp,
@@ -855,6 +873,7 @@ private fun KeepScreenOnRow(enabled: Boolean, onChange: (Boolean) -> Unit) {
         Switch(
             checked = enabled,
             onCheckedChange = onChange,
+            modifier = Modifier.semantics { contentDescription = title },
             colors = SwitchDefaults.colors(
                 checkedThumbColor = DarkOnPrimary,
                 checkedTrackColor = BrandLime,
@@ -942,7 +961,7 @@ private fun UnitsRow(unit: WeightUnit, onChange: (WeightUnit) -> Unit) {
 }
 
 @Composable
-private fun FloatingTimerRow() {
+private fun FloatingTimerRow(enabled: Boolean, onChange: (Boolean) -> Unit) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var granted by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
@@ -955,21 +974,30 @@ private fun FloatingTimerRow() {
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
-    SettingsRow(
-        icon = Icons.Filled.Visibility,
-        iconTint = if (granted) BrandLime else OliveSubtext,
+    val openPermissionSettings = {
+        context.startActivity(
+            Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")),
+        )
+    }
+    SettingsSwitchRow(
         title = stringResource(R.string.timer_overlay_title).uppercase(),
-        subtitle = stringResource(
-            if (granted) R.string.timer_overlay_enabled else R.string.timer_overlay_disabled,
-        ),
-        badgeText = if (granted) "ON" else "OFF",
-        badgeColor = if (granted) BrandLime else OliveSubtext,
-        onClick = {
-            context.startActivity(
-                Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")),
-            )
+        subtitle = stringResource(R.string.timer_overlay_description),
+        enabled = enabled,
+        onChange = { show ->
+            onChange(show)
+            if (show && !granted) openPermissionSettings()
         },
     )
+    if (enabled && !granted) {
+        SettingsRow(
+            icon = Icons.Filled.Visibility,
+            iconTint = OliveSubtext,
+            title = stringResource(R.string.timer_overlay_permission),
+            subtitle = stringResource(R.string.timer_overlay_disabled),
+            badgeText = "ALLOW",
+            onClick = openPermissionSettings,
+        )
+    }
 }
 
 @Composable

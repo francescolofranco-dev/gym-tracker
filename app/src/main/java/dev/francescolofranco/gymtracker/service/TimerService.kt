@@ -18,6 +18,12 @@ import androidx.core.app.ServiceCompat
 import androidx.core.content.ContextCompat
 import dev.francescolofranco.gymtracker.MainActivity
 import dev.francescolofranco.gymtracker.R
+import dev.francescolofranco.gymtracker.data.prefs.UserPrefs
+import kotlinx.coroutines.MainScope
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -32,7 +38,27 @@ import kotlinx.coroutines.flow.asStateFlow
 class TimerService : Service() {
     private val overlay by lazy { TimerOverlay(this) }
 
+    private val overlayScope = MainScope()
+    private var overlayEnabled = false
+
+    override fun onCreate() {
+        super.onCreate()
+        overlayScope.launch {
+            combine(UserPrefs(this@TimerService).timerOverlayEnabled.distinctUntilChanged(), state) {
+                enabled, timerState -> enabled to timerState
+            }.collect { (enabled, timerState) ->
+                overlayEnabled = enabled
+                updateOverlay(timerState)
+            }
+        }
+    }
+
+    private fun updateOverlay(state: TimerState) {
+        if (overlayEnabled && state is TimerState.Running) overlay.show(state) else overlay.hide()
+    }
+
     override fun onDestroy() {
+        overlayScope.cancel()
         overlay.hide()
         _state.value = TimerState.Stopped
         super.onDestroy()
@@ -94,7 +120,7 @@ class TimerService : Service() {
             notification,
             serviceType,
         )
-        if (state is TimerState.Running) overlay.show(state) else overlay.hide()
+        updateOverlay(state)
     }
 
     private fun buildNotification(state: TimerState): Notification {

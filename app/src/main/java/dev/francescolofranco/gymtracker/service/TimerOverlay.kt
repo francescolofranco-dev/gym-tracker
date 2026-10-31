@@ -5,6 +5,7 @@ import android.content.Context
 import android.graphics.Color
 import android.graphics.PixelFormat
 import android.graphics.Typeface
+import android.graphics.drawable.GradientDrawable
 import android.provider.Settings
 import android.view.Gravity
 import android.view.MotionEvent
@@ -47,7 +48,11 @@ internal class TimerOverlay(private val context: Context) {
                 includeFontPadding = false
                 setShadowLayer(dp(2).toFloat(), 0f, 0f, Color.BLACK)
                 gravity = Gravity.CENTER
-                setPadding(dp(6), dp(4), dp(6), dp(4))
+                background = GradientDrawable().apply {
+                    setColor(Color.argb(184, 20, 23, 20))
+                    cornerRadius = dp(8).toFloat()
+                }
+                setPadding(dp(10), dp(6), dp(10), dp(6))
                 contentDescription = context.getString(R.string.timer_overlay_drag)
             }
             enableDragging(timer)
