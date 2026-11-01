@@ -12,6 +12,7 @@ on:
       - "**.md"
       - "docs/**"
       - "scripts/**"
+      - "app/src/main/play/listings/**"
   workflow_dispatch:
 
 concurrency:
