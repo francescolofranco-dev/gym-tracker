@@ -96,12 +96,31 @@ keyAlias=upload
 keyPassword=...
 ```
 
-Without it, release artifacts are built unsigned. Bump `versionCode` and build the bundle to upload:
+Without it, release artifacts are built unsigned. `versionCode` is the git commit count, so every
+release commit gets a higher code automatically; `versionName` is set by the release script.
 
 ```bash
 ./gradlew :app:bundleRelease
 # app/build/outputs/bundle/release/app-release.aab
 ```
+
+To ship an update:
+
+1. Edit `app/src/main/play/release-notes/en-US/default.txt`.
+2. Run `scripts/release.sh X.Y.Z`. It bumps `versionName`, runs the checks, commits, tags `vX.Y.Z`
+   and pushes.
+3. The tag triggers `.github/workflows/release.yml`, which tests, builds the signed bundle and
+   uploads it to the Play **internal** track. Watch it with `gh run watch`.
+4. Promote it in Play Console, or with
+   `./gradlew :app:promoteReleaseArtifact --from-track internal --promote-track production`.
+
+The workflow can also be started manually (Actions → Play release) with a chosen track and
+release status. Use `draft` until the app has been published once.
+
+The workflow needs these repository secrets: `KEYSTORE_BASE64` (base64 upload keystore),
+`KEYSTORE_PASSWORD`, and `PLAY_SERVICE_ACCOUNT_JSON` (Play Developer API service account key).
+To upload from your machine instead, add `playServiceAccount=/absolute/path/to/key.json` to
+`keystore.properties` and run `./gradlew :app:publishReleaseBundle`.
 
 ## Project Structure
 

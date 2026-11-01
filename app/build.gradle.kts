@@ -8,11 +8,17 @@ val keystoreProperties = Properties().apply {
     if (file.exists()) file.inputStream().use(::load)
 }
 
+// Monotonic, reproducible versionCode: the number of commits reachable from HEAD.
+// CI must check out full history (fetch-depth: 0) for this to match local builds.
+val gitCommitCount = providers.exec { commandLine("git", "rev-list", "--count", "HEAD") }
+    .standardOutput.asText.map { it.trim().toInt() }
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.play.publisher)
 }
 
 android {
@@ -23,7 +29,7 @@ android {
         applicationId = "dev.francescolofranco.gymtracker"
         minSdk = 31
         targetSdk = 37
-        versionCode = 3
+        versionCode = gitCommitCount.get()
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -74,9 +80,22 @@ android {
         }
     }
 
+    playConfigs {
+        // Benchmark builds are for local device testing only, never Play uploads.
+        register("benchmark") { enabled.set(false) }
+    }
+
     ksp {
         arg("room.schemaLocation", "$projectDir/schemas")
     }
+}
+
+// Play uploads: `./gradlew :app:publishReleaseBundle` (see README "Play Store release").
+// Credentials come from keystore.properties `playServiceAccount` or ANDROID_PUBLISHER_CREDENTIALS.
+play {
+    keystoreProperties.getProperty("playServiceAccount")?.let { serviceAccountCredentials.set(file(it)) }
+    defaultToAppBundles.set(true)
+    track.set("internal")
 }
 
 kotlin {
