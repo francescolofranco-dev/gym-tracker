@@ -30,7 +30,7 @@ android {
         minSdk = 31
         targetSdk = 37
         versionCode = gitCommitCount.get()
-        versionName = "1.0.0"
+        versionName = "1.0.${gitCommitCount.get()}"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }

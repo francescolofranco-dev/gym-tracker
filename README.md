@@ -96,31 +96,31 @@ keyAlias=upload
 keyPassword=...
 ```
 
-Without it, release artifacts are built unsigned. `versionCode` is the git commit count, so every
-release commit gets a higher code automatically; `versionName` is set by the release script.
+Without it, release artifacts are built unsigned. `versionCode` is the git commit count and
+`versionName` is `1.0.<versionCode>`, so every commit produces a higher version automatically.
 
 ```bash
 ./gradlew :app:bundleRelease
 # app/build/outputs/bundle/release/app-release.aab
 ```
 
-To ship an update:
+Every push to `main` that changes the app runs `.github/workflows/release.yml`: unit tests, signed
+bundle, upload to Google Play, and a `play/<versionCode>` tag marking what was published. Release
+notes are the commit subjects since the previous `play/*` tag. Docs-only pushes are skipped.
 
-1. Edit `app/src/main/play/release-notes/en-US/default.txt`.
-2. Run `scripts/release.sh X.Y.Z`. It bumps `versionName`, runs the checks, commits, tags `vX.Y.Z`
-   and pushes.
-3. The tag triggers `.github/workflows/release.yml`, which tests, builds the signed bundle and
-   uploads it to the Play **internal** track. Watch it with `gh run watch`.
-4. Promote it in Play Console, or with
-   `./gradlew :app:promoteReleaseArtifact --from-track internal --promote-track production`.
+Repository variables choose the destination (`gh variable set NAME --body VALUE`):
 
-The workflow can also be started manually (Actions → Play release) with a chosen track and
-release status. Use `draft` until the app has been published once.
+| Variable | Default | Values |
+|---|---|---|
+| `PLAY_TRACK` | `internal` | `internal`, `alpha`, `beta`, `production` |
+| `PLAY_RELEASE_STATUS` | `completed` | `completed`, `draft`, `inProgress` (staged) |
+| `PLAY_USER_FRACTION` | unset | rollout share for `inProgress`, e.g. `0.2` |
 
-The workflow needs these repository secrets: `KEYSTORE_BASE64` (base64 upload keystore),
-`KEYSTORE_PASSWORD`, and `PLAY_SERVICE_ACCOUNT_JSON` (Play Developer API service account key).
-To upload from your machine instead, add `playServiceAccount=/absolute/path/to/key.json` to
-`keystore.properties` and run `./gradlew :app:publishReleaseBundle`.
+Required secrets: `KEYSTORE_BASE64` (base64 upload keystore), `KEYSTORE_PASSWORD`, and
+`PLAY_SERVICE_ACCOUNT_JSON` (Play Developer API service account key). Without the last one the
+workflow builds the bundle but skips the upload. To upload from your machine instead, add
+`playServiceAccount=/absolute/path/to/key.json` to `keystore.properties` and run
+`./gradlew :app:publishReleaseBundle`.
 
 ## Project Structure
 
