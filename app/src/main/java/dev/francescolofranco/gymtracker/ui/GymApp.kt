@@ -21,8 +21,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FitnessCenter
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -45,13 +43,14 @@ import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
 import dev.francescolofranco.gymtracker.ui.theme.MutedOlive
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceBase
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
-import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import dev.francescolofranco.gymtracker.ui.components.AppLogo
+import dev.francescolofranco.gymtracker.ui.components.LogoVariant
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.nav.ExerciseRoutes
 import dev.francescolofranco.gymtracker.ui.nav.SessionRoutes
@@ -219,28 +218,11 @@ private fun TopLevelScaffold(
                         .height(56.dp)
                         .padding(horizontal = 16.dp),
                 ) {
-                    Box(
-                        contentAlignment = Alignment.Center,
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(SurfaceElevated),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.FitnessCenter,
-                            contentDescription = null,
-                            tint = BrandLime,
-                            modifier = Modifier.size(18.dp),
-                        )
-                    }
-                    Text(
-                        text = stringResource(dev.francescolofranco.gymtracker.R.string.app_name).uppercase(),
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.5.sp,
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface,
+                    AppLogo(
+                        size = 36.dp,
+                        variant = LogoVariant.FullLockup,
+                        wordmark = stringResource(dev.francescolofranco.gymtracker.R.string.app_name),
+                        showContainer = true,
                     )
                 }
                 HorizontalDivider(color = EditorialBorder, thickness = 1.dp)

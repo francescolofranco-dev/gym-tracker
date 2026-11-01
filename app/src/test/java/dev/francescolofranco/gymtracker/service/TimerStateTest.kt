@@ -24,4 +24,13 @@ class TimerStateTest {
         assertFalse(TimerState.Stopped.isRunning)
         assertTrue(TimerState.Running(0).isRunning)
     }
+
+    @Test
+    fun overlayHidesWhenAppIsActiveAndInFocus() {
+        val running = TimerState.Running(baseElapsedRealtime = 1_000)
+        assertTrue(TimerService.shouldShowOverlay(overlayEnabled = true, state = running, appInFocus = false))
+        assertFalse(TimerService.shouldShowOverlay(overlayEnabled = true, state = running, appInFocus = true))
+        assertFalse(TimerService.shouldShowOverlay(overlayEnabled = false, state = running, appInFocus = false))
+        assertFalse(TimerService.shouldShowOverlay(overlayEnabled = true, state = TimerState.Stopped, appInFocus = false))
+    }
 }

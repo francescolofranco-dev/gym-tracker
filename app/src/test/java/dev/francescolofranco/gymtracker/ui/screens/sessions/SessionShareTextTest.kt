@@ -5,6 +5,7 @@ import dev.francescolofranco.gymtracker.data.db.entities.SessionEntity
 import dev.francescolofranco.gymtracker.data.db.entities.SessionExerciseEntity
 import dev.francescolofranco.gymtracker.data.db.entities.SetLogEntity
 import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetail
+import dev.francescolofranco.gymtracker.domain.ExerciseSide
 import dev.francescolofranco.gymtracker.domain.Muscle
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import java.time.Duration
@@ -95,7 +96,84 @@ class SessionShareTextTest {
 
         assertEquals(1, summary.exerciseCount)
         assertEquals(1, summary.setCount)
+        assertEquals("1 set", summary.exercises.single().setsLabel)
         assertEquals("BW", summary.exercises.single().firstSetWeightLabel(WeightUnit.KG))
+    }
+
+    @Test
+    fun `unilateral exercise formats completed sets per side`() {
+        val session = SessionEntity(
+            startedAt = Instant.parse("2026-08-23T09:55:00Z"),
+            acceptedAt = Instant.parse("2026-08-23T10:00:00Z"),
+            endedAt = Instant.parse("2026-08-23T10:25:00Z"),
+        )
+        val details = listOf(
+            detail(
+                id = 1,
+                name = "Dumbbell curl",
+                sets = listOf(
+                    set(id = 1, sessionExerciseId = 1, setNumber = 1, side = ExerciseSide.LEFT, reps = 10, kg = 14.0, completed = true),
+                    set(id = 2, sessionExerciseId = 1, setNumber = 1, side = ExerciseSide.RIGHT, reps = 10, kg = 14.0, completed = true),
+                    set(id = 3, sessionExerciseId = 1, setNumber = 2, side = ExerciseSide.LEFT, reps = 9, kg = 14.0, completed = true),
+                    set(id = 4, sessionExerciseId = 1, setNumber = 2, side = ExerciseSide.RIGHT, reps = 9, kg = 14.0, completed = true),
+                    set(id = 5, sessionExerciseId = 1, setNumber = 3, side = ExerciseSide.LEFT, reps = 8, kg = 14.0, completed = true),
+                    set(id = 6, sessionExerciseId = 1, setNumber = 3, side = ExerciseSide.RIGHT, reps = 8, kg = 14.0, completed = true),
+                ),
+            ),
+            detail(
+                id = 2,
+                name = "Single-arm row",
+                sets = listOf(
+                    set(id = 7, sessionExerciseId = 2, setNumber = 1, side = ExerciseSide.LEFT, reps = 12, kg = 24.0, completed = true),
+                    set(id = 8, sessionExerciseId = 2, setNumber = 1, side = ExerciseSide.RIGHT, reps = 12, kg = 24.0, completed = true),
+                ),
+            ),
+        )
+
+        val summary = summarizeFinishedSession(details)
+        assertEquals(2, summary.exerciseCount)
+        assertEquals(8, summary.setCount)
+        assertEquals("3 sets/side", summary.exercises[0].setsLabel)
+        assertEquals("1 set/side", summary.exercises[1].setsLabel)
+
+        val text = buildSessionShareText(
+            session = session,
+            details = details,
+            unit = WeightUnit.KG,
+            zoneId = ZoneOffset.UTC,
+            locale = Locale.ENGLISH,
+        )
+
+        assertTrue(text.contains("• Dumbbell curl — 3 sets/side · 14 kg"))
+        assertTrue(text.contains("• Single-arm row — 1 set/side · 24 kg"))
+    }
+
+    @Test
+    fun `unequal or mixed unilateral sets do not claim equal sets per side`() {
+        val summary = summarizeFinishedSession(
+            listOf(
+                detail(
+                    id = 1,
+                    name = "Dumbbell curl",
+                    sets = listOf(
+                        set(id = 1, sessionExerciseId = 1, setNumber = 1, side = ExerciseSide.LEFT, reps = 10, kg = 14.0, completed = true),
+                        set(id = 2, sessionExerciseId = 1, setNumber = 1, side = ExerciseSide.RIGHT, reps = 10, kg = 14.0, completed = true),
+                        set(id = 3, sessionExerciseId = 1, setNumber = 2, side = ExerciseSide.LEFT, reps = 8, kg = 14.0, completed = true),
+                        set(id = 4, sessionExerciseId = 1, setNumber = 2, side = ExerciseSide.RIGHT, reps = 8, kg = 14.0, completed = false),
+                    ),
+                ),
+                detail(
+                    id = 2,
+                    name = "Lateral raise",
+                    sets = listOf(
+                        set(id = 5, sessionExerciseId = 2, setNumber = 1, side = ExerciseSide.LEFT, reps = 15, kg = 8.0, completed = true),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals("2 L + 1 R sets", summary.exercises[0].setsLabel)
+        assertEquals("1 L set", summary.exercises[1].setsLabel)
     }
 
     @Test
@@ -190,10 +268,13 @@ class SessionShareTextTest {
         kg: Double?,
         completed: Boolean,
         skipped: Boolean = false,
+        setNumber: Int = id.toInt(),
+        side: ExerciseSide = ExerciseSide.BOTH,
     ) = SetLogEntity(
         id = id,
         sessionExerciseId = sessionExerciseId,
-        setNumber = id.toInt(),
+        setNumber = setNumber,
+        side = side,
         reps = reps,
         kg = kg,
         isSkipped = skipped,

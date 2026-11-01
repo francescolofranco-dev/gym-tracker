@@ -255,7 +255,7 @@ private fun CompletedSessionContent(
                                             color = BrandLime,
                                         )
                                         Text(
-                                            text = "${exercise.setCount} ${if (exercise.setCount == 1) "set" else "sets"}",
+                                            text = exercise.setsLabel,
                                             style = MaterialTheme.typography.labelMedium,
                                             color = MutedOlive,
                                         )

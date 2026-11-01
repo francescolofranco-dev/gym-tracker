@@ -91,6 +91,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.R
 import dev.francescolofranco.gymtracker.data.backup.drive.DriveSnapshot
 import dev.francescolofranco.gymtracker.domain.WeightUnit
+import dev.francescolofranco.gymtracker.ui.components.AppLogo
+import dev.francescolofranco.gymtracker.ui.components.LogoVariant
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
@@ -1067,7 +1069,11 @@ private fun AboutRow(onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        IconBox(icon = Icons.Filled.Info, tint = BrandLime)
+        AppLogo(
+            size = 36.dp,
+            showContainer = true,
+            interactive = false,
+        )
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -1116,11 +1122,11 @@ private fun SettingsFooter() {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Icon(
-                imageVector = Icons.Filled.FitnessCenter,
-                contentDescription = null,
-                tint = OliveSubtext,
-                modifier = Modifier.size(14.dp),
+            AppLogo(
+                size = 16.dp,
+                variant = LogoVariant.Monochrome,
+                monochromeTint = OliveSubtext,
+                interactive = false,
             )
             Text(
                 text = "CRAFTED FOR SERIOUS LIFTERS UNDER HEAVY LOAD",
@@ -1240,25 +1246,37 @@ private fun GymTrackerAboutDialog(onDismiss: () -> Unit) {
                 }
             }
 
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = "GYM TRACKER ENGINE",
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontFamily = OswaldFontFamily,
-                        fontSize = 26.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.0.sp,
-                    ),
-                    color = DarkOnSurface,
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                AppLogo(
+                    size = 42.dp,
+                    showContainer = true,
                 )
-                Text(
-                    text = "Engineered for high-output hypertrophy & strength logging without cloud lock-in.",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontFamily = SpaceGroteskFontFamily,
-                        fontSize = 12.sp,
-                    ),
-                    color = SlateSubtext,
-                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Text(
+                        text = "GYM TRACKER ENGINE",
+                        style = MaterialTheme.typography.headlineMedium.copy(
+                            fontFamily = OswaldFontFamily,
+                            fontSize = 26.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 1.0.sp,
+                        ),
+                        color = DarkOnSurface,
+                    )
+                    Text(
+                        text = "Engineered for high-output hypertrophy & strength logging without cloud lock-in.",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontFamily = SpaceGroteskFontFamily,
+                            fontSize = 12.sp,
+                        ),
+                        color = SlateSubtext,
+                    )
+                }
             }
 
             // Telemetry spec grid

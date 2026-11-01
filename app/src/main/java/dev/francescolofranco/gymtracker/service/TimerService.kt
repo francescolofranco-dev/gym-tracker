@@ -40,21 +40,27 @@ class TimerService : Service() {
 
     private val overlayScope = MainScope()
     private var overlayEnabled = false
+    private var appInFocus = false
 
     override fun onCreate() {
         super.onCreate()
         overlayScope.launch {
-            combine(UserPrefs(this@TimerService).timerOverlayEnabled.distinctUntilChanged(), state) {
-                enabled, timerState -> enabled to timerState
-            }.collect { (enabled, timerState) ->
+            combine(
+                UserPrefs(this@TimerService).timerOverlayEnabled.distinctUntilChanged(),
+                state,
+                _appInFocus,
+            ) { enabled, timerState, inFocus ->
+                Triple(enabled, timerState, inFocus)
+            }.collect { (enabled, timerState, inFocus) ->
                 overlayEnabled = enabled
+                appInFocus = inFocus
                 updateOverlay(timerState)
             }
         }
     }
 
     private fun updateOverlay(state: TimerState) {
-        if (overlayEnabled && state is TimerState.Running) overlay.show(state) else overlay.hide()
+        if (shouldShowOverlay(overlayEnabled, state, appInFocus)) overlay.show(state as TimerState.Running) else overlay.hide()
     }
 
     override fun onDestroy() {
@@ -203,6 +209,18 @@ class TimerService : Service() {
 
         private val _state = MutableStateFlow<TimerState>(TimerState.Stopped)
         val state: StateFlow<TimerState> = _state.asStateFlow()
+
+        private val _appInFocus = MutableStateFlow(false)
+
+        fun setAppInFocus(inFocus: Boolean) {
+            _appInFocus.value = inFocus
+        }
+
+        internal fun shouldShowOverlay(
+            overlayEnabled: Boolean,
+            state: TimerState,
+            appInFocus: Boolean,
+        ): Boolean = overlayEnabled && !appInFocus && state is TimerState.Running
 
         fun send(ctx: Context, action: String) {
             val intent = Intent(ctx, TimerService::class.java).setAction(action)

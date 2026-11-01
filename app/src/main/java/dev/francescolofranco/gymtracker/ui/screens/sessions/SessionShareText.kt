@@ -2,6 +2,7 @@ package dev.francescolofranco.gymtracker.ui.screens.sessions
 
 import dev.francescolofranco.gymtracker.data.db.entities.SessionEntity
 import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetail
+import dev.francescolofranco.gymtracker.domain.ExerciseSide
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.domain.workoutDuration
 import dev.francescolofranco.gymtracker.domain.workoutStartedAt
@@ -13,6 +14,7 @@ import java.util.Locale
 data class SessionShareExercise(
     val name: String,
     val setCount: Int,
+    val setsLabel: String,
     val firstSetKg: Double?,
     val isBodyweight: Boolean,
 )
@@ -42,6 +44,7 @@ fun summarizeFinishedSession(details: List<SessionExerciseDetail>): SessionShare
             SessionShareExercise(
                 name = detail.exercise.name,
                 setCount = completedSets.size,
+                setsLabel = completedSetsLabel(completedSets.map { it.side }),
                 firstSetKg = firstSet.kg,
                 isBodyweight = detail.exercise.isBodyweight,
             )
@@ -74,7 +77,7 @@ fun buildSessionShareText(
             appendLine()
             appendLine()
             summary.exercises.forEachIndexed { index, exercise ->
-                append("• ${exercise.name} — ${plural(exercise.setCount, "set", "sets")}")
+                append("• ${exercise.name} — ${exercise.setsLabel}")
                 append(" · ${exercise.firstSetWeightLabel(unit)}")
                 if (index != summary.exercises.lastIndex) appendLine()
             }
@@ -83,6 +86,25 @@ fun buildSessionShareText(
         appendLine()
         appendLine()
         append("Tracked with Gym Tracker")
+    }
+}
+
+private fun completedSetsLabel(sides: List<ExerciseSide>): String {
+    val counts = sides.groupingBy { it }.eachCount()
+    val both = counts[ExerciseSide.BOTH] ?: 0
+    val left = counts[ExerciseSide.LEFT] ?: 0
+    val right = counts[ExerciseSide.RIGHT] ?: 0
+    return when {
+        left == 0 && right == 0 -> plural(both, "set", "sets")
+        both == 0 && left == right -> "${plural(left, "set", "sets")}/side"
+        else -> {
+            val parts = buildList {
+                if (both > 0) add("$both B")
+                if (left > 0) add("$left L")
+                if (right > 0) add("$right R")
+            }.joinToString(" + ")
+            "$parts ${if (sides.size == 1) "set" else "sets"}"
+        }
     }
 }
 
