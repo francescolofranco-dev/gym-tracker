@@ -28,16 +28,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.Notes
@@ -68,31 +65,23 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RichTooltip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.TooltipBox
-import androidx.compose.material3.TooltipAnchorPosition
-import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
-import androidx.compose.material3.rememberTooltipState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -120,8 +109,6 @@ import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceControl
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
-import dev.francescolofranco.gymtracker.ui.theme.VolumeGreen
-import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -895,10 +882,6 @@ private fun ExerciseSectionHeader(
                     isComplete = isComplete,
                     isFirstTime = hints.isEmpty(),
                     personalRecords = personalRecords,
-                    note = sessionNote,
-                    pinnedNote = pinnedNote,
-                    isNoteCarried = !detail.sessionExercise.noteCarryForward,
-                    onEditNote = onEditExerciseNotes,
                 )
                 Text(
                     text = buildList {
@@ -1134,10 +1117,6 @@ fun ExerciseCard(
                     isComplete = isComplete,
                     isFirstTime = hints.isEmpty(),
                     personalRecords = personalRecords,
-                    note = detail.sessionExercise.notes?.takeIf { it.isNotBlank() },
-                    pinnedNote = detail.sessionExercise.pinnedNotes?.takeIf { it.isNotBlank() },
-                    isNoteCarried = !detail.sessionExercise.noteCarryForward,
-                    onEditNote = onEditExerciseNotes,
                 )
                 Text(
                     text = buildList {
@@ -1248,7 +1227,7 @@ fun ExerciseCard(
 }
 
 /**
- * Keeps an exercise name readable when completion, record, and note badges all appear together.
+ * Keeps an exercise name readable when completion and record badges appear together.
  * A [Row] with a weighted name allowed the badges to consume nearly all of the name's width,
  * causing short names such as "Lat Pullover" to wrap one character per line. A [FlowRow] keeps
  * the normal inline layout when it fits and wraps badges to a new line when it does not.
@@ -1260,10 +1239,6 @@ private fun ExerciseNameAndBadges(
     isComplete: Boolean,
     isFirstTime: Boolean,
     personalRecords: Set<PersonalRecordType>,
-    note: String?,
-    pinnedNote: String?,
-    isNoteCarried: Boolean,
-    onEditNote: () -> Unit,
 ) {
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
@@ -1285,31 +1260,6 @@ private fun ExerciseNameAndBadges(
         }
         if (personalRecords.isNotEmpty()) {
             PersonalRecordBadge(personalRecords)
-        }
-        if (pinnedNote != null || note != null) {
-            // Keep the two note types together when the header wraps, while still allowing
-            // them to wrap independently on narrow screens or with larger system text.
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                itemVerticalAlignment = Alignment.CenterVertically,
-            ) {
-                if (pinnedNote != null) {
-                    NoteIndicator(
-                        note = pinnedNote,
-                        isPinned = true,
-                        isCarried = false,
-                        onEdit = onEditNote,
-                    )
-                }
-                if (note != null) {
-                    NoteIndicator(
-                        note = note,
-                        isPinned = false,
-                        isCarried = isNoteCarried,
-                        onEdit = onEditNote,
-                    )
-                }
-            }
         }
     }
 }
@@ -1373,92 +1323,6 @@ private fun PersonalRecordBadge(records: Set<PersonalRecordType>) {
             ),
             color = DarkOnPrimary,
         )
-    }
-}
-
-/**
- * A quiet note badge with a full-size touch target around its compact painted surface.
- * The persistent tooltip keeps the complete note and its Edit action available on tap.
- */
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun NoteIndicator(
-    note: String,
-    isPinned: Boolean,
-    isCarried: Boolean,
-    onEdit: () -> Unit,
-) {
-    val label = when {
-        isPinned -> "Pinned note"
-        isCarried -> "From last session"
-        else -> "Note"
-    }
-    val badgeLabel = when {
-        isPinned -> "Pinned"
-        isCarried -> "Previous note"
-        else -> "Note"
-    }
-    val containerColor = if (isPinned) MaterialTheme.colorScheme.primary.copy(alpha = 0.10f)
-        else MaterialTheme.colorScheme.surfaceContainerHighest
-    val contentColor = if (isPinned) MaterialTheme.colorScheme.primary
-        else MaterialTheme.colorScheme.onSurfaceVariant
-    val tooltipState = rememberTooltipState(isPersistent = true)
-    val scope = rememberCoroutineScope()
-    TooltipBox(
-        positionProvider = TooltipDefaults.rememberTooltipPositionProvider(TooltipAnchorPosition.Above),
-        tooltip = {
-            RichTooltip(
-                title = { Text(label) },
-                action = {
-                    TextButton(
-                        onClick = {
-                            scope.launch { tooltipState.dismiss() }
-                            onEdit()
-                        },
-                    ) { Text("Edit") }
-                },
-            ) {
-                Text(
-                    text = note,
-                    modifier = Modifier
-                        .sizeIn(maxHeight = 240.dp)
-                        .verticalScroll(rememberScrollState()),
-                )
-            }
-        },
-        state = tooltipState,
-    ) {
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .clickable(role = Role.Button, onClickLabel = "Read $label") {
-                    scope.launch { tooltipState.show() }
-                }
-                .sizeIn(minWidth = 48.dp, minHeight = 48.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(containerColor)
-                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                    .clearAndSetSemantics { contentDescription = "$label: $note" },
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(
-                    imageVector = if (isPinned) Icons.Filled.PushPin else Icons.AutoMirrored.Filled.Notes,
-                    contentDescription = null,
-                    tint = contentColor,
-                    modifier = Modifier.size(16.dp),
-                )
-                Text(
-                    text = badgeLabel,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = contentColor,
-                )
-            }
-        }
     }
 }
 
