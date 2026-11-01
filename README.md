@@ -82,6 +82,27 @@ to install the app. Get the local debug fingerprint with:
 ./gradlew :app:signingReport
 ```
 
+For Play Store installs, also register the **App signing key** SHA-1 shown in Play Console →
+App integrity, because Google re-signs the bundle.
+
+### Play Store release
+
+Release builds are signed with the upload key when a root `keystore.properties` (untracked) exists:
+
+```properties
+storeFile=/absolute/path/to/upload.jks
+storePassword=...
+keyAlias=upload
+keyPassword=...
+```
+
+Without it, release artifacts are built unsigned. Bump `versionCode` and build the bundle to upload:
+
+```bash
+./gradlew :app:bundleRelease
+# app/build/outputs/bundle/release/app-release.aab
+```
+
 ## Project Structure
 
 - `app/src/main/java/dev/francescolofranco/gymtracker/data`: database, repositories, preferences, and backup code.
