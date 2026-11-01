@@ -66,6 +66,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.platform.LocalContext
@@ -465,12 +466,16 @@ private fun TemplatePickerSheet(
                         color = SlateSubtext,
                     )
                 }
-                IconButton(
-                    onClick = onDismiss,
+                Box(
+                    contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .size(32.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(SurfaceElevated),
+                        .background(SurfaceElevated)
+                        .clickable(
+                            role = Role.Button,
+                            onClick = onDismiss,
+                        ),
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Close,

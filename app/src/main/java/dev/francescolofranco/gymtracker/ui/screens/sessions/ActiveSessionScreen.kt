@@ -231,15 +231,19 @@ fun ActiveSessionScreen(
                         }
                     },
                     actions = {
-                        IconButton(
-                            onClick = { sessionNotesEditor = true },
-                            enabled = content != null,
+                        Box(
+                            contentAlignment = Alignment.Center,
                             modifier = Modifier
                                 .padding(end = 6.dp)
                                 .size(38.dp)
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(SurfaceElevated)
-                                .border(1.dp, EditorialBorder, RoundedCornerShape(4.dp)),
+                                .border(1.dp, EditorialBorder, RoundedCornerShape(4.dp))
+                                .clickable(
+                                    enabled = content != null,
+                                    role = Role.Button,
+                                    onClick = { sessionNotesEditor = true },
+                                ),
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.Notes,
@@ -248,15 +252,19 @@ fun ActiveSessionScreen(
                                 modifier = Modifier.size(18.dp),
                             )
                         }
-                        IconButton(
-                            onClick = { showWorkoutActions = true },
-                            enabled = content != null,
+                        Box(
+                            contentAlignment = Alignment.Center,
                             modifier = Modifier
                                 .padding(end = 12.dp)
                                 .size(38.dp)
                                 .clip(RoundedCornerShape(4.dp))
                                 .background(SurfaceCard)
-                                .border(1.dp, EditorialBorder, RoundedCornerShape(4.dp)),
+                                .border(1.dp, EditorialBorder, RoundedCornerShape(4.dp))
+                                .clickable(
+                                    enabled = content != null,
+                                    role = Role.Button,
+                                    onClick = { showWorkoutActions = true },
+                                ),
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.MoreVert,
@@ -904,14 +912,18 @@ private fun ExerciseSectionHeader(
                     color = OliveSubtext,
                 )
             }
-            IconButton(
-                onClick = onOpenExerciseStats,
+            Box(
+                contentAlignment = Alignment.Center,
                 modifier = Modifier
                     .padding(end = 4.dp)
                     .size(34.dp)
                     .clip(RoundedCornerShape(2.dp))
                     .background(SurfaceControl)
-                    .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp)),
+                    .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp))
+                    .clickable(
+                        role = Role.Button,
+                        onClick = onOpenExerciseStats,
+                    ),
             ) {
                 Icon(
                     imageVector = Icons.Filled.BarChart,
@@ -921,13 +933,17 @@ private fun ExerciseSectionHeader(
                 )
             }
             Box {
-                IconButton(
-                    onClick = { menuExpanded = true },
+                Box(
+                    contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .size(34.dp)
                         .clip(RoundedCornerShape(2.dp))
                         .background(SurfaceControl)
-                        .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp)),
+                        .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp))
+                        .clickable(
+                            role = Role.Button,
+                            onClick = { menuExpanded = true },
+                        ),
                 ) {
                     Icon(
                         imageVector = Icons.Filled.MoreVert,
@@ -1506,12 +1522,16 @@ private fun WorkoutActionsSheet(
                         )
                     }
                 }
-                IconButton(
-                    onClick = onDismiss,
+                Box(
+                    contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .size(32.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(SurfaceElevated),
+                        .background(SurfaceElevated)
+                        .clickable(
+                            role = Role.Button,
+                            onClick = onDismiss,
+                        ),
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Close,

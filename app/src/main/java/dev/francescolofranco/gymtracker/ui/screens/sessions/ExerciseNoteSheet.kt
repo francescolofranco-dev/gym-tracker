@@ -2,6 +2,7 @@ package dev.francescolofranco.gymtracker.ui.screens.sessions
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -46,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -136,12 +138,16 @@ internal fun ExerciseNoteSheet(
                             )
                         }
                     }
-                    IconButton(
-                        onClick = onCancel,
+                    Box(
+                        contentAlignment = Alignment.Center,
                         modifier = Modifier
                             .size(36.dp)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(SurfaceElevated),
+                            .background(SurfaceElevated)
+                            .clickable(
+                                role = Role.Button,
+                                onClick = onCancel,
+                            ),
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Close,

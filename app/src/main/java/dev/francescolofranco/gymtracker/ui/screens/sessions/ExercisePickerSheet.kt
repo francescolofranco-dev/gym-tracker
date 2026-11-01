@@ -46,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -171,12 +172,16 @@ fun ExercisePickerSheet(
                         ),
                         modifier = Modifier.weight(1f),
                     )
-                    IconButton(
-                        onClick = onDismiss,
+                    Box(
+                        contentAlignment = Alignment.Center,
                         modifier = Modifier
                             .size(40.dp)
                             .clip(RoundedCornerShape(4.dp))
-                            .background(SurfaceElevated),
+                            .background(SurfaceElevated)
+                            .clickable(
+                                role = Role.Button,
+                                onClick = onDismiss,
+                            ),
                     ) {
                         Icon(Icons.Filled.Close, contentDescription = "Close")
                     }

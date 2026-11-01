@@ -1,6 +1,7 @@
 package dev.francescolofranco.gymtracker.ui.screens.exercises
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -40,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
@@ -107,12 +109,16 @@ fun ExerciseFormSheet(
                     ),
                     color = MaterialTheme.colorScheme.onSurface,
                 )
-                IconButton(
-                    onClick = onDismiss,
+                Box(
+                    contentAlignment = Alignment.Center,
                     modifier = Modifier
                         .size(36.dp)
                         .clip(RoundedCornerShape(4.dp))
-                        .background(SurfaceElevated),
+                        .background(SurfaceElevated)
+                        .clickable(
+                            role = Role.Button,
+                            onClick = onDismiss,
+                        ),
                 ) {
                     Icon(
                         imageVector = Icons.Filled.Close,
