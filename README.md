@@ -122,6 +122,10 @@ workflow builds the bundle but skips the upload. To upload from your machine ins
 `playServiceAccount=/absolute/path/to/key.json` to `keystore.properties` and run
 `./gradlew :app:publishReleaseBundle`.
 
+Google Play only accepts each `versionCode` once, so a manual run (Actions → Play release) must be
+on a commit that has not been published yet. The very first upload of a new Play app has to be done
+by hand in Play Console; the Play Developer API cannot create apps.
+
 ## Project Structure
 
 - `app/src/main/java/dev/francescolofranco/gymtracker/data`: database, repositories, preferences, and backup code.
