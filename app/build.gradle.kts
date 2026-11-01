@@ -26,7 +26,7 @@ android {
     compileSdk = 37
 
     defaultConfig {
-        applicationId = "dev.francescolofranco.gymtracker"
+        applicationId = "dev.lofrancolabs.gymtracker"
         minSdk = 31
         targetSdk = 37
         versionCode = gitCommitCount.get()

@@ -75,7 +75,7 @@ credit. Historical set sides determine this credit even if the exercise's unilat
 ### Google Drive authorization
 
 Drive backup requires the Google Drive API and an Android OAuth client in Google Cloud Console.
-Register package `dev.francescolofranco.gymtracker` with the SHA-1 of each signing certificate used
+Register package `dev.lofrancolabs.gymtracker` with the SHA-1 of each signing certificate used
 to install the app. Get the local debug fingerprint with:
 
 ```bash
