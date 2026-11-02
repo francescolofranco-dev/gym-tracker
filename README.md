@@ -25,7 +25,7 @@ Android workout tracker for logging gym sessions, sets, reps, weight, notes, and
 ## Tech Stack
 
 - Kotlin and Jetpack Compose
-- Material 3
+- Custom dark editorial design identity (Oswald & Space Grotesk typography, warm tactical dark surfaces, high-contrast text, brand lime accent)
 - Room
 - Hilt
 - DataStore
