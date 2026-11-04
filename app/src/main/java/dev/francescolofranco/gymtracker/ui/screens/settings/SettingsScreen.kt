@@ -213,6 +213,11 @@ fun SettingsScreen(
                             enabled = settings.keepScreenOnDuringSession,
                             onChange = settingsViewModel::setKeepScreenOnDuringSession,
                         )
+                        SettingsGroupDivider()
+                        FloatingTimerRow(
+                            enabled = settings.timerOverlayEnabled,
+                            onChange = settingsViewModel::setTimerOverlayEnabled,
+                        )
                     }
                 }
             }
@@ -248,11 +253,6 @@ fun SettingsScreen(
                         }
                         SettingsGroupDivider()
                         NotificationRow()
-                        SettingsGroupDivider()
-                        FloatingTimerRow(
-                            enabled = settings.timerOverlayEnabled,
-                            onChange = settingsViewModel::setTimerOverlayEnabled,
-                        )
                     }
                 }
             }
