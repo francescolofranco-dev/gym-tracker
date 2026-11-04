@@ -112,7 +112,7 @@ Repository variables choose the destination (`gh variable set NAME --body VALUE`
 
 | Variable | Default | Values |
 |---|---|---|
-| `PLAY_TRACK` | `internal` | `internal`, `alpha`, `beta`, `production` |
+| `PLAY_TRACK` | `alpha` | `alpha`, `internal`, `beta`, `production` |
 | `PLAY_RELEASE_STATUS` | `completed` | `completed`, `draft`, `inProgress` (staged) |
 | `PLAY_USER_FRACTION` | unset | rollout share for `inProgress`, e.g. `0.2` |
 

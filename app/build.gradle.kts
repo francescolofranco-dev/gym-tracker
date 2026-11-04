@@ -95,7 +95,7 @@ android {
 play {
     keystoreProperties.getProperty("playServiceAccount")?.let { serviceAccountCredentials.set(file(it)) }
     defaultToAppBundles.set(true)
-    track.set("internal")
+    track.set("alpha")
 }
 
 kotlin {
