@@ -238,13 +238,13 @@ fun SetRow(
         label = "set row bg",
     )
 
-    Row(
+    // Overlay the active stripe so it never consumes width from the shared column grid.
+    Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(IntrinsicSize.Min)
             .background(rowBg)
             .then(if (isSkipped) Modifier.alpha(0.45f) else Modifier),
-        verticalAlignment = Alignment.CenterVertically,
     ) {
         if (isActiveSet) {
             Box(
