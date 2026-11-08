@@ -69,7 +69,7 @@ class SessionShareTextTest {
             23 Aug 2026 · 1h 5m
             1 exercise · 2 sets
 
-            • Bench press — 2 sets · 100 kg
+            • Bench press — 2 sets (10, 8 reps) · 100 kg
 
             Tracked with Gym Tracker
             """.trimIndent(),
@@ -96,7 +96,7 @@ class SessionShareTextTest {
 
         assertEquals(1, summary.exerciseCount)
         assertEquals(1, summary.setCount)
-        assertEquals("1 set", summary.exercises.single().setsLabel)
+        assertEquals("1×8 reps", summary.exercises.single().setsLabel)
         assertEquals("BW", summary.exercises.single().firstSetWeightLabel(WeightUnit.KG))
     }
 
@@ -133,8 +133,8 @@ class SessionShareTextTest {
         val summary = summarizeFinishedSession(details)
         assertEquals(2, summary.exerciseCount)
         assertEquals(8, summary.setCount)
-        assertEquals("3 sets/side", summary.exercises[0].setsLabel)
-        assertEquals("1 set/side", summary.exercises[1].setsLabel)
+        assertEquals("3 sets/side (10, 9, 8 reps)", summary.exercises[0].setsLabel)
+        assertEquals("1×12 reps/side", summary.exercises[1].setsLabel)
 
         val text = buildSessionShareText(
             session = session,
@@ -144,8 +144,106 @@ class SessionShareTextTest {
             locale = Locale.ENGLISH,
         )
 
-        assertTrue(text.contains("• Dumbbell curl — 3 sets/side · 14 kg"))
-        assertTrue(text.contains("• Single-arm row — 1 set/side · 24 kg"))
+        assertTrue(text.contains("• Dumbbell curl — 3 sets/side (10, 9, 8 reps) · 14 kg"))
+        assertTrue(text.contains("• Single-arm row — 1×12 reps/side · 24 kg"))
+    }
+
+    @Test
+    fun `unilateral exercise with identical reps across all sets formats as sets times reps per side`() {
+        val summary = summarizeFinishedSession(
+            listOf(
+                detail(
+                    id = 1,
+                    name = "Dumbbell curl",
+                    sets = listOf(
+                        set(id = 1, sessionExerciseId = 1, setNumber = 1, side = ExerciseSide.LEFT, reps = 10, kg = 14.0, completed = true),
+                        set(id = 2, sessionExerciseId = 1, setNumber = 1, side = ExerciseSide.RIGHT, reps = 10, kg = 14.0, completed = true),
+                        set(id = 3, sessionExerciseId = 1, setNumber = 2, side = ExerciseSide.LEFT, reps = 10, kg = 14.0, completed = true),
+                        set(id = 4, sessionExerciseId = 1, setNumber = 2, side = ExerciseSide.RIGHT, reps = 10, kg = 14.0, completed = true),
+                        set(id = 5, sessionExerciseId = 1, setNumber = 3, side = ExerciseSide.LEFT, reps = 10, kg = 14.0, completed = true),
+                        set(id = 6, sessionExerciseId = 1, setNumber = 3, side = ExerciseSide.RIGHT, reps = 10, kg = 14.0, completed = true),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals("3×10 reps/side", summary.exercises.single().setsLabel)
+    }
+
+    @Test
+    fun `bilateral exercise with identical reps across all sets formats as sets times reps`() {
+        val summary = summarizeFinishedSession(
+            listOf(
+                detail(
+                    id = 1,
+                    name = "Bench press",
+                    sets = listOf(
+                        set(id = 1, sessionExerciseId = 1, setNumber = 1, reps = 10, kg = 80.0, completed = true),
+                        set(id = 2, sessionExerciseId = 1, setNumber = 2, reps = 10, kg = 80.0, completed = true),
+                        set(id = 3, sessionExerciseId = 1, setNumber = 3, reps = 10, kg = 80.0, completed = true),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals("3×10 reps", summary.exercises.single().setsLabel)
+    }
+
+    @Test
+    fun `unilateral equal sets with different reps across sides formats sides separately`() {
+        val summary = summarizeFinishedSession(
+            listOf(
+                detail(
+                    id = 1,
+                    name = "Dumbbell curl",
+                    sets = listOf(
+                        set(id = 1, sessionExerciseId = 1, setNumber = 1, side = ExerciseSide.LEFT, reps = 10, kg = 14.0, completed = true),
+                        set(id = 2, sessionExerciseId = 1, setNumber = 1, side = ExerciseSide.RIGHT, reps = 8, kg = 14.0, completed = true),
+                        set(id = 3, sessionExerciseId = 1, setNumber = 2, side = ExerciseSide.LEFT, reps = 10, kg = 14.0, completed = true),
+                        set(id = 4, sessionExerciseId = 1, setNumber = 2, side = ExerciseSide.RIGHT, reps = 8, kg = 14.0, completed = true),
+                    ),
+                ),
+                detail(
+                    id = 2,
+                    name = "Hammer curl",
+                    sets = listOf(
+                        set(id = 5, sessionExerciseId = 2, setNumber = 1, side = ExerciseSide.LEFT, reps = 10, kg = 12.0, completed = true),
+                        set(id = 6, sessionExerciseId = 2, setNumber = 1, side = ExerciseSide.RIGHT, reps = 9, kg = 12.0, completed = true),
+                        set(id = 7, sessionExerciseId = 2, setNumber = 2, side = ExerciseSide.LEFT, reps = 9, kg = 12.0, completed = true),
+                        set(id = 8, sessionExerciseId = 2, setNumber = 2, side = ExerciseSide.RIGHT, reps = 8, kg = 12.0, completed = true),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals("2 sets/side (L 10, R 8 reps)", summary.exercises[0].setsLabel)
+        assertEquals("2 sets/side (L 10, 9, R 9, 8 reps)", summary.exercises[1].setsLabel)
+    }
+
+    @Test
+    fun `singular rep formatting uses rep instead of reps`() {
+        val summary = summarizeFinishedSession(
+            listOf(
+                detail(
+                    id = 1,
+                    name = "Heavy single",
+                    sets = listOf(
+                        set(id = 1, sessionExerciseId = 1, setNumber = 1, reps = 1, kg = 150.0, completed = true),
+                    ),
+                ),
+                detail(
+                    id = 2,
+                    name = "Pistol squat",
+                    sets = listOf(
+                        set(id = 2, sessionExerciseId = 2, setNumber = 1, side = ExerciseSide.LEFT, reps = 1, kg = null, completed = true),
+                        set(id = 3, sessionExerciseId = 2, setNumber = 1, side = ExerciseSide.RIGHT, reps = 1, kg = null, completed = true),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals("1×1 rep", summary.exercises[0].setsLabel)
+        assertEquals("1×1 rep/side", summary.exercises[1].setsLabel)
     }
 
     @Test
@@ -172,8 +270,8 @@ class SessionShareTextTest {
             ),
         )
 
-        assertEquals("2 L + 1 R sets", summary.exercises[0].setsLabel)
-        assertEquals("1 L set", summary.exercises[1].setsLabel)
+        assertEquals("2 L + 1 R sets (L 10, 8, R 10 reps)", summary.exercises[0].setsLabel)
+        assertEquals("1 L × 15 reps", summary.exercises[1].setsLabel)
     }
 
     @Test
@@ -188,8 +286,8 @@ class SessionShareTextTest {
                 id = 1,
                 name = "Deadlift",
                 sets = listOf(
-                    set(id = 2, sessionExerciseId = 1, reps = 8, kg = 110.0, completed = true),
-                    set(id = 1, sessionExerciseId = 1, reps = 10, kg = 100.0, completed = true),
+                    set(id = 2, sessionExerciseId = 1, setNumber = 2, reps = 8, kg = 110.0, completed = true),
+                    set(id = 1, sessionExerciseId = 1, setNumber = 1, reps = 10, kg = 100.0, completed = true),
                 ),
             ),
         )
@@ -202,7 +300,7 @@ class SessionShareTextTest {
             locale = Locale.ENGLISH,
         )
 
-        assertTrue(text.contains("• Deadlift — 2 sets · 220.462 lbs"))
+        assertTrue(text.contains("• Deadlift — 2 sets (10, 8 reps) · 220.462 lbs"))
         assertFalse(text.contains("volume"))
         assertFalse(text.contains("kg"))
     }

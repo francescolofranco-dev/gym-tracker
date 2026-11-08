@@ -1,6 +1,7 @@
 package dev.francescolofranco.gymtracker.ui.screens.sessions
 
 import dev.francescolofranco.gymtracker.data.db.entities.SessionEntity
+import dev.francescolofranco.gymtracker.data.db.entities.SetLogEntity
 import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetail
 import dev.francescolofranco.gymtracker.domain.ExerciseSide
 import dev.francescolofranco.gymtracker.domain.WeightUnit
@@ -44,7 +45,7 @@ fun summarizeFinishedSession(details: List<SessionExerciseDetail>): SessionShare
             SessionShareExercise(
                 name = detail.exercise.name,
                 setCount = completedSets.size,
-                setsLabel = completedSetsLabel(completedSets.map { it.side }),
+                setsLabel = completedSetsLabel(completedSets),
                 firstSetKg = firstSet.kg,
                 isBodyweight = detail.exercise.isBodyweight,
             )
@@ -89,24 +90,87 @@ fun buildSessionShareText(
     }
 }
 
-private fun completedSetsLabel(sides: List<ExerciseSide>): String {
-    val counts = sides.groupingBy { it }.eachCount()
+private fun completedSetsLabel(completedSets: List<SetLogEntity>): String {
+    val sortedSets = completedSets.sortedWith(compareBy({ it.setNumber }, { it.side.ordinal }))
+    val counts = sortedSets.groupingBy { it.side }.eachCount()
     val both = counts[ExerciseSide.BOTH] ?: 0
     val left = counts[ExerciseSide.LEFT] ?: 0
     val right = counts[ExerciseSide.RIGHT] ?: 0
+
+    val bothReps = sortedSets.filter { it.side == ExerciseSide.BOTH }.mapNotNull { it.reps }
+    val leftReps = sortedSets.filter { it.side == ExerciseSide.LEFT }.mapNotNull { it.reps }
+    val rightReps = sortedSets.filter { it.side == ExerciseSide.RIGHT }.mapNotNull { it.reps }
+
     return when {
-        left == 0 && right == 0 -> plural(both, "set", "sets")
-        both == 0 && left == right -> "${plural(left, "set", "sets")}/side"
+        left == 0 && right == 0 -> {
+            if (bothReps.distinct().size <= 1) {
+                val reps = bothReps.firstOrNull() ?: 0
+                "${both}×$reps ${repWord(reps)}"
+            } else {
+                "${plural(both, "set", "sets")} (${bothReps.joinToString(", ")} reps)"
+            }
+        }
+        both == 0 && left == right && left > 0 -> {
+            if (leftReps == rightReps) {
+                if (leftReps.distinct().size <= 1) {
+                    val reps = leftReps.firstOrNull() ?: 0
+                    "${left}×$reps ${repWord(reps)}/side"
+                } else {
+                    "${plural(left, "set", "sets")}/side (${leftReps.joinToString(", ")} reps)"
+                }
+            } else {
+                val leftDesc = if (leftReps.distinct().size <= 1) "${leftReps.firstOrNull() ?: 0}" else leftReps.joinToString(", ")
+                val rightDesc = if (rightReps.distinct().size <= 1) "${rightReps.firstOrNull() ?: 0}" else rightReps.joinToString(", ")
+                "${plural(left, "set", "sets")}/side (L $leftDesc, R $rightDesc reps)"
+            }
+        }
+        both == 0 && right == 0 && left > 0 -> {
+            if (leftReps.distinct().size <= 1) {
+                val reps = leftReps.firstOrNull() ?: 0
+                "$left L × $reps ${repWord(reps)}"
+            } else {
+                "$left L ${if (left == 1) "set" else "sets"} (${leftReps.joinToString(", ")} reps)"
+            }
+        }
+        both == 0 && left == 0 && right > 0 -> {
+            if (rightReps.distinct().size <= 1) {
+                val reps = rightReps.firstOrNull() ?: 0
+                "$right R × $reps ${repWord(reps)}"
+            } else {
+                "$right R ${if (right == 1) "set" else "sets"} (${rightReps.joinToString(", ")} reps)"
+            }
+        }
         else -> {
             val parts = buildList {
                 if (both > 0) add("$both B")
                 if (left > 0) add("$left L")
                 if (right > 0) add("$right R")
             }.joinToString(" + ")
-            "$parts ${if (sides.size == 1) "set" else "sets"}"
+            val repsDetail = buildList {
+                if (bothReps.isNotEmpty()) {
+                    val desc = if (bothReps.distinct().size <= 1) "${bothReps.first()}" else bothReps.joinToString(", ")
+                    add("B $desc")
+                }
+                if (leftReps.isNotEmpty()) {
+                    val desc = if (leftReps.distinct().size <= 1) "${leftReps.first()}" else leftReps.joinToString(", ")
+                    add("L $desc")
+                }
+                if (rightReps.isNotEmpty()) {
+                    val desc = if (rightReps.distinct().size <= 1) "${rightReps.first()}" else rightReps.joinToString(", ")
+                    add("R $desc")
+                }
+            }.joinToString(", ")
+            val setsWord = if (sortedSets.size == 1) "set" else "sets"
+            if (repsDetail.isBlank()) {
+                "$parts $setsWord"
+            } else {
+                "$parts $setsWord ($repsDetail reps)"
+            }
         }
     }
 }
+
+private fun repWord(count: Int): String = if (count == 1) "rep" else "reps"
 
 fun SessionShareExercise.firstSetWeightLabel(unit: WeightUnit): String {
     val kg = firstSetKg
