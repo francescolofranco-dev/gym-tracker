@@ -12,29 +12,50 @@ import dev.francescolofranco.gymtracker.data.db.entities.TemplateEntity
 import dev.francescolofranco.gymtracker.data.db.entities.TemplateExerciseEntity
 import org.json.JSONArray
 import org.json.JSONObject
+import java.security.MessageDigest
 import java.time.Instant
 import javax.inject.Inject
 import javax.inject.Singleton
 
+data class BackupExport(
+    val json: String,
+    val contentHash: String,
+)
+
 @Singleton
-class BackupExporter @Inject constructor(
+open class BackupExporter @Inject constructor(
     private val exerciseDao: ExerciseDao,
     private val templateDao: TemplateDao,
     private val sessionDao: SessionDao,
     private val setLogDao: SetLogDao,
 ) {
 
-    suspend fun exportToJson(): String {
+    open suspend fun exportToJson(): String = export().json
+
+    open suspend fun export(exportedAt: Instant = Instant.now()): BackupExport {
         val root = JSONObject()
         root.put(BackupSchema.K_SCHEMA_VERSION, BackupSchema.CURRENT_SCHEMA_VERSION)
-        root.put(BackupSchema.K_EXPORTED_AT, Instant.now().toString())
+        root.put(BackupSchema.K_EXPORTED_AT, exportedAt.toString())
         root.put(BackupSchema.K_EXERCISES, JSONArray(exerciseDao.all().map { it.toJson() }))
         root.put(BackupSchema.K_TEMPLATES, JSONArray(templateDao.all().map { it.toJson() }))
         root.put(BackupSchema.K_TEMPLATE_EXERCISES, JSONArray(templateDao.allTemplateExercises().map { it.toJson() }))
         root.put(BackupSchema.K_SESSIONS, JSONArray(sessionDao.allSessions().map { it.toJson() }))
         root.put(BackupSchema.K_SESSION_EXERCISES, JSONArray(sessionDao.allSessionExercises().map { it.toJson() }))
         root.put(BackupSchema.K_SET_LOGS, JSONArray(setLogDao.all().map { it.toJson() }))
-        return root.toString(2)
+
+        val json = root.toString(2)
+        val contentHash = computeContentHash(json)
+        return BackupExport(json = json, contentHash = contentHash)
+    }
+
+    companion object {
+        fun computeContentHash(json: String): String {
+            val root = JSONObject(json)
+            root.remove(BackupSchema.K_EXPORTED_AT)
+            val digest = MessageDigest.getInstance("SHA-256")
+            val hashBytes = digest.digest(root.toString().toByteArray(Charsets.UTF_8))
+            return hashBytes.joinToString("") { "%02x".format(it) }
+        }
     }
 }
 

@@ -10,25 +10,39 @@ import javax.inject.Singleton
 
 /** Keeps one app-private snapshot immediately before any destructive restore. */
 @Singleton
-class BackupRecoveryStore @Inject constructor(
-    @ApplicationContext context: Context,
-    private val exporter: BackupExporter,
-) {
-    private val recoveryFile = File(context.filesDir, "backup-before-last-restore.json")
+open class BackupRecoveryStore {
+    private val recoveryFile: File?
+    private val exporter: BackupExporter?
 
-    suspend fun captureCurrent() = withContext(Dispatchers.IO) {
-        val json = exporter.exportToJson()
-        val temporary = File(recoveryFile.parentFile, "${recoveryFile.name}.tmp")
+    @Inject
+    constructor(
+        @ApplicationContext context: Context,
+        exporter: BackupExporter,
+    ) {
+        this.recoveryFile = File(context.filesDir, "backup-before-last-restore.json")
+        this.exporter = exporter
+    }
+
+    constructor() {
+        this.recoveryFile = null
+        this.exporter = null
+    }
+
+    open suspend fun captureCurrent() = withContext(Dispatchers.IO) {
+        val file = recoveryFile ?: return@withContext
+        val exp = exporter ?: return@withContext
+        val json = exp.exportToJson()
+        val temporary = File(file.parentFile, "${file.name}.tmp")
         temporary.writeText(json)
-        if (!temporary.renameTo(recoveryFile)) {
-            recoveryFile.writeText(json)
+        if (!temporary.renameTo(file)) {
+            file.writeText(json)
             temporary.delete()
         }
     }
 
     suspend fun read(): String? = withContext(Dispatchers.IO) {
-        recoveryFile.takeIf { it.isFile }?.readText()
+        recoveryFile?.takeIf { it.isFile }?.readText()
     }
 
-    fun exists(): Boolean = recoveryFile.isFile
+    fun exists(): Boolean = recoveryFile?.isFile == true
 }

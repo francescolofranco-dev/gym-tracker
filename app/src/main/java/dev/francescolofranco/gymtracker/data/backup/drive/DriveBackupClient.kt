@@ -25,12 +25,12 @@ data class DriveSnapshot(
  * call (cheap; play-services caches them under the hood).
  */
 @Singleton
-class DriveBackupClient @Inject constructor(
+open class DriveBackupClient @Inject constructor(
     private val http: OkHttpClient,
 ) {
 
     /** Lists JSON snapshots in the appDataFolder, newest first. */
-    fun list(token: String): List<DriveSnapshot> {
+    open fun list(token: String): List<DriveSnapshot> {
         val url = "https://www.googleapis.com/drive/v3/files?spaces=appDataFolder" +
             "&orderBy=createdTime%20desc" +
             "&fields=files(id,name,createdTime,size)"
@@ -55,7 +55,7 @@ class DriveBackupClient @Inject constructor(
     }
 
     /** Uploads [bytes] to the appDataFolder under [name] (multipart upload). Returns the new file id. */
-    fun upload(token: String, name: String, bytes: ByteArray, mimeType: String = "application/json"): String {
+    open fun upload(token: String, name: String, bytes: ByteArray, mimeType: String = "application/json"): String {
         val metadata = JSONObject().apply {
             put("name", name)
             put("parents", org.json.JSONArray().apply { put("appDataFolder") })
@@ -80,7 +80,7 @@ class DriveBackupClient @Inject constructor(
     }
 
     /** Downloads a file's contents by id. */
-    fun download(token: String, fileId: String): ByteArray {
+    open fun download(token: String, fileId: String): ByteArray {
         val req = Request.Builder()
             .url("https://www.googleapis.com/drive/v3/files/$fileId?alt=media")
             .get()
@@ -92,7 +92,7 @@ class DriveBackupClient @Inject constructor(
         }
     }
 
-    fun delete(token: String, fileId: String) {
+    open fun delete(token: String, fileId: String) {
         val req = Request.Builder()
             .url("https://www.googleapis.com/drive/v3/files/$fileId")
             .delete()

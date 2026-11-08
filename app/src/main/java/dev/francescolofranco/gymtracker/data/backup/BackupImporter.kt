@@ -29,17 +29,25 @@ data class BackupSummary(
 )
 
 @Singleton
-class BackupImporter @Inject constructor(
-    private val db: AppDatabase,
-) {
+open class BackupImporter {
+    private val db: AppDatabase?
+
+    @Inject
+    constructor(db: AppDatabase) {
+        this.db = db
+    }
+
+    constructor() {
+        this.db = null
+    }
 
     /**
      * Replaces the entire local DB with the contents of [json]. Wraps the wipe + re-insert in a
      * single transaction so a failure mid-restore leaves the previous DB intact.
      */
-    fun inspectJson(json: String): BackupSummary = parseBackup(json).summary
+    open fun inspectJson(json: String): BackupSummary = parseBackup(json).summary
 
-    suspend fun importFromJson(json: String): BackupSummary {
+    open suspend fun importFromJson(json: String): BackupSummary {
         val parsed = parseBackup(json)
         val exercises = parsed.exercises
         val templates = parsed.templates
@@ -48,22 +56,23 @@ class BackupImporter @Inject constructor(
         val sessionExercises = parsed.sessionExercises
         val setLogs = parsed.setLogs
 
-        db.withTransaction {
+        val database = checkNotNull(db)
+        database.withTransaction {
             // Clear in FK-safe order (children first).
-            db.setLogDao().deleteAll()
-            db.sessionDao().deleteAllSessionExercises()
-            db.sessionDao().deleteAllSessions()
-            db.templateDao().deleteAllTemplateExercises()
-            db.templateDao().deleteAllTemplates()
-            db.exerciseDao().deleteAll()
+            database.setLogDao().deleteAll()
+            database.sessionDao().deleteAllSessionExercises()
+            database.sessionDao().deleteAllSessions()
+            database.templateDao().deleteAllTemplateExercises()
+            database.templateDao().deleteAllTemplates()
+            database.exerciseDao().deleteAll()
 
             // Insert in parent-first order.
-            db.exerciseDao().replaceAll(exercises)
-            db.templateDao().replaceTemplates(templates)
-            db.templateDao().replaceTemplateExercises(templateExercises)
-            db.sessionDao().replaceSessions(sessions)
-            db.sessionDao().replaceSessionExercises(sessionExercises)
-            db.setLogDao().replaceAll(setLogs)
+            database.exerciseDao().replaceAll(exercises)
+            database.templateDao().replaceTemplates(templates)
+            database.templateDao().replaceTemplateExercises(templateExercises)
+            database.sessionDao().replaceSessions(sessions)
+            database.sessionDao().replaceSessionExercises(sessionExercises)
+            database.setLogDao().replaceAll(setLogs)
         }
 
         return parsed.summary

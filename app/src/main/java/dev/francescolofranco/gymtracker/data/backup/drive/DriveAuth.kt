@@ -34,11 +34,20 @@ class DriveAuthorizationException(message: String, cause: Throwable? = null) : E
  * Runtime requires an Android OAuth client configured with this package name and signing SHA-1.
  */
 @Singleton
-class DriveAuth @Inject constructor(
-    @ApplicationContext private val context: Context,
-) {
-    private val authorizationClient by lazy { Identity.getAuthorizationClient(context) }
-    private val requestedScopes = listOf(Scope(DRIVE_APPDATA_SCOPE))
+open class DriveAuth {
+    private val context: Context?
+
+    @Inject
+    constructor(@ApplicationContext context: Context) {
+        this.context = context
+    }
+
+    constructor() {
+        this.context = null
+    }
+
+    private val authorizationClient by lazy { Identity.getAuthorizationClient(checkNotNull(context)) }
+    private val requestedScopes by lazy { listOf(Scope(DRIVE_APPDATA_SCOPE)) }
     private val authorizationRequest by lazy {
         AuthorizationRequest.builder()
             .setRequestedScopes(requestedScopes)
@@ -91,7 +100,7 @@ class DriveAuth @Inject constructor(
      * later sessions; granted permissions are reused without user interaction. A null result means
      * the grant now needs interactive consent or Google Play services could not refresh it.
      */
-    suspend fun freshAccessToken(): String? = try {
+    open suspend fun freshAccessToken(): String? = try {
         when (val outcome = requestAuthorization()) {
             is DriveAuthorizationOutcome.Granted -> outcome.accessToken
             is DriveAuthorizationOutcome.NeedsUserConsent -> null
@@ -137,10 +146,10 @@ class DriveAuth @Inject constructor(
     private fun humanReadableError(statusCode: Int): String = when (statusCode) {
         CommonStatusCodes.DEVELOPER_ERROR ->
             "Authorization rejected by Google (DEVELOPER_ERROR / 10). Verify that the Android " +
-                "OAuth client uses package ${context.packageName} and the signing certificate's SHA-1."
+                "OAuth client uses package ${context?.packageName ?: "dev.lofrancolabs.gymtracker"} and the signing certificate's SHA-1."
         CommonStatusCodes.INTERNAL_ERROR ->
             "This build is not registered for Google OAuth (status 8). Add an Android OAuth client " +
-                "for package ${context.packageName} and this build's SHA-1 certificate fingerprint " +
+                "for package ${context?.packageName ?: "dev.lofrancolabs.gymtracker"} and this build's SHA-1 certificate fingerprint " +
                 "in Google Cloud Console."
         CommonStatusCodes.NETWORK_ERROR ->
             "Network error reaching Google. Check connectivity and retry."

@@ -17,6 +17,7 @@ import javax.inject.Singleton
 
 sealed interface DriveBackupResult {
     data class Success(val fileId: String, val sizeBytes: Int, val pruned: Int) : DriveBackupResult
+    data object UpToDate : DriveBackupResult
     data object AuthorizationRequired : DriveBackupResult
     data class Error(val message: String) : DriveBackupResult
 }
@@ -52,16 +53,44 @@ class DriveBackupRepository @Inject constructor(
     private val templateDao: TemplateDao,
 ) {
 
-    suspend fun runBackup(): DriveBackupResult = withContext(Dispatchers.IO) {
+    suspend fun runBackup(force: Boolean = false): DriveBackupResult = withContext(Dispatchers.IO) {
         try {
             val token = auth.freshAccessToken() ?: return@withContext DriveBackupResult.AuthorizationRequired
-            val json = exporter.exportToJson()
-            val bytes = json.toByteArray()
+            val export = exporter.export()
+            val currentHash = export.contentHash
+
+            if (!force) {
+                val lastHash = userPrefs.lastBackupHash.first()
+                if (lastHash != null) {
+                    if (lastHash == currentHash) {
+                        return@withContext DriveBackupResult.UpToDate
+                    }
+                } else {
+                    // Avoid duplicate snapshot on first run if Drive already has identical data
+                    val snapshots = runCatching { client.list(token) }.getOrDefault(emptyList())
+                    val latest = snapshots.firstOrNull()
+                    if (latest != null) {
+                        val latestBytes = runCatching { client.download(token, latest.id) }.getOrNull()
+                        if (latestBytes != null) {
+                            val driveHash = runCatching {
+                                BackupExporter.computeContentHash(String(latestBytes))
+                            }.getOrNull()
+                            if (driveHash == currentHash) {
+                                userPrefs.setLastBackupHash(driveHash)
+                                return@withContext DriveBackupResult.UpToDate
+                            }
+                        }
+                    }
+                }
+            }
+
+            val bytes = export.json.toByteArray()
             val now = Instant.now()
             val name = "gymtracker-${now.toString().replace(":", "-")}.json"
             val fileId = client.upload(token, name, bytes)
 
             val pruned = pruneToLast(token, MAX_SNAPSHOTS)
+            userPrefs.setLastBackupHash(currentHash)
             userPrefs.setLastBackupAt(now)
 
             DriveBackupResult.Success(fileId = fileId, sizeBytes = bytes.size, pruned = pruned)
@@ -85,6 +114,8 @@ class DriveBackupRepository @Inject constructor(
             importer.inspectJson(json)
             recoveryStore.captureCurrent()
             val summary = importer.importFromJson(json)
+            val hash = runCatching { BackupExporter.computeContentHash(json) }.getOrNull()
+            userPrefs.setLastBackupHash(hash)
             DriveRestoreResult.Success(summary)
         } catch (e: DriveApiException) {
             DriveRestoreResult.Error(e.message ?: "Drive request failed.")

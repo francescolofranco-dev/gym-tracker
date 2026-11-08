@@ -44,6 +44,10 @@ class DailyBackupWorker(
                     Log.i(TAG, "Daily Drive backup uploaded (${outcome.sizeBytes}B, pruned ${outcome.pruned}).")
                     Result.success()
                 }
+                DriveBackupResult.UpToDate -> {
+                    Log.i(TAG, "Daily Drive backup skipped: database unchanged since last backup.")
+                    Result.success()
+                }
                 DriveBackupResult.AuthorizationRequired -> {
                     // Not an error — the user hasn't authorized Drive or revoked the grant.
                     Log.i(TAG, "Drive not connected; skipping daily backup.")

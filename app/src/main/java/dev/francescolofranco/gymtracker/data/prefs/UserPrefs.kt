@@ -12,12 +12,13 @@ import androidx.datastore.preferences.preferencesDataStore
 import dev.francescolofranco.gymtracker.domain.WeekMode
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import java.time.Instant
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "user_prefs")
 
-class UserPrefs(private val context: Context) {
+open class UserPrefs(private val context: Context? = null) {
 
     private object Keys {
         val WEEKLY_GOAL = intPreferencesKey("weekly_session_goal")
@@ -28,67 +29,86 @@ class UserPrefs(private val context: Context) {
         val HAS_OFFERED_DRIVE_RESTORE = booleanPreferencesKey("has_offered_drive_restore")
         val TIMER_OVERLAY_ENABLED = booleanPreferencesKey("timer_overlay_enabled")
         val KEEP_SCREEN_ON_DURING_SESSION = booleanPreferencesKey("keep_screen_on_during_session")
+        val LAST_BACKUP_HASH = stringPreferencesKey("last_backup_hash")
     }
 
-    val weeklyGoal: Flow<Int> = context.dataStore.data.map { (it[Keys.WEEKLY_GOAL] ?: 4).coerceIn(1, 7) }
+    private val dataStore: DataStore<Preferences>? by lazy {
+        context?.dataStore
+    }
+
+    val weeklyGoal: Flow<Int> = dataStore?.data?.map { (it[Keys.WEEKLY_GOAL] ?: 4).coerceIn(1, 7) } ?: flowOf(4)
 
     suspend fun setWeeklyGoal(goal: Int) {
-        context.dataStore.edit { it[Keys.WEEKLY_GOAL] = goal.coerceIn(1, 7) }
+        dataStore?.edit { it[Keys.WEEKLY_GOAL] = goal.coerceIn(1, 7) }
     }
 
-    val unit: Flow<WeightUnit> = context.dataStore.data.map { p ->
+    val unit: Flow<WeightUnit> = dataStore?.data?.map { p ->
         runCatching { WeightUnit.valueOf(p[Keys.UNIT] ?: WeightUnit.KG.name) }.getOrDefault(WeightUnit.KG)
-    }
+    } ?: flowOf(WeightUnit.KG)
 
-    val weekMode: Flow<WeekMode> = context.dataStore.data.map { p ->
+    val weekMode: Flow<WeekMode> = dataStore?.data?.map { p ->
         runCatching { WeekMode.valueOf(p[Keys.WEEK_MODE] ?: WeekMode.ROLLING_7.name) }.getOrDefault(WeekMode.ROLLING_7)
-    }
+    } ?: flowOf(WeekMode.ROLLING_7)
 
-    val driveBackupEnabled: Flow<Boolean> = context.dataStore.data.map { p ->
+    val driveBackupEnabled: Flow<Boolean> = dataStore?.data?.map { p ->
         p[Keys.DRIVE_BACKUP_ENABLED] ?: false
-    }
+    } ?: flowOf(false)
 
-    val lastBackupAt: Flow<Instant?> = context.dataStore.data.map { p ->
+    open val lastBackupAt: Flow<Instant?> = dataStore?.data?.map { p ->
         p[Keys.LAST_BACKUP_AT]?.let(Instant::ofEpochMilli)
-    }
+    } ?: flowOf(null)
 
-    val hasOfferedDriveRestore: Flow<Boolean> = context.dataStore.data.map { p ->
+    open val lastBackupHash: Flow<String?> = dataStore?.data?.map { p ->
+        p[Keys.LAST_BACKUP_HASH]
+    } ?: flowOf(null)
+
+    val hasOfferedDriveRestore: Flow<Boolean> = dataStore?.data?.map { p ->
         p[Keys.HAS_OFFERED_DRIVE_RESTORE] ?: false
-    }
+    } ?: flowOf(false)
 
-    val keepScreenOnDuringSession: Flow<Boolean> = context.dataStore.data.map { p ->
+    val keepScreenOnDuringSession: Flow<Boolean> = dataStore?.data?.map { p ->
         p[Keys.KEEP_SCREEN_ON_DURING_SESSION] ?: false
-    }
+    } ?: flowOf(false)
 
-    val timerOverlayEnabled: Flow<Boolean> = context.dataStore.data.map { p ->
+    val timerOverlayEnabled: Flow<Boolean> = dataStore?.data?.map { p ->
         p[Keys.TIMER_OVERLAY_ENABLED] ?: true
-    }
+    } ?: flowOf(true)
 
     suspend fun setTimerOverlayEnabled(enabled: Boolean) {
-        context.dataStore.edit { it[Keys.TIMER_OVERLAY_ENABLED] = enabled }
+        dataStore?.edit { it[Keys.TIMER_OVERLAY_ENABLED] = enabled }
     }
 
     suspend fun setUnit(unit: WeightUnit) {
-        context.dataStore.edit { it[Keys.UNIT] = unit.name }
+        dataStore?.edit { it[Keys.UNIT] = unit.name }
     }
 
     suspend fun setWeekMode(mode: WeekMode) {
-        context.dataStore.edit { it[Keys.WEEK_MODE] = mode.name }
+        dataStore?.edit { it[Keys.WEEK_MODE] = mode.name }
     }
 
     suspend fun setDriveBackupEnabled(enabled: Boolean) {
-        context.dataStore.edit { it[Keys.DRIVE_BACKUP_ENABLED] = enabled }
+        dataStore?.edit { it[Keys.DRIVE_BACKUP_ENABLED] = enabled }
     }
 
-    suspend fun setLastBackupAt(at: Instant) {
-        context.dataStore.edit { it[Keys.LAST_BACKUP_AT] = at.toEpochMilli() }
+    open suspend fun setLastBackupAt(at: Instant) {
+        dataStore?.edit { it[Keys.LAST_BACKUP_AT] = at.toEpochMilli() }
+    }
+
+    open suspend fun setLastBackupHash(hash: String?) {
+        dataStore?.edit {
+            if (hash == null) {
+                it.remove(Keys.LAST_BACKUP_HASH)
+            } else {
+                it[Keys.LAST_BACKUP_HASH] = hash
+            }
+        }
     }
 
     suspend fun setHasOfferedDriveRestore(offered: Boolean) {
-        context.dataStore.edit { it[Keys.HAS_OFFERED_DRIVE_RESTORE] = offered }
+        dataStore?.edit { it[Keys.HAS_OFFERED_DRIVE_RESTORE] = offered }
     }
 
     suspend fun setKeepScreenOnDuringSession(enabled: Boolean) {
-        context.dataStore.edit { it[Keys.KEEP_SCREEN_ON_DURING_SESSION] = enabled }
+        dataStore?.edit { it[Keys.KEEP_SCREEN_ON_DURING_SESSION] = enabled }
     }
 }

@@ -3,6 +3,7 @@ package dev.francescolofranco.gymtracker.data.backup
 import android.content.Context
 import android.net.Uri
 import dagger.hilt.android.qualifiers.ApplicationContext
+import dev.francescolofranco.gymtracker.data.prefs.UserPrefs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.Instant
@@ -32,6 +33,7 @@ class BackupRepository @Inject constructor(
     private val exporter: BackupExporter,
     private val importer: BackupImporter,
     private val recoveryStore: BackupRecoveryStore,
+    private val userPrefs: UserPrefs,
 ) {
     /** Writes the JSON backup to a SAF document URI. */
     suspend fun exportToUri(uri: Uri): BackupOutcome = withContext(Dispatchers.IO) {
@@ -65,6 +67,7 @@ class BackupRepository @Inject constructor(
             importer.inspectJson(json)
             recoveryStore.captureCurrent()
             val summary = importer.importFromJson(json)
+            userPrefs.setLastBackupHash(null)
             BackupOutcome.Success(
                 buildString {
                     append("Restored ${summary.sessions} session${plural(summary.sessions)}, ")
@@ -86,6 +89,7 @@ class BackupRepository @Inject constructor(
             val json = recoveryStore.read()
                 ?: return@withContext BackupOutcome.Failure("No restore safety copy is available.")
             val summary = importer.importFromJson(json)
+            userPrefs.setLastBackupHash(null)
             BackupOutcome.Success("Recovered ${summary.sessions} session${plural(summary.sessions)} from before the last restore.")
         } catch (t: Throwable) {
             BackupOutcome.Failure(t.message ?: "Recovery failed.")

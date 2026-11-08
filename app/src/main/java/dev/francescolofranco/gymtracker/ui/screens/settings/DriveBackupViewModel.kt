@@ -127,6 +127,8 @@ class DriveBackupViewModel @Inject constructor(
         when (val res = repo.runBackup()) {
             is DriveBackupResult.Success ->
                 "Uploaded ${humanByteCount(res.sizeBytes)}" + if (res.pruned > 0) ", pruned ${res.pruned} old snapshot(s)." else "."
+            DriveBackupResult.UpToDate ->
+                "Already up to date — no changes since last backup."
             DriveBackupResult.AuthorizationRequired ->
                 throw IllegalStateException("Google Drive authorization is required.")
             is DriveBackupResult.Error -> throw IllegalStateException(res.message)
