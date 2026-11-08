@@ -1129,7 +1129,7 @@ private fun SettingsFooter() {
                 interactive = false,
             )
             Text(
-                text = "CRAFTED FOR SERIOUS LIFTERS UNDER HEAVY LOAD",
+                text = "CRAFTED WITH CARE. BUILT FOR YOUR PROGRESS.",
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontFamily = SpaceGroteskFontFamily,
                     fontSize = 11.sp,
@@ -1140,7 +1140,7 @@ private fun SettingsFooter() {
             )
         }
         Text(
-            text = "Kinetic Architecture • Offline First Engine",
+            text = "Your personal gym tracker. Always offline.",
             style = MaterialTheme.typography.bodySmall.copy(
                 fontFamily = SpaceGroteskFontFamily,
                 fontSize = 12.sp,
