@@ -1,5 +1,6 @@
 package dev.francescolofranco.gymtracker.service
 
+import android.view.WindowManager
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -32,5 +33,11 @@ class TimerStateTest {
         assertFalse(TimerService.shouldShowOverlay(overlayEnabled = true, state = running, appInFocus = true))
         assertFalse(TimerService.shouldShowOverlay(overlayEnabled = false, state = running, appInFocus = false))
         assertFalse(TimerService.shouldShowOverlay(overlayEnabled = true, state = TimerState.Stopped, appInFocus = false))
+    }
+
+    @Test
+    fun overlayWindowFlagsAreClickThrough() {
+        assertTrue(TimerOverlay.WINDOW_FLAGS and WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE != 0)
+        assertTrue(TimerOverlay.WINDOW_FLAGS and WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE != 0)
     }
 }

@@ -12,10 +12,10 @@
     <string name="timer_reset">Reset</string>
     <string name="timer_stop">Stop</string>
     <string name="timer_overlay_title">Floating timer</string>
-    <string name="timer_overlay_description">Keep the floating timer visible over other apps while running. Drag to move it.</string>
+    <string name="timer_overlay_description">Keep the floating timer visible over other apps while running.</string>
     <string name="timer_overlay_permission">Allow display over other apps</string>
     <string name="timer_overlay_disabled">Show the timer over other apps, including full screen. Tap to allow display over other apps.</string>
-    <string name="timer_overlay_drag">Elapsed time. Drag to move the floating timer.</string>
+    <string name="timer_overlay_drag">Elapsed time</string>
     <string name="timer_channel_name">Workout timer</string>
     <string name="timer_channel_desc">Persistent timer for workouts.</string>
     <string name="timer_elapsed_placeholder">00:00</string>
