@@ -29,7 +29,7 @@ class LoggedSetQueriesTest(unittest.TestCase):
         schema = max(schemas.glob('*.json'), key=lambda p: int(p.stem))
         for entity in json.loads(schema.read_text())['database']['entities']:
             self.db.execute(entity['createSql'].replace('${TABLE_NAME}', entity['tableName']))
-        self.db.execute("INSERT INTO exercise VALUES (1, 'Row', 'BACK', '', 3, 8, 12, 0, 1, 0, NULL)")
+        self.db.execute("INSERT INTO exercise VALUES (1, 'Row', 'BACK', '', 3, 8, 12, 0, 1, 0, 0, NULL)")
         for session_id in (1, 2):
             self.db.execute('INSERT INTO session (id, startedAt, acceptedAt, endedAt) VALUES (?, ?, ?, ?)',
                             (session_id, session_id * 100, session_id * 100, session_id * 100 + 50))

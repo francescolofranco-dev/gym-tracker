@@ -190,6 +190,40 @@ class SessionShareTextTest {
     }
 
     @Test
+    fun `bilateral exercise with per-side weight doubles load in summary and share text`() {
+        val session = SessionEntity(
+            startedAt = Instant.parse("2026-08-23T09:55:00Z"),
+            acceptedAt = Instant.parse("2026-08-23T10:00:00Z"),
+            endedAt = Instant.parse("2026-08-23T10:40:00Z"),
+        )
+        val details = listOf(
+            detail(
+                id = 1,
+                name = "Bench press machine",
+                weightPerSide = true,
+                sets = listOf(
+                    set(id = 1, sessionExerciseId = 1, setNumber = 1, reps = 10, kg = 22.5, completed = true),
+                    set(id = 2, sessionExerciseId = 1, setNumber = 2, reps = 8, kg = 25.0, completed = true),
+                ),
+            ),
+        )
+
+        val summary = summarizeFinishedSession(details)
+        assertEquals(45.0, summary.exercises.single().firstSetKg!!, 0.001)
+        assertEquals("45 kg", summary.exercises.single().firstSetWeightLabel(WeightUnit.KG))
+
+        val text = buildSessionShareText(
+            session = session,
+            details = details,
+            unit = WeightUnit.KG,
+            zoneId = ZoneOffset.UTC,
+            locale = Locale.ENGLISH,
+        )
+
+        assertTrue(text.contains("• Bench press machine — 2 sets (10, 8 reps) · 45 kg"))
+    }
+
+    @Test
     fun `unilateral equal sets with different reps across sides formats sides separately`() {
         val summary = summarizeFinishedSession(
             listOf(
@@ -337,6 +371,8 @@ class SessionShareTextTest {
         sets: List<SetLogEntity>,
         skipped: Boolean = false,
         bodyweight: Boolean = false,
+        unilateral: Boolean = false,
+        weightPerSide: Boolean = false,
     ) = SessionExerciseDetail(
         sessionExercise = SessionExerciseEntity(
             id = id,
@@ -354,6 +390,8 @@ class SessionShareTextTest {
             repRangeMin = 6,
             repRangeMax = 12,
             isBodyweight = bodyweight,
+            isUnilateral = unilateral,
+            isWeightPerSide = weightPerSide,
             createdAt = Instant.EPOCH,
         ),
         setLogs = sets,

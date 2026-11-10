@@ -15,8 +15,9 @@ object BackupSchema {
      *  - v3: unilateral exercise metadata and set sides.
      *  - v4: one-session carryover and pinning metadata for exercise notes.
      *  - v5: separate regular and pinned exercise notes.
+     *  - v6: bilateral per-side weight metadata on exercises.
      */
-    const val CURRENT_SCHEMA_VERSION = 5
+    const val CURRENT_SCHEMA_VERSION = 6
     const val MIN_SUPPORTED_VERSION = 1
 
     const val K_SCHEMA_VERSION = "schemaVersion"

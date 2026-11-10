@@ -33,6 +33,7 @@ class ExerciseRepository @Inject constructor(
         repRangeMax: Int,
         isBodyweight: Boolean,
         isUnilateral: Boolean,
+        isWeightPerSide: Boolean = false,
     ): Long = dao.insert(
         ExerciseEntity(
             name = name.trim(),
@@ -43,6 +44,7 @@ class ExerciseRepository @Inject constructor(
             repRangeMax = repRangeMax,
             isBodyweight = isBodyweight,
             isUnilateral = isUnilateral,
+            isWeightPerSide = isWeightPerSide && !isUnilateral,
             createdAt = Instant.now(),
         )
     )
@@ -66,6 +68,7 @@ class ExerciseRepository @Inject constructor(
         repRangeMax: Int,
         isBodyweight: Boolean,
         isUnilateral: Boolean,
+        isWeightPerSide: Boolean = false,
     ) = db.withTransaction {
         val current = dao.byId(id) ?: return@withTransaction
         if (current.isUnilateral != isUnilateral) {
@@ -90,6 +93,7 @@ class ExerciseRepository @Inject constructor(
                 repRangeMax = repRangeMax,
                 isBodyweight = isBodyweight,
                 isUnilateral = isUnilateral,
+                isWeightPerSide = isWeightPerSide && !isUnilateral,
             ),
         )
     }

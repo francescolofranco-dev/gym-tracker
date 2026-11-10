@@ -155,6 +155,7 @@ private fun JSONObject.parseExercise(): ExerciseEntity {
     val primaries: Set<Muscle> = optJSONArray("primaryMuscles")
         ?.let { parseMuscleSet(it) }
         ?: setOf(Muscle.valueOf(getString("primaryMuscle")))
+    val unilateral = optBoolean("isUnilateral", false)
     return ExerciseEntity(
         id = getLong("id"),
         name = getString("name"),
@@ -164,7 +165,8 @@ private fun JSONObject.parseExercise(): ExerciseEntity {
         repRangeMin = getInt("repRangeMin"),
         repRangeMax = getInt("repRangeMax"),
         isBodyweight = getBoolean("isBodyweight"),
-        isUnilateral = optBoolean("isUnilateral", false),
+        isUnilateral = unilateral,
+        isWeightPerSide = !unilateral && optBoolean("isWeightPerSide", false),
         createdAt = Instant.parse(getString("createdAt")),
         deletedAt = optStringOrNull("deletedAt")?.let { Instant.parse(it) },
     )

@@ -231,7 +231,12 @@ fun ExerciseFormSheet(
                     Spacer(Modifier.width(12.dp))
                     Switch(
                         checked = state.isUnilateral,
-                        onCheckedChange = { state = state.copy(isUnilateral = it) },
+                        onCheckedChange = {
+                            state = state.copy(
+                                isUnilateral = it,
+                                isWeightPerSide = if (it) false else state.isWeightPerSide,
+                            )
+                        },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = DarkOnPrimary,
                             checkedTrackColor = BrandLime,
@@ -249,6 +254,38 @@ fun ExerciseFormSheet(
                         style = MaterialTheme.typography.bodySmall,
                         color = OliveSubtext,
                     )
+                }
+
+                if (!state.isUnilateral) {
+                    HorizontalDivider(color = EditorialBorder.copy(alpha = 0.2f))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Weight logged per side",
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                            )
+                            Text(
+                                text = "Doubles one-side load in workout summaries and WhatsApp shares.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = OliveSubtext,
+                            )
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Switch(
+                            checked = state.isWeightPerSide,
+                            onCheckedChange = { state = state.copy(isWeightPerSide = it) },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = DarkOnPrimary,
+                                checkedTrackColor = BrandLime,
+                                uncheckedThumbColor = OliveSubtext,
+                                uncheckedTrackColor = SurfaceControl,
+                            ),
+                        )
+                    }
                 }
             }
 

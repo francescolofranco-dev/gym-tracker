@@ -56,6 +56,7 @@ class ExercisesViewModel @Inject constructor(
                 repRangeMax = state.repRangeMax,
                 isBodyweight = state.isBodyweight,
                 isUnilateral = state.isUnilateral,
+                isWeightPerSide = state.isWeightPerSide,
             )
             _editing.value = EditMode.None
         }

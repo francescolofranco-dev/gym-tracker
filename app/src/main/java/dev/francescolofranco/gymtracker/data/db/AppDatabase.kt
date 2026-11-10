@@ -26,7 +26,7 @@ import dev.francescolofranco.gymtracker.data.db.entities.TemplateExerciseEntity
         TemplateEntity::class,
         TemplateExerciseEntity::class,
     ],
-    version = 6,
+    version = 7,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -39,6 +39,13 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "gym-tracker.db"
+
+        /** v6 → v7: bilateral exercises can record whether weight is entered per side. */
+        val MIGRATION_6_7 = object : Migration(6, 7) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE exercise ADD COLUMN isWeightPerSide INTEGER NOT NULL DEFAULT 0")
+            }
+        }
 
         /** Split existing pinned notes from the regular note slot without losing either type. */
         val MIGRATION_5_6 = object : Migration(5, 6) {

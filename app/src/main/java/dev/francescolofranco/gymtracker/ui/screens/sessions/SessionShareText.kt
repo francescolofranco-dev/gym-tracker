@@ -42,11 +42,17 @@ fun summarizeFinishedSession(details: List<SessionExerciseDetail>): SessionShare
             val firstSet = completedSets.minWith(
                 compareBy({ it.setNumber }, { it.side.ordinal }),
             )
+            val isPerSideBilateral = detail.exercise.isWeightPerSide &&
+                !detail.exercise.isUnilateral &&
+                firstSet.side == ExerciseSide.BOTH
+            val summaryKg = firstSet.kg?.let { kg ->
+                if (isPerSideBilateral) kg * 2.0 else kg
+            }
             SessionShareExercise(
                 name = detail.exercise.name,
                 setCount = completedSets.size,
                 setsLabel = completedSetsLabel(completedSets),
-                firstSetKg = firstSet.kg,
+                firstSetKg = summaryKg,
                 isBodyweight = detail.exercise.isBodyweight,
             )
         }

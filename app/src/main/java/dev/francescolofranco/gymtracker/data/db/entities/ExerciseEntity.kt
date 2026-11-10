@@ -27,6 +27,11 @@ data class ExerciseEntity(
     val isBodyweight: Boolean,
     /** Target sets are interpreted per side when this is true. */
     val isUnilateral: Boolean = false,
+    /**
+     * Bilateral load is entered for one side (e.g. plates on one horn of a machine) and doubled in
+     * workout summaries and shares.
+     */
+    val isWeightPerSide: Boolean = false,
     val createdAt: Instant,
     val deletedAt: Instant? = null,
 )
