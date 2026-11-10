@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.time.Instant
 import javax.inject.Inject
@@ -26,6 +27,7 @@ import javax.inject.Inject
 data class DriveUiState(
     val connected: Boolean = false,
     val checkingConnection: Boolean = true,
+    val loadingSnapshots: Boolean = false,
     val authorizationRequest: PendingIntent? = null,
     val running: Boolean = false,
     val message: String? = null,
@@ -44,7 +46,14 @@ class DriveBackupViewModel @Inject constructor(
     private val prefs: UserPrefs,
 ) : ViewModel() {
 
-    private val _ui = MutableStateFlow(DriveUiState())
+    private val _ui = MutableStateFlow(
+        DriveUiState(
+            connected = auth.connected.value,
+            checkingConnection = !auth.connected.value,
+            loadingSnapshots = repo.cachedSnapshots.value == null,
+            snapshots = repo.cachedSnapshots.value ?: emptyList(),
+        ),
+    )
     private val connected: StateFlow<Boolean> = auth.connected
     private val lastBackupAt: StateFlow<Instant?> = prefs.lastBackupAt
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), null)
@@ -53,16 +62,36 @@ class DriveBackupViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            auth.refreshAuthorization()
-            _ui.value = _ui.value.copy(checkingConnection = false)
+            if (!auth.connected.value) {
+                auth.refreshAuthorization()
+            }
+            val isConnected = auth.connected.value
+            _ui.update {
+                it.copy(
+                    connected = isConnected,
+                    checkingConnection = false,
+                    loadingSnapshots = isConnected && it.snapshots.isEmpty(),
+                )
+            }
+            if (isConnected) {
+                fetchSnapshots()
+            }
         }
     }
 
     private fun combineState(): StateFlow<DriveUiState> {
         viewModelScope.launch {
-            kotlinx.coroutines.flow.combine(connected, lastBackupAt) { isConnected, last ->
-                _ui.value.copy(connected = isConnected, lastBackupAt = last)
-            }.collect { _ui.value = it }
+            kotlinx.coroutines.flow.combine(connected, lastBackupAt, repo.cachedSnapshots) { isConnected, last, cached ->
+                Triple(isConnected, last, cached)
+            }.collect { (isConnected, last, cached) ->
+                _ui.update { current ->
+                    current.copy(
+                        connected = isConnected,
+                        lastBackupAt = last,
+                        snapshots = cached ?: current.snapshots,
+                    )
+                }
+            }
         }
         return _ui.asStateFlow()
     }
@@ -70,21 +99,46 @@ class DriveBackupViewModel @Inject constructor(
     fun connect() {
         if (_ui.value.running) return
         viewModelScope.launch {
-            _ui.value = _ui.value.copy(running = true, error = null)
+            _ui.update { it.copy(running = true, error = null) }
             try {
                 when (val outcome = auth.requestAuthorization()) {
                     is DriveAuthorizationOutcome.Granted -> {
-                        _ui.value = _ui.value.copy(running = false)
+                        _ui.update { it.copy(running = false, loadingSnapshots = it.snapshots.isEmpty()) }
+                        fetchSnapshots()
                     }
                     is DriveAuthorizationOutcome.NeedsUserConsent -> {
-                        _ui.value = _ui.value.copy(
-                            running = false,
-                            authorizationRequest = outcome.pendingIntent,
-                        )
+                        _ui.update {
+                            it.copy(
+                                running = false,
+                                authorizationRequest = outcome.pendingIntent,
+                            )
+                        }
                     }
                 }
             } catch (t: Throwable) {
-                _ui.value = _ui.value.copy(
+                _ui.update {
+                    it.copy(
+                        running = false,
+                        error = t.message ?: "Google Drive authorization failed.",
+                    )
+                }
+            }
+        }
+    }
+
+    fun consumeAuthorizationRequest() {
+        _ui.update { it.copy(authorizationRequest = null) }
+    }
+
+    fun onAuthorizationResult(data: Intent?) = viewModelScope.launch {
+        _ui.update { it.copy(running = true, error = null) }
+        try {
+            auth.handleAuthorizationResult(data)
+            _ui.update { it.copy(running = false, loadingSnapshots = it.snapshots.isEmpty()) }
+            fetchSnapshots()
+        } catch (t: Throwable) {
+            _ui.update {
+                it.copy(
                     running = false,
                     error = t.message ?: "Google Drive authorization failed.",
                 )
@@ -92,34 +146,20 @@ class DriveBackupViewModel @Inject constructor(
         }
     }
 
-    fun consumeAuthorizationRequest() {
-        _ui.value = _ui.value.copy(authorizationRequest = null)
-    }
-
-    fun onAuthorizationResult(data: Intent?) = viewModelScope.launch {
-        _ui.value = _ui.value.copy(running = true, error = null)
-        try {
-            auth.handleAuthorizationResult(data)
-            _ui.value = _ui.value.copy(running = false)
-        } catch (t: Throwable) {
-            _ui.value = _ui.value.copy(
-                running = false,
-                error = t.message ?: "Google Drive authorization failed.",
-            )
-        }
-    }
-
     fun disconnect() = viewModelScope.launch {
         if (_ui.value.running) return@launch
-        _ui.value = _ui.value.copy(running = true, error = null)
+        _ui.update { it.copy(running = true, error = null) }
         try {
             auth.revokeAccess()
-            _ui.value = _ui.value.copy(running = false, snapshots = emptyList())
+            repo.clearCachedSnapshots()
+            _ui.update { it.copy(running = false, snapshots = emptyList(), loadingSnapshots = false) }
         } catch (t: Throwable) {
-            _ui.value = _ui.value.copy(
-                running = false,
-                error = t.message ?: "Unable to disconnect Google Drive.",
-            )
+            _ui.update {
+                it.copy(
+                    running = false,
+                    error = t.message ?: "Unable to disconnect Google Drive.",
+                )
+            }
         }
     }
 
@@ -136,36 +176,44 @@ class DriveBackupViewModel @Inject constructor(
     }
 
     fun refreshSnapshots() = viewModelScope.launch {
-        if (!auth.connected.value) return@launch
+        fetchSnapshots()
+    }
+
+    private suspend fun fetchSnapshots() {
+        if (!auth.connected.value) return
+        _ui.update { it.copy(loadingSnapshots = it.snapshots.isEmpty()) }
         runCatching { repo.listSnapshots() }
-            .onSuccess { _ui.value = _ui.value.copy(snapshots = it) }
+            .onSuccess { list -> _ui.update { it.copy(snapshots = list, loadingSnapshots = false) } }
+            .onFailure { _ui.update { it.copy(loadingSnapshots = false) } }
     }
 
     fun inspectRestore(snapshot: DriveSnapshot) {
         if (_ui.value.running) return
         viewModelScope.launch {
-            _ui.value = _ui.value.copy(running = true, error = null)
-            _ui.value = when (val result = repo.inspect(snapshot.id)) {
-                is DriveInspectResult.Success -> _ui.value.copy(
-                    running = false,
-                    restorePreview = DriveRestorePreview(snapshot, result.summary),
-                )
-                DriveInspectResult.AuthorizationRequired -> _ui.value.copy(
-                    running = false,
-                    error = "Google Drive authorization is required.",
-                )
-                is DriveInspectResult.Error -> _ui.value.copy(running = false, error = result.message)
+            _ui.update { it.copy(running = true, error = null) }
+            _ui.update { current ->
+                when (val result = repo.inspect(snapshot.id)) {
+                    is DriveInspectResult.Success -> current.copy(
+                        running = false,
+                        restorePreview = DriveRestorePreview(snapshot, result.summary),
+                    )
+                    DriveInspectResult.AuthorizationRequired -> current.copy(
+                        running = false,
+                        error = "Google Drive authorization is required.",
+                    )
+                    is DriveInspectResult.Error -> current.copy(running = false, error = result.message)
+                }
             }
         }
     }
 
     fun dismissRestorePreview() {
-        _ui.value = _ui.value.copy(restorePreview = null)
+        _ui.update { it.copy(restorePreview = null) }
     }
 
     fun restorePreview() {
         val preview = _ui.value.restorePreview ?: return
-        _ui.value = _ui.value.copy(restorePreview = null)
+        _ui.update { it.copy(restorePreview = null) }
         restore(preview.snapshot)
     }
 
@@ -179,18 +227,18 @@ class DriveBackupViewModel @Inject constructor(
     }
 
     fun consumeMessage() {
-        _ui.value = _ui.value.copy(message = null, error = null)
+        _ui.update { it.copy(message = null, error = null) }
     }
 
     private fun run(workingMessage: String, block: suspend () -> String) {
         if (_ui.value.running) return
         viewModelScope.launch {
-            _ui.value = _ui.value.copy(running = true, message = workingMessage, error = null)
+            _ui.update { it.copy(running = true, message = workingMessage, error = null) }
             try {
                 val msg = block()
-                _ui.value = _ui.value.copy(running = false, message = msg, error = null)
+                _ui.update { it.copy(running = false, message = msg, error = null) }
             } catch (t: Throwable) {
-                _ui.value = _ui.value.copy(running = false, error = t.message ?: "Drive request failed.", message = null)
+                _ui.update { it.copy(running = false, error = t.message ?: "Drive request failed.", message = null) }
             }
         }
     }

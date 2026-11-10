@@ -8,6 +8,11 @@ import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -46,6 +51,7 @@ import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -78,6 +84,7 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -118,6 +125,10 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 private const val MAX_VISIBLE_SNAPSHOTS = 4
+private val SNAPSHOT_ROW_HEIGHT = 38.dp
+private val SNAPSHOT_DIVIDER_HEIGHT = 1.dp
+private val SNAPSHOT_LIST_HEIGHT =
+    SNAPSHOT_ROW_HEIGHT * MAX_VISIBLE_SNAPSHOTS + SNAPSHOT_DIVIDER_HEIGHT * (MAX_VISIBLE_SNAPSHOTS - 1)
 
 @Composable
 fun SettingsScreen(
@@ -172,9 +183,6 @@ fun SettingsScreen(
             snackbar.showSnackbar(text)
             driveViewModel.consumeMessage()
         }
-    }
-    LaunchedEffect(driveState.connected) {
-        if (driveState.connected) driveViewModel.refreshSnapshots()
     }
 
     Scaffold(
@@ -305,52 +313,67 @@ fun SettingsScreen(
                 }
             }
 
-            if (driveState.connected) {
+            if (driveState.connected || driveState.checkingConnection) {
                 item(key = "drive_snapshots_section") {
-                    Column(
-                        modifier = Modifier.animateItem(
-                            fadeInSpec = GymMotion.ItemFadeIn,
-                            placementSpec = GymMotion.ItemPlacement,
-                            fadeOutSpec = GymMotion.ItemFadeOut,
-                        ),
-                    ) {
+                    val isLoadingSnapshots = driveState.checkingConnection || driveState.loadingSnapshots
+                    Column {
                         SectionHeader(
                             title = "RECENT SNAPSHOTS",
-                            rightLabel = if (recentSnapshots.isEmpty()) "Awaiting Sync"
-                            else "Last ${recentSnapshots.size} of $MAX_VISIBLE_SNAPSHOTS",
+                            rightLabel = when {
+                                isLoadingSnapshots -> "Syncing…"
+                                recentSnapshots.isEmpty() -> "Awaiting Sync"
+                                else -> "Last ${recentSnapshots.size} of $MAX_VISIBLE_SNAPSHOTS"
+                            },
                         )
-                        if (recentSnapshots.isEmpty()) {
-                            SettingsGroupCard {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 14.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                ) {
-                                    IconBox(icon = Icons.Filled.CloudSync, tint = OliveSubtext)
-                                    Text(
-                                        text = "No Drive snapshots yet — daily 03:00 backups or tapping sync above will populate them.",
-                                        style = MaterialTheme.typography.bodySmall.copy(
-                                            fontFamily = SpaceGroteskFontFamily,
-                                            fontSize = 12.sp,
-                                        ),
-                                        color = OliveSubtext,
-                                    )
-                                }
-                            }
-                        } else {
-                            SettingsGroupCard {
-                                recentSnapshots.forEachIndexed { index, snap ->
-                                    if (index > 0) {
-                                        SettingsGroupDivider()
+                        SettingsGroupCard {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(SNAPSHOT_LIST_HEIGHT),
+                            ) {
+                                when {
+                                    isLoadingSnapshots -> {
+                                        SnapshotsLoadingPlaceholder()
                                     }
-                                    SnapshotRow(
-                                        snapshot = snap,
-                                        isLatest = index == 0,
-                                        onClick = { driveViewModel.inspectRestore(snap) },
-                                        enabled = !driveState.running,
-                                    )
+                                    recentSnapshots.isEmpty() -> {
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxSize()
+                                                .padding(horizontal = 16.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        ) {
+                                            IconBox(icon = Icons.Filled.CloudSync, tint = OliveSubtext)
+                                            Text(
+                                                text = "No Drive snapshots yet — daily 03:00 backups or tapping sync above will populate them.",
+                                                style = MaterialTheme.typography.bodySmall.copy(
+                                                    fontFamily = SpaceGroteskFontFamily,
+                                                    fontSize = 12.sp,
+                                                ),
+                                                color = OliveSubtext,
+                                            )
+                                        }
+                                    }
+                                    else -> {
+                                        Column(modifier = Modifier.fillMaxSize()) {
+                                            for (index in 0 until MAX_VISIBLE_SNAPSHOTS) {
+                                                if (index > 0) {
+                                                    SettingsGroupDivider()
+                                                }
+                                                val snap = recentSnapshots.getOrNull(index)
+                                                if (snap != null) {
+                                                    SnapshotRow(
+                                                        snapshot = snap,
+                                                        isLatest = index == 0,
+                                                        onClick = { driveViewModel.inspectRestore(snap) },
+                                                        enabled = !driveState.running,
+                                                    )
+                                                } else {
+                                                    EmptySnapshotSlotRow()
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -703,7 +726,7 @@ private fun DriveAccountRow(
             }
             Box(
                 modifier = Modifier
-                    .size(44.dp)
+                    .size(36.dp)
                     .clip(RoundedCornerShape(4.dp))
                     .background(SurfaceChip)
                     .clickable(enabled = !state.running, onClick = onBackupNow)
@@ -734,79 +757,180 @@ private fun SnapshotRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .height(SNAPSHOT_ROW_HEIGHT)
             .clickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        IconBox(
-            icon = Icons.Filled.Restore,
+        Icon(
+            imageVector = Icons.Filled.Restore,
+            contentDescription = null,
             tint = if (isLatest) BrandLime else OliveSubtext,
+            modifier = Modifier.size(16.dp),
         )
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+        Text(
+            text = (snapshot.createdAt?.let { formatRelativeTime(it) } ?: snapshot.name).uppercase(),
+            style = MaterialTheme.typography.titleMedium.copy(
+                fontFamily = OswaldFontFamily,
+                fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                letterSpacing = 0.4.sp,
+            ),
+            color = DarkOnSurface,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (isLatest) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(2.dp))
+                    .background(SurfaceChip)
+                    .padding(horizontal = 5.dp, vertical = 1.dp),
             ) {
                 Text(
-                    text = (snapshot.createdAt?.let { formatRelativeTime(it) } ?: snapshot.name).uppercase(),
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontFamily = OswaldFontFamily,
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 0.45.sp,
+                    text = "LATEST",
+                    style = MaterialTheme.typography.labelSmall.copy(
+                        fontFamily = SpaceGroteskFontFamily,
+                        fontSize = 9.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 0.6.sp,
                     ),
-                    color = DarkOnSurface,
+                    color = BrandLime,
                 )
-                if (isLatest) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(2.dp))
-                            .background(SurfaceChip)
-                            .padding(horizontal = 6.dp, vertical = 2.dp),
-                    ) {
-                        Text(
-                            text = "LATEST",
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontFamily = SpaceGroteskFontFamily,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 0.8.sp,
-                            ),
-                            color = BrandLime,
-                        )
-                    }
-                }
             }
-            Text(
-                text = snapshot.sizeBytes?.let { "${it / 1024} KB • ${snapshot.name}" } ?: snapshot.name,
-                style = MaterialTheme.typography.bodySmall.copy(
-                    fontFamily = SpaceGroteskFontFamily,
-                    fontSize = 12.sp,
-                ),
-                color = OliveSubtext,
-            )
         }
+        Text(
+            text = formatSnapshotMeta(snapshot),
+            modifier = Modifier.weight(1f),
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontFamily = SpaceGroteskFontFamily,
+                fontSize = 11.sp,
+            ),
+            color = OliveSubtext,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
         Box(
             modifier = Modifier
                 .clip(RoundedCornerShape(2.dp))
                 .background(SurfaceChip)
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(horizontal = 6.dp, vertical = 2.dp),
         ) {
             Text(
                 text = "RESTORE",
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontFamily = SpaceGroteskFontFamily,
-                    fontSize = 11.sp,
+                    fontSize = 10.sp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.0.sp,
+                    letterSpacing = 0.8.sp,
                 ),
                 color = DarkOnSurface,
             )
         }
+    }
+}
+
+@Composable
+private fun EmptySnapshotSlotRow() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(SNAPSHOT_ROW_HEIGHT)
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(6.dp)
+                .clip(CircleShape)
+                .background(SurfaceControl),
+        )
+        Text(
+            text = "Available backup slot",
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontFamily = SpaceGroteskFontFamily,
+                fontSize = 11.sp,
+            ),
+            color = OliveSubtext.copy(alpha = 0.5f),
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun SnapshotsLoadingPlaceholder() {
+    val transition = rememberInfiniteTransition(label = "snapshots_loading")
+    val pulseAlpha by transition.animateFloat(
+        initialValue = 0.3f,
+        targetValue = 0.7f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 750),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "snapshots_pulse_alpha",
+    )
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            for (index in 0 until MAX_VISIBLE_SNAPSHOTS) {
+                if (index > 0) {
+                    SettingsGroupDivider()
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(SNAPSHOT_ROW_HEIGHT)
+                        .padding(horizontal = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(14.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(SurfaceChip.copy(alpha = pulseAlpha)),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(64.dp)
+                            .height(12.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(SurfaceChip.copy(alpha = pulseAlpha)),
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    Box(
+                        modifier = Modifier
+                            .width(48.dp)
+                            .height(16.dp)
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(SurfaceChip.copy(alpha = pulseAlpha)),
+                    )
+                }
+            }
+        }
+        CircularProgressIndicator(
+            modifier = Modifier
+                .size(22.dp)
+                .align(Alignment.Center),
+            color = BrandLime,
+            strokeWidth = 2.dp,
+        )
+    }
+}
+
+private fun formatSnapshotMeta(snapshot: DriveSnapshot): String {
+    val timestamp = snapshot.createdAt?.let {
+        DateTimeFormatter.ofPattern("d MMM, HH:mm")
+            .withZone(ZoneId.systemDefault())
+            .format(it)
+    }
+    val size = snapshot.sizeBytes?.let { "${(it / 1024).coerceAtLeast(1)} KB" }
+    return when {
+        timestamp != null && size != null -> "$timestamp • $size"
+        timestamp != null -> timestamp
+        size != null -> "$size • ${snapshot.name}"
+        else -> snapshot.name
     }
 }
 

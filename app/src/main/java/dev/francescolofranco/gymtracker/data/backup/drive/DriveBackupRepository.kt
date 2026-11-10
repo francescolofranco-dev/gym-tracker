@@ -9,6 +9,9 @@ import dev.francescolofranco.gymtracker.data.db.dao.SessionDao
 import dev.francescolofranco.gymtracker.data.db.dao.TemplateDao
 import dev.francescolofranco.gymtracker.data.prefs.UserPrefs
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.time.Instant
@@ -52,6 +55,12 @@ class DriveBackupRepository @Inject constructor(
     private val sessionDao: SessionDao,
     private val templateDao: TemplateDao,
 ) {
+    private val _cachedSnapshots = MutableStateFlow<List<DriveSnapshot>?>(null)
+    val cachedSnapshots: StateFlow<List<DriveSnapshot>?> = _cachedSnapshots.asStateFlow()
+
+    fun clearCachedSnapshots() {
+        _cachedSnapshots.value = null
+    }
 
     suspend fun runBackup(force: Boolean = false): DriveBackupResult = withContext(Dispatchers.IO) {
         try {
@@ -103,7 +112,9 @@ class DriveBackupRepository @Inject constructor(
 
     suspend fun listSnapshots(): List<DriveSnapshot> = withContext(Dispatchers.IO) {
         val token = auth.freshAccessToken() ?: return@withContext emptyList()
-        runCatching { client.list(token) }.getOrDefault(emptyList())
+        val list = runCatching { client.list(token) }.getOrDefault(emptyList())
+        _cachedSnapshots.value = list
+        list
     }
 
     suspend fun restore(snapshotId: String): DriveRestoreResult = withContext(Dispatchers.IO) {
