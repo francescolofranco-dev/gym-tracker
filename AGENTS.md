@@ -1,6 +1,6 @@
 # Working agreements
 
-- Integrate completed implementation changes into `main` and commit them after relevant checks pass. Commit only complete, passing work.
+- Integrate completed implementation changes into `main`, commit them, and push to `origin/main` after relevant checks pass. Commit and push only complete, passing work.
 - Use optimized, production-like builds for device acceptance. Use debug builds when required for debugging or tests. For Android, provide a non-debuggable, release-optimized, locally installable `benchmark` variant with profiling enabled. Verify the optimized artifact before delivery, distinguish performance-ready builds from measured benchmark results, and keep the setup minimal.
 
 ## Agent skills
