@@ -1,5 +1,10 @@
 package dev.francescolofranco.gymtracker.ui.screens.sessions
 
+import android.text.format.DateFormat
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import java.util.Date
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import java.time.Duration
 import java.time.Instant
@@ -54,16 +59,27 @@ fun formatDuration(d: Duration): String {
     }
 }
 
-private val dateFormat = DateTimeFormatter.ofPattern("EEE d MMM").withZone(ZoneId.systemDefault())
-private val timeFormat = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.systemDefault())
+/** Use Android's formatter so the explicit phone clock setting overrides locale defaults. */
+@Composable
+fun formatSessionDate(at: Instant): String = formatSessionDate(
+    at = at,
+    systemTimeFormat = DateFormat.getTimeFormat(LocalContext.current),
+    locale = LocalConfiguration.current.locales[0],
+)
 
-fun formatSessionDate(at: Instant): String {
-    val zone = ZoneId.systemDefault()
-    val today = LocalDate.now(zone)
+internal fun formatSessionDate(
+    at: Instant,
+    systemTimeFormat: java.text.DateFormat,
+    zone: ZoneId = systemTimeFormat.timeZone.toZoneId(),
+    today: LocalDate = LocalDate.now(zone),
+    locale: Locale = Locale.getDefault(),
+): String {
     val sessionDay = at.atZone(zone).toLocalDate()
+    val time = systemTimeFormat.format(Date.from(at))
+    val dateFormat = DateTimeFormatter.ofPattern("EEE d MMM", locale).withZone(zone)
     return when (sessionDay) {
-        today -> "Today, ${timeFormat.format(at)}"
-        today.minusDays(1) -> "Yesterday, ${timeFormat.format(at)}"
-        else -> "${dateFormat.format(at)}, ${timeFormat.format(at)}"
+        today -> "Today, $time"
+        today.minusDays(1) -> "Yesterday, $time"
+        else -> "${dateFormat.format(at)}, $time"
     }
 }
