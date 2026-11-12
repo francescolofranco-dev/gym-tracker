@@ -1274,32 +1274,27 @@ private fun SettingsFooter() {
     }
 }
 
-private data class IronMaxim(
-    val code: String,
-    val quote: String,
-    val directive: String,
+private data class TrainingTip(
+    val title: String,
+    val message: String,
 )
 
-private val IRON_MAXIMS = listOf(
-    IronMaxim(
-        code = "PROTOCOL 01 // OVERLOAD",
-        quote = "THE BARBELL DOES NOT NEGOTIATE. PROGRESSIVE OVERLOAD IS THE ONLY METRIC THAT MATTERS.",
-        directive = "Log every working set. Beat the previous session by one rep or one kilo.",
+private val TRAINING_TIPS = listOf(
+    TrainingTip(
+        title = "Track your progress",
+        message = "Log your sets, reps, and weights to see how your training changes over time.",
     ),
-    IronMaxim(
-        code = "PROTOCOL 02 // SOVEREIGNTY",
-        quote = "ZERO ADS. ZERO PAYWALLS. ZERO TELEMETRY LEAKS. YOUR TRAINING LOG BELONGS TO YOUR IRON VAULT.",
-        directive = "Offline-first SQLite engine with deterministic JSON snapshots.",
+    TrainingTip(
+        title = "Keep a backup",
+        message = "Your workouts are saved on this device. Back them up to a file or Google Drive from Settings.",
     ),
-    IronMaxim(
-        code = "PROTOCOL 03 // EFFECTIVE VOLUME",
-        quote = "JUNK VOLUME IS NOISE. STIMULUS IS EARNED IN PROXIMITY TO MECHANICAL FAILURE.",
-        directive = "Primary movers count 1.0x; secondary synergists count 0.5x across 14 muscle groups.",
+    TrainingTip(
+        title = "Review your training",
+        message = "Check your exercise history and muscle coverage to help plan your next workout.",
     ),
-    IronMaxim(
-        code = "PROTOCOL 04 // KINETIC DISCIPLINE",
-        quote = "MOTIVATION IGNITES THE FIRST SESSION. CALIBRATED SYSTEMS FORGE THE THOUSANDTH.",
-        directive = "Show up, load the plates, start the rest timer, and execute.",
+    TrainingTip(
+        title = "Build a routine",
+        message = "Set a weekly session goal and use templates to make getting started easier.",
     ),
 )
 
@@ -1312,8 +1307,8 @@ private fun GymTrackerAboutDialog(onDismiss: () -> Unit) {
             pi.versionName ?: "?"
         }.getOrDefault("?")
     }
-    var maximIndex by remember { mutableIntStateOf(0) }
-    val currentMaxim = IRON_MAXIMS[maximIndex]
+    var tipIndex by remember { mutableIntStateOf(0) }
+    val currentTip = TRAINING_TIPS[tipIndex]
 
     Dialog(onDismissRequest = onDismiss) {
         Column(
@@ -1325,33 +1320,10 @@ private fun GymTrackerAboutDialog(onDismiss: () -> Unit) {
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            // Top tactical header
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.End,
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(BrandLime),
-                    )
-                    Text(
-                        text = "KINETIC CORE // DIAGNOSTICS",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontFamily = SpaceGroteskFontFamily,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.2.sp,
-                        ),
-                        color = BrandLime,
-                    )
-                }
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(2.dp))
@@ -1383,7 +1355,7 @@ private fun GymTrackerAboutDialog(onDismiss: () -> Unit) {
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
-                        text = "GYM TRACKER ENGINE",
+                        text = "GYM TRACKER",
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontFamily = OswaldFontFamily,
                             fontSize = 26.sp,
@@ -1393,7 +1365,7 @@ private fun GymTrackerAboutDialog(onDismiss: () -> Unit) {
                         color = DarkOnSurface,
                     )
                     Text(
-                        text = "Engineered for high-output hypertrophy & strength logging without cloud lock-in.",
+                        text = "Log your workouts, follow your progress, and plan your next session.",
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontFamily = SpaceGroteskFontFamily,
                             fontSize = 12.sp,
@@ -1403,57 +1375,36 @@ private fun GymTrackerAboutDialog(onDismiss: () -> Unit) {
                 }
             }
 
-            // Telemetry spec grid
-            Column(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(4.dp))
                     .background(SurfaceDeep)
                     .padding(12.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    DiagnosticMetricCell(
-                        label = "STORAGE VAULT",
-                        value = "ROOM SQLITE",
-                        modifier = Modifier.weight(1f),
-                    )
-                    DiagnosticMetricCell(
-                        label = "1RM FORMULA",
-                        value = "EPLEY (≤12 REPS)",
-                        modifier = Modifier.weight(1f),
-                    )
-                }
-                HorizontalDivider(color = EditorialBorder, thickness = 1.dp)
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    DiagnosticMetricCell(
-                        label = "VOLUME MODEL",
-                        value = "1.0x / 0.5x SPLIT",
-                        modifier = Modifier.weight(1f),
-                    )
-                    DiagnosticMetricCell(
-                        label = "EXTERNAL TRACKERS",
-                        value = "0 DETECTED",
-                        valueColor = BrandLime,
-                        modifier = Modifier.weight(1f),
-                    )
-                }
+                DiagnosticMetricCell(
+                    label = "1RM FORMULA",
+                    value = "EPLEY (≤12 REPS)",
+                    modifier = Modifier.weight(1f),
+                )
+                DiagnosticMetricCell(
+                    label = "VOLUME MODEL",
+                    value = "1.0x / 0.5x SPLIT",
+                    modifier = Modifier.weight(1f),
+                )
             }
 
-            // Interactive Iron Creed card (tap to cycle)
+            // Tap the card to cycle through training tips.
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(4.dp))
                     .background(SurfaceElevated)
                     .border(1.dp, EditorialBorder, RoundedCornerShape(4.dp))
-                    .clickable { maximIndex = (maximIndex + 1) % IRON_MAXIMS.size }
+                    .clickable(onClickLabel = "Show next tip", role = Role.Button) {
+                        tipIndex = (tipIndex + 1) % TRAINING_TIPS.size
+                    }
                     .padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -1463,7 +1414,7 @@ private fun GymTrackerAboutDialog(onDismiss: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        text = currentMaxim.code,
+                        text = currentTip.title,
                         style = MaterialTheme.typography.labelSmall.copy(
                             fontFamily = SpaceGroteskFontFamily,
                             fontSize = 10.sp,
@@ -1478,12 +1429,12 @@ private fun GymTrackerAboutDialog(onDismiss: () -> Unit) {
                     ) {
                         Icon(
                             imageVector = Icons.Filled.Refresh,
-                            contentDescription = "Cycle protocol",
+                            contentDescription = null,
                             tint = OliveSubtext,
                             modifier = Modifier.size(12.dp),
                         )
                         Text(
-                            text = "${maximIndex + 1} / ${IRON_MAXIMS.size}",
+                            text = "${tipIndex + 1} / ${TRAINING_TIPS.size}",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontFamily = SpaceGroteskFontFamily,
                                 fontSize = 10.sp,
@@ -1494,7 +1445,7 @@ private fun GymTrackerAboutDialog(onDismiss: () -> Unit) {
                     }
                 }
                 Text(
-                    text = "\"${currentMaxim.quote}\"",
+                    text = currentTip.message,
                     style = MaterialTheme.typography.titleMedium.copy(
                         fontFamily = OswaldFontFamily,
                         fontSize = 16.sp,
@@ -1505,7 +1456,7 @@ private fun GymTrackerAboutDialog(onDismiss: () -> Unit) {
                     color = DarkOnSurface,
                 )
                 Text(
-                    text = currentMaxim.directive,
+                    text = "Tap for another tip",
                     style = MaterialTheme.typography.bodySmall.copy(
                         fontFamily = SpaceGroteskFontFamily,
                         fontSize = 11.sp,
@@ -1514,31 +1465,10 @@ private fun GymTrackerAboutDialog(onDismiss: () -> Unit) {
                 )
             }
 
-            // Actions
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.Center,
             ) {
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(42.dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(SurfaceChip)
-                        .clickable { maximIndex = (maximIndex + 1) % IRON_MAXIMS.size },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = "NEXT TRANSMIT",
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontFamily = OswaldFontFamily,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.8.sp,
-                        ),
-                        color = DarkOnSurface,
-                    )
-                }
                 Box(
                     modifier = Modifier
                         .weight(1f)
@@ -1549,7 +1479,7 @@ private fun GymTrackerAboutDialog(onDismiss: () -> Unit) {
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
-                        text = "BACK TO THE IRON",
+                        text = "BACK TO TRAINING",
                         style = MaterialTheme.typography.labelLarge.copy(
                             fontFamily = OswaldFontFamily,
                             fontSize = 14.sp,
