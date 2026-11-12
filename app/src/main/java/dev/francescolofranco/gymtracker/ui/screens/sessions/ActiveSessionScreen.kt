@@ -77,6 +77,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -149,6 +150,18 @@ fun ActiveSessionScreen(
                 is ActiveSessionViewModel.Event.OpenCompleted -> onCompleted(event.sessionId)
             }
         }
+    }
+
+    var wasWorkoutComplete by rememberSaveable { mutableStateOf(false) }
+    var showCompletionPrompt by rememberSaveable { mutableStateOf(false) }
+    val workoutComplete = session?.acceptedAt != null && session.endedAt == null &&
+        details.isWorkoutComplete()
+    LaunchedEffect(content) {
+        // Loading/retry gaps must not reset a dismissed prompt.
+        if (content == null) return@LaunchedEffect
+        if (workoutComplete && !wasWorkoutComplete) showCompletionPrompt = true
+        if (!workoutComplete) showCompletionPrompt = false
+        wasWorkoutComplete = workoutComplete
     }
 
     // Honour the "keep screen on during session" pref. Adds the FLAG_KEEP_SCREEN_ON window
@@ -239,27 +252,6 @@ fun ActiveSessionScreen(
                                 modifier = Modifier.size(18.dp),
                             )
                         }
-                        Box(
-                            contentAlignment = Alignment.Center,
-                            modifier = Modifier
-                                .padding(end = 12.dp)
-                                .size(38.dp)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(SurfaceCard)
-                                .border(1.dp, EditorialBorder, RoundedCornerShape(4.dp))
-                                .clickable(
-                                    enabled = content != null,
-                                    role = Role.Button,
-                                    onClick = { showWorkoutActions = true },
-                                ),
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.MoreVert,
-                                contentDescription = "Workout actions",
-                                tint = MaterialTheme.colorScheme.onSurface,
-                                modifier = Modifier.size(18.dp),
-                            )
-                        }
                     },
                 )
                 HorizontalDivider(color = EditorialBorder, thickness = 1.dp)
@@ -278,6 +270,8 @@ fun ActiveSessionScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 12.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Button(
                             onClick = { showPicker = true },
@@ -287,7 +281,7 @@ fun ActiveSessionScreen(
                                 contentColor = MaterialTheme.colorScheme.onSurface,
                             ),
                             modifier = Modifier
-                                .fillMaxWidth()
+                                .weight(1f)
                                 .height(48.dp)
                                 .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp)),
                         ) {
@@ -305,6 +299,21 @@ fun ActiveSessionScreen(
                                     fontWeight = FontWeight.Bold,
                                     letterSpacing = 0.8.sp,
                                 ),
+                            )
+                        }
+                        IconButton(
+                            onClick = { showWorkoutActions = true },
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(SurfaceCard)
+                                .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp)),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.MoreVert,
+                                contentDescription = "Workout actions",
+                                tint = MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.size(20.dp),
                             )
                         }
                     }
@@ -436,20 +445,48 @@ fun ActiveSessionScreen(
         )
     }
 
+    if (showCompletionPrompt && workoutComplete) {
+        AlertDialog(
+            onDismissRequest = { showCompletionPrompt = false },
+            shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
+            title = { Text("Congrats 🎉") },
+            text = { Text("You've finished all your exercises! Ready to complete and save your workout?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showCompletionPrompt = false
+                    viewModel.endSession()
+                }) { Text("Complete & save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCompletionPrompt = false }) { Text("Keep training") }
+            },
+        )
+    }
+
     if (confirmEnd) {
         AlertDialog(
             onDismissRequest = { confirmEnd = false },
             shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
-            title = { Text("End session?") },
-            text = { Text("This finalises the session and logs your completed sets. You can still edit sets afterwards.") },
+            title = { Text("End workout?") },
+            text = {
+                val remainingSets = (plannedTotal - loggedTotal).coerceAtLeast(0)
+                Text(
+                    if (remainingSets > 0) {
+                        val setsLabel = if (remainingSets == 1) "set" else "sets"
+                        "You have $remainingSets $setsLabel remaining. Your completed sets will be saved."
+                    } else {
+                        "Your completed sets will be saved."
+                    },
+                )
+            },
             confirmButton = {
                 TextButton(onClick = {
                     confirmEnd = false
                     viewModel.endSession()
-                }) { Text("End") }
+                }) { Text("End workout") }
             },
             dismissButton = {
-                TextButton(onClick = { confirmEnd = false }) { Text("Cancel") }
+                TextButton(onClick = { confirmEnd = false }) { Text("Keep training") }
             },
         )
     }
