@@ -75,6 +75,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.SessionEntity
 import dev.francescolofranco.gymtracker.data.db.entities.TemplateEntity
@@ -209,7 +210,7 @@ fun SessionsScreen(
                         title = { Text("Weekly session goal") },
                         text = {
                             Column(Modifier.verticalScroll(rememberScrollState())) {
-                                Text("Completed sessions, Monday through Sunday.")
+                                Text("Completed sessions in the last 7 days (today and the previous 6 days).")
                                 (1..7).forEach { goal ->
                                     TextButton(onClick = { viewModel.setWeeklyGoal(goal); editGoal = false }) {
                                         Text("$goal session${if (goal == 1) "" else "s"}${if (goal == weeklyGoal) " · Selected" else ""}")
@@ -976,8 +977,18 @@ private fun rememberElapsed(start: Instant): Duration {
 /** Decorative marks are replaced by actual progress, with the target available at the point of use. */
 @Composable
 private fun WeeklyProgress(past: List<SessionSummary>, goal: Int, onEditGoal: () -> Unit) {
-    // Recompute on composition so returning home after midnight observes the new calendar week.
-    val count = completedThisWeek(past.map { it.session })
+    var now by remember { mutableStateOf(Instant.now()) }
+    LifecycleResumeEffect(Unit) {
+        now = Instant.now()
+        onPauseOrDispose { }
+    }
+    LaunchedEffect(now) {
+        val nextDay = now.atZone(ZoneId.systemDefault()).toLocalDate().plusDays(1)
+            .atStartOfDay(ZoneId.systemDefault()).toInstant()
+        delay(Duration.between(Instant.now(), nextDay).toMillis().coerceAtLeast(1))
+        now = Instant.now()
+    }
+    val count = completedInLastSevenDays(past.map { it.session })
     val progress = (count.toFloat() / goal).coerceIn(0f, 1f)
     val remaining = (goal - count).coerceAtLeast(0)
 
@@ -1052,7 +1063,7 @@ private fun WeeklyProgress(past: List<SessionSummary>, goal: Int, onEditGoal: ()
             Box(
                 modifier = Modifier
                     .size(80.dp)
-                    .semantics { contentDescription = "$count of $goal weekly sessions completed" },
+                    .semantics { contentDescription = "$count of $goal sessions completed in the last 7 days" },
                 contentAlignment = Alignment.Center,
             ) {
                 Canvas(Modifier.size(80.dp)) {
@@ -1097,7 +1108,7 @@ private fun WeeklyProgress(past: List<SessionSummary>, goal: Int, onEditGoal: ()
                     color = MaterialTheme.colorScheme.onSurface,
                 )
                 Text(
-                    text = "Keep your training momentum going",
+                    text = "Completed sessions · Last 7 days",
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
                     color = SlateSubtext,
                 )

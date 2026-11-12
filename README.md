@@ -9,6 +9,7 @@ Android workout tracker for logging gym sessions, sets, reps, weight, notes, and
   the next workout, alongside separate pinned notes that stay until removed.
 - Support unilateral exercises with separate left/right sets and per-side planning.
 - Resume active sessions with an accurate workout timer, plus editable session timing.
+- Track the weekly session goal over the last 7 local dates (today and the previous 6 days).
 - Review past sessions by month with duration, sets, exercises, and volume.
 - See exercise-specific stats, progress charts, session history, and personal records.
 - Review compact 7, 28, and 90-day training insights, weekly muscle coverage, and exercise progress.
