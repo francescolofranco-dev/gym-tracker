@@ -34,7 +34,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.ListAlt
-import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.CloudOff
@@ -47,7 +46,6 @@ import androidx.compose.material.icons.filled.NotificationsOff
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.filled.Verified
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AlertDialog
@@ -204,7 +202,7 @@ fun SettingsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             item(key = "settings_top_header") {
-                SettingsTopHeader(driveConnected = driveState.connected)
+                SettingsTopHeader()
             }
 
             item(key = "display_section") {
@@ -479,7 +477,7 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun SettingsTopHeader(driveConnected: Boolean) {
+private fun SettingsTopHeader() {
     val context = LocalContext.current
     val version = remember {
         runCatching {
@@ -491,33 +489,22 @@ private fun SettingsTopHeader(driveConnected: Boolean) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
         Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.Bottom,
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = "SETTINGS",
-                    style = MaterialTheme.typography.headlineLarge.copy(
-                        fontFamily = OswaldFontFamily,
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.6.sp,
-                    ),
-                    color = DarkOnSurface,
-                )
-                Text(
-                    text = "Kinetic Discipline System • Calibration",
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontFamily = SpaceGroteskFontFamily,
-                        fontSize = 12.sp,
-                    ),
-                    color = OliveSubtext,
-                )
-            }
+            Text(
+                text = "SETTINGS",
+                style = MaterialTheme.typography.headlineLarge.copy(
+                    fontFamily = OswaldFontFamily,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.6.sp,
+                ),
+                color = DarkOnSurface,
+            )
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(2.dp))
@@ -536,87 +523,14 @@ private fun SettingsTopHeader(driveConnected: Boolean) {
                 )
             }
         }
-
-        // Figma 1:2105 Status Card
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(4.dp))
-                .background(SurfaceElevated)
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(SurfaceChip),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Bolt,
-                    contentDescription = null,
-                    tint = BrandLime,
-                    modifier = Modifier.size(22.dp),
-                )
-            }
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(
-                        text = "ATHLETE TELEMETRY TIER",
-                        style = MaterialTheme.typography.labelLarge.copy(
-                            fontFamily = SpaceGroteskFontFamily,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.4.sp,
-                        ),
-                        color = DarkOnSurface,
-                    )
-                    Icon(
-                        imageVector = Icons.Filled.Verified,
-                        contentDescription = null,
-                        tint = BrandLime,
-                        modifier = Modifier.size(14.dp),
-                    )
-                }
-                Text(
-                    text = if (driveConnected) {
-                        "Cloud backup & automated telemetry active"
-                    } else {
-                        "Offline-first local SQLite vault & telemetry active"
-                    },
-                    style = MaterialTheme.typography.bodySmall.copy(
-                        fontFamily = SpaceGroteskFontFamily,
-                        fontSize = 12.sp,
-                    ),
-                    color = OliveSubtext,
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(SurfaceChip)
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-            ) {
-                Text(
-                    text = "ACTIVE",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontFamily = SpaceGroteskFontFamily,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.1.sp,
-                    ),
-                    color = BrandLime,
-                )
-            }
-        }
+        Text(
+            text = "Kinetic Discipline System • Calibration",
+            style = MaterialTheme.typography.bodySmall.copy(
+                fontFamily = SpaceGroteskFontFamily,
+                fontSize = 12.sp,
+            ),
+            color = OliveSubtext,
+        )
     }
 }
 
