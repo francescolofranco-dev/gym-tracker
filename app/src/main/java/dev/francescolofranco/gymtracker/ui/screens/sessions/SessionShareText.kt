@@ -183,8 +183,13 @@ fun SessionShareExercise.firstSetWeightLabel(unit: WeightUnit): String {
     if (isBodyweight && (kg == null || kg == 0.0)) return "BW"
     if (kg == null) return "—"
 
-    val weight = "${formatWeightNumber(convertFromKg(kg, unit))} ${unit.label()}"
-    return if (isBodyweight) "BW +$weight" else weight
+    val number = formatWeightNumber(convertFromKg(kg, unit))
+    val weight = "$number ${unit.label()}"
+    return when {
+        !isBodyweight -> weight
+        number.startsWith("-") -> "BW $weight"
+        else -> "BW +$weight"
+    }
 }
 
 fun formatShareDuration(duration: Duration): String {

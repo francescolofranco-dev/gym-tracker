@@ -88,9 +88,8 @@ fun TrendLineChart(
 
             val maxV = values.max()
             val minV = values.min()
-            // Drop the floor a little below the minimum (but never below 0) so the lowest point
-            // isn't glued to the axis, and guard against a flat series with a unit span.
-            val lo = (minV - (maxV - minV) * 0.15).coerceAtLeast(0.0)
+            val rawLo = minV - (maxV - minV) * 0.15
+            val lo = if (minV >= 0.0) rawLo.coerceAtLeast(0.0) else rawLo
             val span = (maxV - lo).coerceAtLeast(1.0)
             val n = values.size
 

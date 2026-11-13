@@ -358,6 +358,46 @@ class SessionShareTextTest {
     }
 
     @Test
+    fun `assisted bodyweight exercise formats negative weight without plus-minus`() {
+        val summary = summarizeFinishedSession(
+            listOf(
+                detail(
+                    id = 1,
+                    name = "Assisted pull-up",
+                    bodyweight = true,
+                    sets = listOf(
+                        set(id = 1, sessionExerciseId = 1, reps = 8, kg = -25.0, completed = true),
+                    ),
+                ),
+                detail(
+                    id = 2,
+                    name = "Assisted dip",
+                    bodyweight = false,
+                    sets = listOf(
+                        set(id = 2, sessionExerciseId = 2, reps = 10, kg = -15.5, completed = true),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals("BW -25 kg", summary.exercises[0].firstSetWeightLabel(WeightUnit.KG))
+        assertEquals("-15.5 kg", summary.exercises[1].firstSetWeightLabel(WeightUnit.KG))
+    }
+
+    @Test
+    fun `negative weight chip and percent delta format cleanly`() {
+        assertEquals("0", formatWeightNumber(-0.0))
+        assertEquals("0", formatWeightNumber(-0.0001))
+        assertEquals("-25", formatWeightChip(-25.0, isBodyweight = true))
+        assertEquals("+25", formatWeightChip(25.0, isBodyweight = true))
+        assertEquals("-25", formatWeightChip(-25.0, isBodyweight = false))
+
+        assertEquals(PercentDelta("+20%", PercentTone.Up), percentDeltaOrDash(-20.0, -25.0))
+        assertEquals(PercentDelta("-20%", PercentTone.Down), percentDeltaOrDash(-30.0, -25.0))
+        assertEquals(PercentDelta("0%", PercentTone.Same), percentDeltaOrDash(-25.0, -25.0))
+    }
+
+    @Test
     fun `share duration stays compact at useful boundaries`() {
         assertEquals("<1m", formatShareDuration(Duration.ofSeconds(59)))
         assertEquals("1m", formatShareDuration(Duration.ofMinutes(1)))

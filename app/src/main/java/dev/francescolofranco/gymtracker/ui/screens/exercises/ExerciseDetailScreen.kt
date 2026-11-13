@@ -871,7 +871,7 @@ private fun RecordTile(
 @Composable
 private fun DeltaLabel(current: Double, previous: Double?) {
     if (previous == null || previous == 0.0) return
-    val pct = (current - previous) / previous * 100
+    val pct = (current - previous) / abs(previous) * 100
     val rounded = pct.roundToInt()
     val (text, color) = when {
         rounded > 0 -> "+$rounded%" to BrandLime

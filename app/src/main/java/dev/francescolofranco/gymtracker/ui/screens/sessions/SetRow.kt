@@ -226,7 +226,7 @@ fun SetRow(
             // Persist a stepper bump as a draft so it survives recomposition / navigation.
             onDraft(
                 reps.takeIf { it > 0 || log.reps != null },
-                kgInternal.takeIf { it > 0.0 || log.kg != null },
+                kgInternal.takeIf { it != 0.0 || log.kg != null },
                 false,
             )
         }
@@ -400,7 +400,7 @@ fun SetRow(
         if (!isLogged && (reps != preOpenReps || kgInternal != preOpenKg)) {
             onDraft(
                 reps.takeIf { it > 0 || log.reps != null },
-                kgInternal.takeIf { it > 0.0 || log.kg != null },
+                kgInternal.takeIf { it != 0.0 || log.kg != null },
                 kgFromExplicit,
             )
         }
@@ -437,14 +437,15 @@ fun SetRow(
                 initialValue = displayKg,
                 allowDecimal = true,
                 onValueChange = { v ->
-                    kgInternal = convertToKg(v, state.unit).coerceAtLeast(0.0)
+                    kgInternal = convertToKg(v, state.unit)
                     if (isLogged) onCommit(reps, kgInternal)
                 },
                 onDismiss = { finishNumpad() },
                 label = "${state.unit.label()} · set ${log.setNumber}",
                 unitLabel = state.unit.label().uppercase(),
-                minValue = 0.0,
+                minValue = -9999.0,
                 maxValue = 9999.0,
+                allowNegative = true,
             )
         }
 
@@ -767,14 +768,15 @@ private fun TextStyle.asNumber(): TextStyle = copy(
     ),
 )
 
-private fun formatWeightChip(value: Double, isBodyweight: Boolean): String {
-    val prefix = if (isBodyweight) "+" else ""
-    return "$prefix${formatWeightNumber(value)}"
+internal fun formatWeightChip(value: Double, isBodyweight: Boolean): String {
+    val formatted = formatWeightNumber(value)
+    val prefix = if (isBodyweight && !formatted.startsWith("-")) "+" else ""
+    return "$prefix$formatted"
 }
 
-private enum class PercentTone { Up, Down, Same }
+internal enum class PercentTone { Up, Down, Same }
 
-private data class PercentDelta(val text: String, val tone: PercentTone)
+internal data class PercentDelta(val text: String, val tone: PercentTone)
 
 @Composable
 private fun PercentTone.color(): Color = when (this) {
@@ -790,9 +792,9 @@ private fun PercentTone.color(): Color = when (this) {
  *  - "0%" (neutral tone) when current matches prior,
  *  - "-" (neutral tone) when there's no prior data to compare against.
  */
-private fun percentDeltaOrDash(current: Double, hint: Double?): PercentDelta {
-    if (hint == null || hint <= 0.0) return PercentDelta("-", PercentTone.Same)
-    val pct = ((current - hint) / hint) * 100.0
+internal fun percentDeltaOrDash(current: Double, hint: Double?): PercentDelta {
+    if (hint == null || hint == 0.0) return PercentDelta("-", PercentTone.Same)
+    val pct = ((current - hint) / kotlin.math.abs(hint)) * 100.0
     val rounded = pct.toInt()
     return when {
         rounded > 0 -> PercentDelta("+$rounded%", PercentTone.Up)

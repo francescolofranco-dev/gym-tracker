@@ -197,7 +197,7 @@ fun ActiveSessionScreen(
             .sumOf { d ->
                 d.setLogs
                     .filter { it.loggedAt != null && it.reps != null && !it.isSkipped }
-                    .sumOf { (it.kg ?: 0.0) * (it.reps ?: 0) }
+                    .sumOf { (it.kg ?: 0.0).coerceAtLeast(0.0) * (it.reps ?: 0) }
             }
     }
 

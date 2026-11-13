@@ -75,4 +75,32 @@ class BackupValidationTest {
             )
         }
     }
+
+    @Test
+    fun negativeSetWeightWithinBoundsPassesPreflight() {
+        validateBackupData(
+            listOf(exercise),
+            emptyList(),
+            emptyList(),
+            listOf(session),
+            listOf(sessionExercise),
+            listOf(set.copy(kg = -25.0)),
+        )
+    }
+
+    @Test
+    fun outOfBoundsOrNonFiniteSetWeightIsRejected() {
+        listOf(-10000.0, 10000.0, Double.NaN, Double.POSITIVE_INFINITY).forEach { invalidKg ->
+            assertThrows(BackupParseException::class.java) {
+                validateBackupData(
+                    listOf(exercise),
+                    emptyList(),
+                    emptyList(),
+                    listOf(session),
+                    listOf(sessionExercise),
+                    listOf(set.copy(kg = invalidKg)),
+                )
+            }
+        }
+    }
 }

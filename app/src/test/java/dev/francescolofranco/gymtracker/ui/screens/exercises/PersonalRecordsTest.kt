@@ -62,6 +62,31 @@ class PersonalRecordsTest {
         assertEquals(850.0, summary.bestVolumeKg, 1e-9)
     }
 
+    @Test
+    fun lessAssistanceInNegativeExerciseEarnsEstimatedOneRmRecord() {
+        val points = aggregateSessions(
+            listOf(
+                row(1, 0, 8, -30.0),
+                row(2, 7, 8, -25.0),
+            ),
+        )
+        assertTrue(detectPersonalRecords(points, false)[1L].orEmpty().isEmpty())
+        assertTrue(PersonalRecordType.ESTIMATED_1RM in detectPersonalRecords(points, false)[2L].orEmpty())
+    }
+
+    @Test
+    fun moreRepsAtSameNegativeWeightEarnsRepRecord() {
+        val points = aggregateSessions(
+            listOf(
+                row(1, 0, 8, -25.0),
+                row(2, 7, 10, -25.0),
+            ),
+        )
+        val records = detectPersonalRecords(points, false)[2L].orEmpty()
+        assertTrue(PersonalRecordType.REPS_AT_WEIGHT in records)
+        assertTrue(PersonalRecordType.ESTIMATED_1RM in records)
+    }
+
     private fun row(
         sessionId: Long,
         day: Long,

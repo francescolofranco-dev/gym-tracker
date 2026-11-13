@@ -111,7 +111,7 @@ fun computeMuscleVolumes(rows: List<StatSetRow>): Map<Muscle, MuscleVolume> {
     val byMuscleByExercise = HashMap<Muscle, HashMap<Long, ExerciseAccumulator>>()
 
     rows.forEach { r ->
-        val setVol = (r.kg ?: 0.0) * r.reps
+        val setVol = (r.kg ?: 0.0).coerceAtLeast(0.0) * r.reps
         // Left/right logs are each half of one bilateral-equivalent working set. Their tonnage
         // remains additive: 10 kg × 10 on each arm really is 200 kg of external work.
         // Side is stored on the historical set itself, so later editing the exercise's
@@ -224,8 +224,8 @@ fun computeExerciseProgress(
             name = first.exerciseName,
             isBodyweight = first.isBodyweight,
             currentValue = currentValue,
-            percentChange = previousValue?.takeIf { it > 0.0 }
-                ?.let { (currentValue - it) / it * 100.0 },
+            percentChange = previousValue?.takeIf { it != 0.0 }
+                ?.let { (currentValue - it) / abs(it) * 100.0 },
         )
     }.sortedWith(
         compareByDescending<ExerciseProgressSignal> { it.percentChange != null }
@@ -238,7 +238,7 @@ private fun headlineValue(rows: List<StatSetRow>, isBodyweight: Boolean): Double
     if (isBodyweight) {
         rows.maxOfOrNull { it.reps.toDouble() }
     } else {
-        rows.mapNotNull { row -> row.kg?.takeIf { it > 0.0 }?.let { epley1Rm(it, row.reps) } }.maxOrNull()
+        rows.mapNotNull { row -> row.kg?.takeIf { it != 0.0 }?.let { epley1Rm(it, row.reps) } }.maxOrNull()
     }
 
 data class PersonalRecordActivity(val count: Int, val exerciseIds: Set<Long>)

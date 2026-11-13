@@ -37,6 +37,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -65,19 +67,15 @@ fun NumpadSheet(
     label: String? = null,
     unitLabel: String? = null,
     minValue: Double = 0.0,
-    maxValue: Double = 9999.0
+    maxValue: Double = 9999.0,
+    allowNegative: Boolean = minValue < 0.0,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    // Buffer mirrors the decimal/integer input state. Coerce on commit.
-    var buffer by remember { mutableStateOf(initialBuffer(initialValue, allowDecimal)) }
-    // Pristine flag: the buffer was seeded from the existing value, the user hasn't typed yet.
-    // First digit press wipes the seed instead of appending — saves the "tap backspace 3 times
-    // before typing the new weight" dance the user complained about.
-    var pristine by remember { mutableStateOf(true) }
+    var state by remember { mutableStateOf(initialNumpadState(initialValue, allowDecimal)) }
 
-    LaunchedEffect(buffer) {
-        bufferToDouble(buffer)?.let { v ->
+    LaunchedEffect(state.buffer) {
+        bufferToDouble(state.buffer)?.let { v ->
             onValueChange(v.coerceIn(minValue, maxValue))
         }
     }
@@ -156,7 +154,7 @@ fun NumpadSheet(
                     horizontalArrangement = Arrangement.Center,
                 ) {
                     Text(
-                        text = buffer.ifEmpty { "0" },
+                        text = displayBuffer(state.buffer),
                         style = MaterialTheme.typography.displayLarge.copy(
                             fontWeight = FontWeight.ExtraBold,
                         ),
@@ -190,7 +188,16 @@ fun NumpadSheet(
                 listOf("1", "2", "3"),
                 listOf("4", "5", "6"),
                 listOf("7", "8", "9"),
-                listOf(if (allowDecimal) "." else "", "0", BACKSPACE_TOKEN)
+                listOf(
+                    when {
+                        allowNegative && allowDecimal -> SIGN_DECIMAL_SLOT
+                        allowNegative -> SIGN_TOKEN
+                        allowDecimal -> "."
+                        else -> ""
+                    },
+                    "0",
+                    BACKSPACE_TOKEN,
+                )
             )
 
             rows.forEach { row ->
@@ -204,19 +211,48 @@ fun NumpadSheet(
                                 .weight(1f)
                                 .height(56.dp)
                         ) {
-                            if (token.isNotEmpty()) {
-                                NumpadKey(
-                                    token = token,
-                                    onTap = { tapped ->
-                                        // First non-backspace press while pristine wipes the seed
-                                        // so the user can just start typing the new value.
-                                        // Backspace stays "edit existing" so the user can correct
-                                        // a typo in the seed if they want.
-                                        val seed = if (pristine && tapped != BACKSPACE_TOKEN) "" else buffer
-                                        buffer = applyToken(seed, tapped, allowDecimal)
-                                        pristine = false
+                            when {
+                                token == SIGN_DECIMAL_SLOT -> {
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(56.dp),
+                                        ) {
+                                            NumpadKey(
+                                                token = SIGN_TOKEN,
+                                                isActive = state.buffer.startsWith("-"),
+                                                onTap = { tapped ->
+                                                    state = state.onToken(tapped, allowDecimal, allowNegative)
+                                                },
+                                            )
+                                        }
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .height(56.dp),
+                                        ) {
+                                            NumpadKey(
+                                                token = ".",
+                                                onTap = { tapped ->
+                                                    state = state.onToken(tapped, allowDecimal, allowNegative)
+                                                },
+                                            )
+                                        }
                                     }
-                                )
+                                }
+                                token.isNotEmpty() -> {
+                                    NumpadKey(
+                                        token = token,
+                                        isActive = token == SIGN_TOKEN && state.buffer.startsWith("-"),
+                                        onTap = { tapped ->
+                                            state = state.onToken(tapped, allowDecimal, allowNegative)
+                                        },
+                                    )
+                                }
                             }
                         }
                     }
@@ -227,9 +263,14 @@ fun NumpadSheet(
 }
 
 @Composable
-private fun NumpadKey(token: String, onTap: (String) -> Unit) {
+private fun NumpadKey(
+    token: String,
+    isActive: Boolean = false,
+    onTap: (String) -> Unit,
+) {
     val haptic = LocalHapticFeedback.current
     val isBackspace = token == BACKSPACE_TOKEN
+    val isSign = token == SIGN_TOKEN
     val shape = RoundedCornerShape(2.dp)
     Box(
         modifier = Modifier
@@ -237,7 +278,19 @@ private fun NumpadKey(token: String, onTap: (String) -> Unit) {
             .height(56.dp)
             .clip(shape)
             .background(if (isBackspace) SurfaceControl else SurfaceElevated)
-            .border(1.dp, if (isBackspace) EditorialBorder else SubtleBorder, shape)
+            .border(
+                width = 1.dp,
+                color = when {
+                    isActive -> BrandLime
+                    isBackspace -> EditorialBorder
+                    else -> SubtleBorder
+                },
+                shape = shape,
+            )
+            .then(
+                if (isSign) Modifier.semantics { contentDescription = "Toggle negative" }
+                else Modifier
+            )
             .clickable {
                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
                 onTap(token)
@@ -257,26 +310,86 @@ private fun NumpadKey(token: String, onTap: (String) -> Unit) {
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                 ),
-                color = MaterialTheme.colorScheme.onSurface,
+                color = if (isActive) BrandLime else MaterialTheme.colorScheme.onSurface,
             )
         }
     }
 }
 
-private const val BACKSPACE_TOKEN = "<x"
+internal const val BACKSPACE_TOKEN = "<x"
+internal const val SIGN_TOKEN = "±"
+private const val SIGN_DECIMAL_SLOT = "__SIGN_DECIMAL__"
 
-private fun applyToken(buffer: String, token: String, allowDecimal: Boolean): String {
+internal data class NumpadState(
+    val buffer: String,
+    val pristine: Boolean = true,
+    val signToggledWhilePristine: Boolean = false,
+)
+
+internal fun initialNumpadState(value: Double, allowDecimal: Boolean): NumpadState =
+    NumpadState(buffer = initialBuffer(value, allowDecimal))
+
+internal fun NumpadState.onToken(
+    token: String,
+    allowDecimal: Boolean,
+    allowNegative: Boolean = false,
+): NumpadState {
+    if (token == SIGN_TOKEN) {
+        if (!allowNegative) return this
+        val nextBuffer = if (buffer.startsWith("-")) buffer.removePrefix("-") else "-$buffer"
+        return copy(
+            buffer = nextBuffer,
+            signToggledWhilePristine = if (pristine) true else signToggledWhilePristine,
+        )
+    }
+    if (token == BACKSPACE_TOKEN) {
+        return NumpadState(
+            buffer = applyToken(buffer, token, allowDecimal, allowNegative),
+            pristine = false,
+            signToggledWhilePristine = false,
+        )
+    }
+    val seed = when {
+        !pristine -> buffer
+        signToggledWhilePristine && buffer.startsWith("-") -> "-"
+        buffer == "-" -> "-"
+        else -> ""
+    }
+    return NumpadState(
+        buffer = applyToken(seed, token, allowDecimal, allowNegative),
+        pristine = false,
+        signToggledWhilePristine = false,
+    )
+}
+
+internal fun displayBuffer(buffer: String): String = when {
+    buffer.isEmpty() -> "0"
+    buffer == "-" -> "-0"
+    else -> buffer
+}
+
+internal fun applyToken(
+    buffer: String,
+    token: String,
+    allowDecimal: Boolean,
+    allowNegative: Boolean = false,
+): String {
     return when (token) {
         BACKSPACE_TOKEN -> buffer.dropLast(1)
+        SIGN_TOKEN -> if (!allowNegative) buffer
+        else if (buffer.startsWith("-")) buffer.removePrefix("-") else "-$buffer"
         "." -> if (!allowDecimal || buffer.contains(".")) buffer
-        else if (buffer.isEmpty()) "0." else "$buffer."
+        else if (buffer.isEmpty()) "0."
+        else if (buffer == "-") "-0."
+        else "$buffer."
         else -> {
             val candidate = buffer + token
             // Cap fractional precision at 3 (user wants "up to 3 decimal precision"),
-            // and integer side at 4 so we still fit "9999" or "9999.999".
-            val dotIdx = candidate.indexOf('.')
-            val intLen = if (dotIdx >= 0) dotIdx else candidate.length
-            val fracLen = if (dotIdx >= 0) candidate.length - dotIdx - 1 else 0
+            // and integer side at 4 so we still fit "9999" or "-9999.999".
+            val unsigned = candidate.removePrefix("-")
+            val dotIdx = unsigned.indexOf('.')
+            val intLen = if (dotIdx >= 0) dotIdx else unsigned.length
+            val fracLen = if (dotIdx >= 0) unsigned.length - dotIdx - 1 else 0
             if (intLen > MAX_INTEGER_DIGITS || fracLen > MAX_FRACTION_DIGITS) buffer else candidate
         }
     }
@@ -285,15 +398,16 @@ private fun applyToken(buffer: String, token: String, allowDecimal: Boolean): St
 private const val MAX_INTEGER_DIGITS = 4
 private const val MAX_FRACTION_DIGITS = 3
 
-private fun bufferToDouble(buffer: String): Double? {
-    if (buffer.isEmpty() || buffer == ".") return 0.0
+internal fun bufferToDouble(buffer: String): Double? {
+    if (buffer.isEmpty() || buffer == "." || buffer == "-" || buffer == "-.") return 0.0
     return buffer.toDoubleOrNull()
 }
 
-private fun initialBuffer(value: Double, allowDecimal: Boolean): String {
+internal fun initialBuffer(value: Double, allowDecimal: Boolean): String {
     if (value == 0.0) return ""
     return if (allowDecimal) {
-        if (value % 1.0 == 0.0) value.toInt().toString()
+        if (kotlin.math.abs(value) < 0.0005) ""
+        else if (value % 1.0 == 0.0) value.toInt().toString()
         // Round to 3 decimals + strip trailing zeros so the seed matches what the buffer
         // is allowed to contain (MAX_FRACTION_DIGITS). Otherwise floating-point noise
         // like 2.5000000004 would seed an unrepresentable buffer.

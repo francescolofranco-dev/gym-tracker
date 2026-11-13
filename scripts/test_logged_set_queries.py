@@ -73,6 +73,11 @@ class LoggedSetQueriesTest(unittest.TestCase):
         self.db.execute('UPDATE session_exercise SET isSkipped = 1 WHERE id = 2')
         self.assert_stats(0, 0)
 
+    def test_negative_weight_clamps_session_summary_volume_to_zero(self):
+        self.db.execute('UPDATE set_log SET kg = -25 WHERE id = 3')
+        summary = self.run_query('SessionDao.kt', 'observeAllSummaries')[0]
+        self.assertEqual((1, 0.0), (summary['setCount'], summary['totalVolume']))
+
     def test_history_hints_skip_drafts_and_skipped_occurrences(self):
         params = dict(exerciseId=1, setNumber=1, side='RIGHT', beforeStartedAtEpochMs=300)
         hint = self.run_query('SetLogDao.kt', 'lastLoggedSetBefore', **params)

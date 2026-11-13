@@ -141,6 +141,36 @@ class ExerciseProgressTest {
         assertNull(result.percentChange)
     }
 
+    @Test
+    fun epley1Rm_negativeWeightBecomesLessNegativeWithMoreReps() {
+        assertEquals(-25.0, epley1Rm(-25.0, 1), 1e-9)
+        assertTrue(epley1Rm(-25.0, 10) > epley1Rm(-25.0, 5))
+        assertEquals(-25.0 / (1 + 10 / 30.0), epley1Rm(-25.0, 10), 1e-9)
+    }
+
+    @Test
+    fun aggregateSessions_negativeWeightsPopulateMetricsAndClampVolumeToZero() {
+        val rows = listOf(
+            setRow(sessionId = 1, day = 0, setNumber = 1, reps = 8, kg = -25.0),
+            setRow(sessionId = 1, day = 0, setNumber = 2, reps = 10, kg = -20.0),
+        )
+
+        val p = aggregateSessions(rows).single()
+
+        assertEquals(0.0, p.volumeKg, 1e-9)
+        assertEquals(-20.0, p.topSetKg!!, 1e-9)
+        assertEquals(10, p.topSetReps)
+        assertEquals(epley1Rm(-20.0, 10), p.bestE1rmKg!!, 1e-9)
+    }
+
+    @Test
+    fun overloadTrend_lessNegativeSeriesIsProgressingWithPositivePercentChange() {
+        val result = overloadTrend(listOf(-30.0, -25.0, -20.0))
+        assertEquals(OverloadTrend.Progressing, result.trend)
+        assertTrue(result.percentChange!! > 0.0)
+        assertEquals(33.3333, result.percentChange, 1e-3)
+    }
+
     private fun setRow(sessionId: Long, day: Long, setNumber: Int, reps: Int, kg: Double?) =
         ExerciseSetRow(
             sessionId = sessionId,

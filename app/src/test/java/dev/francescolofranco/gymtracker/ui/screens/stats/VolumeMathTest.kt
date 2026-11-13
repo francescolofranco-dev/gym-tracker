@@ -117,6 +117,18 @@ class VolumeMathTest {
         assertEquals(setOf(1L), activity.exerciseIds)
     }
 
+    @Test
+    fun `negative weights clamp muscle volume to zero and track progress positively`() {
+        val chest = computeMuscleVolumes(listOf(row(reps = 10, kg = -25.0)))[Muscle.CHEST]!!
+        assertEquals(0.0, chest.totalVolumeKg, 1e-9)
+        assertEquals(1.0, chest.effectiveSets, 1e-9)
+
+        val previous = listOf(row(kg = -30.0, reps = 10))
+        val current = listOf(row(kg = -15.0, reps = 10))
+        val signal = computeExerciseProgress(current, previous).single()
+        assertEquals(50.0, signal.percentChange!!, 1e-9)
+    }
+
     private fun row(
         unilateral: Boolean = false,
         side: ExerciseSide = ExerciseSide.BOTH,

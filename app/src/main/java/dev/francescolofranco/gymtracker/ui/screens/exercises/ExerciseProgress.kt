@@ -11,7 +11,11 @@ import java.time.Instant
  * unchanged rather than the formula's slight overestimate. It overestimates at very high rep counts
  * but stays monotonic, which is all the trend needs.
  */
-fun epley1Rm(kg: Double, reps: Int): Double = if (reps <= 1) kg else kg * (1 + reps / 30.0)
+fun epley1Rm(kg: Double, reps: Int): Double = when {
+    reps <= 1 -> kg
+    kg < 0.0 -> kg / (1 + reps / 30.0)
+    else -> kg * (1 + reps / 30.0)
+}
 
 /** Per-session rollup of one exercise's logged sets — backs the progress chart, verdict, and history. */
 data class SessionProgressPoint(
@@ -59,11 +63,11 @@ fun aggregateSessions(rows: List<ExerciseSetRow>): List<SessionProgressPoint> {
 
         sessionRows.forEach { r ->
             val kg = r.kg
-            volumeKg += r.reps * (kg ?: 0.0)
+            volumeKg += r.reps * (kg ?: 0.0).coerceAtLeast(0.0)
             totalReps += r.reps
             if (r.reps > bestReps) bestReps = r.reps
             bestRepsBySide[r.side] = maxOf(bestRepsBySide[r.side] ?: 0, r.reps)
-            if (kg != null && kg > 0.0) {
+            if (kg != null && kg != 0.0) {
                 val key = LoadSideKey(kg, r.side)
                 bestRepsByLoadAndSide[key] = maxOf(bestRepsByLoadAndSide[key] ?: 0, r.reps)
                 val e1rm = epley1Rm(kg, r.reps)
@@ -144,7 +148,7 @@ fun detectPersonalRecords(
     points: List<SessionProgressPoint>,
     isBodyweight: Boolean,
 ): Map<Long, Set<PersonalRecordType>> {
-    var bestE1rm = 0.0
+    var bestE1rm: Double? = null
     var bestVolume = 0.0
     val bestRepsByLoadAndSide = HashMap<LoadSideKey, Int>()
     val bestBodyweightRepsBySide = HashMap<ExerciseSide, Int>()
@@ -153,7 +157,7 @@ fun detectPersonalRecords(
     points.forEachIndexed { index, point ->
         val records = linkedSetOf<PersonalRecordType>()
         if (index > 0) {
-            if (!isBodyweight && point.bestE1rmKg != null && point.bestE1rmKg > bestE1rm) {
+            if (!isBodyweight && point.bestE1rmKg != null && point.bestE1rmKg > (bestE1rm ?: 0.0)) {
                 records += PersonalRecordType.ESTIMATED_1RM
             }
             if (point.volumeKg > 0.0 && point.volumeKg > bestVolume) {
@@ -173,7 +177,9 @@ fun detectPersonalRecords(
             }
         }
         result[point.sessionId] = records
-        bestE1rm = maxOf(bestE1rm, point.bestE1rmKg ?: 0.0)
+        if (point.bestE1rmKg != null) {
+            bestE1rm = bestE1rm?.let { maxOf(it, point.bestE1rmKg) } ?: point.bestE1rmKg
+        }
         bestVolume = maxOf(bestVolume, point.volumeKg)
         point.bestRepsByLoadAndSide.forEach { (key, reps) ->
             bestRepsByLoadAndSide[key] = maxOf(bestRepsByLoadAndSide[key] ?: 0, reps)
@@ -205,7 +211,7 @@ fun overloadTrend(values: List<Double>): TrendResult {
     if (n < 3) return TrendResult(OverloadTrend.NotEnoughData, null, n)
 
     val percentChange =
-        if (values.first() != 0.0) (values.last() - values.first()) / values.first() * 100 else null
+        if (values.first() != 0.0) (values.last() - values.first()) / kotlin.math.abs(values.first()) * 100 else null
     val mean = values.average()
     if (mean == 0.0) return TrendResult(OverloadTrend.Holding, percentChange, n)
 
@@ -218,7 +224,7 @@ fun overloadTrend(values: List<Double>): TrendResult {
         den += dx * dx
     }
     val slope = if (den == 0.0) 0.0 else num / den
-    val relSlope = slope / mean
+    val relSlope = slope / kotlin.math.abs(mean)
     val trend = when {
         relSlope > TREND_DEADBAND -> OverloadTrend.Progressing
         relSlope < -TREND_DEADBAND -> OverloadTrend.Regressing

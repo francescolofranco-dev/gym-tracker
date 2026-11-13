@@ -48,7 +48,12 @@ internal fun validateBackupData(
     if (sessionExercises.any { it.sessionId !in sessionIds || it.exerciseId !in exerciseIds }) {
         throw BackupParseException("Backup contains a session with a missing exercise.")
     }
-    if (setLogs.any { it.sessionExerciseId !in sessionExerciseIds || (it.reps ?: 0) < 0 || (it.kg ?: 0.0) < 0 }) {
+    if (setLogs.any {
+            it.sessionExerciseId !in sessionExerciseIds ||
+                (it.reps ?: 0) < 0 ||
+                it.kg?.let { kg -> !kg.isFinite() || kg < -9999.0 || kg > 9999.0 } == true
+        }
+    ) {
         throw BackupParseException("Backup contains an invalid or orphaned set.")
     }
 }

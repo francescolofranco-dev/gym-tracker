@@ -239,7 +239,7 @@ class ActiveSessionViewModel @Inject constructor(
         // that shouldn't burn the auto-fill trigger before the user has actually entered a
         // real weight.
         val isFirstKg = kgFromExplicitEntry &&
-            kg != null && kg > 0.0 &&
+            kg != null && kg != 0.0 &&
             !repo.anyOtherSetHasKg(sessionExerciseId, excludeSetLogId = setLogId)
         // Save this row's reps+kg draft first so reps don't get blown away by the bulk apply.
         repo.saveSetDraft(setLogId, reps, kg)
