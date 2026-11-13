@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -42,7 +43,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -117,33 +117,41 @@ fun ExercisesScreen(
     Scaffold(
         containerColor = SurfaceDeep,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
-        floatingActionButton = {
-            Button(
-                onClick = { viewModel.openCreate() },
-                shape = RoundedCornerShape(2.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = BrandLime,
-                    contentColor = DarkOnPrimary,
-                ),
-                contentPadding = PaddingValues(horizontal = 20.dp),
-                modifier = Modifier
-                    .height(50.dp)
-                    .shadow(8.dp, RoundedCornerShape(2.dp)),
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.Add,
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
-                )
-                androidx.compose.foundation.layout.Spacer(Modifier.width(8.dp))
-                Text(
-                    text = "NEW EXERCISE",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 0.9.sp,
-                    ),
-                )
+        bottomBar = {
+            if (grouped is Loadable.Ready) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(SurfaceDeep)
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                ) {
+                    Button(
+                        onClick = { viewModel.openCreate() },
+                        shape = RoundedCornerShape(2.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = BrandLime,
+                            contentColor = DarkOnPrimary,
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(54.dp),
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Add,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp),
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        Text(
+                            text = "NEW EXERCISE",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.9.sp,
+                            ),
+                        )
+                    }
+                }
             }
         },
     ) { padding ->
@@ -213,7 +221,7 @@ fun ExercisesScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .weight(1f),
-                                contentPadding = PaddingValues(bottom = 96.dp),
+                                contentPadding = PaddingValues(bottom = 16.dp),
                             ) {
                                 matchingGroups.forEach { (category, items) ->
                                     stickyHeader(key = "header-${category.name}") {
