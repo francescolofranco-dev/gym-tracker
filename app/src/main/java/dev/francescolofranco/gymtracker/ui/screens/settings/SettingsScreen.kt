@@ -485,52 +485,40 @@ private fun SettingsTopHeader() {
             pi.versionName ?: "?"
         }.getOrDefault("?")
     }
-    Column(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
-        verticalArrangement = Arrangement.spacedBy(2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        Text(
+            text = "SETTINGS",
+            style = MaterialTheme.typography.headlineLarge.copy(
+                fontFamily = OswaldFontFamily,
+                fontSize = 32.sp,
+                fontWeight = FontWeight.Bold,
+                letterSpacing = 1.6.sp,
+            ),
+            color = DarkOnSurface,
+        )
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(2.dp))
+                .background(SurfaceControl)
+                .padding(horizontal = 8.dp, vertical = 4.dp),
         ) {
             Text(
-                text = "SETTINGS",
-                style = MaterialTheme.typography.headlineLarge.copy(
-                    fontFamily = OswaldFontFamily,
-                    fontSize = 32.sp,
+                text = "V$version",
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontFamily = SpaceGroteskFontFamily,
+                    fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.6.sp,
+                    letterSpacing = 1.1.sp,
                 ),
-                color = DarkOnSurface,
+                color = BrandLime,
             )
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(2.dp))
-                    .background(SurfaceControl)
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-            ) {
-                Text(
-                    text = "V$version",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontFamily = SpaceGroteskFontFamily,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 1.1.sp,
-                    ),
-                    color = BrandLime,
-                )
-            }
         }
-        Text(
-            text = "Kinetic Discipline System • Calibration",
-            style = MaterialTheme.typography.bodySmall.copy(
-                fontFamily = SpaceGroteskFontFamily,
-                fontSize = 12.sp,
-            ),
-            color = OliveSubtext,
-        )
     }
 }
 
