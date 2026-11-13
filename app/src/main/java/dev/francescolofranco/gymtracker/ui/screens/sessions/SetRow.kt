@@ -257,7 +257,7 @@ fun SetRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 8.dp, vertical = 6.dp),
+                .padding(start = 8.dp, top = 8.dp, end = 8.dp, bottom = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // # column
@@ -477,6 +477,10 @@ private fun Cell(
                         fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         platformStyle = PlatformTextStyle(includeFontPadding = false),
+                        lineHeightStyle = LineHeightStyle(
+                            alignment = LineHeightStyle.Alignment.Center,
+                            trim = LineHeightStyle.Trim.Both,
+                        ),
                     ),
                     color = captionColor,
                     maxLines = 1,
