@@ -257,7 +257,7 @@ fun SetRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = 8.dp, top = 8.dp, end = 8.dp, bottom = 4.dp),
+                .padding(start = 8.dp, top = 12.dp, end = 8.dp, bottom = 5.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // # column
@@ -469,12 +469,14 @@ private fun Cell(
         Box(modifier = Modifier.height(36.dp), contentAlignment = Alignment.Center) {
             content()
         }
-        Box(modifier = Modifier.height(14.dp), contentAlignment = Alignment.Center) {
+        Spacer(Modifier.height(2.dp))
+        Box(modifier = Modifier.height(10.dp), contentAlignment = Alignment.Center) {
             if (captionText != null) {
                 Text(
                     text = captionText,
                     style = MaterialTheme.typography.labelSmall.copy(
                         fontSize = 10.sp,
+                        lineHeight = 10.sp,
                         fontWeight = FontWeight.Bold,
                         platformStyle = PlatformTextStyle(includeFontPadding = false),
                         lineHeightStyle = LineHeightStyle(
