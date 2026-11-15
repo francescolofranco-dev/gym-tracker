@@ -256,36 +256,46 @@ fun ExerciseFormSheet(
                     )
                 }
 
-                if (!state.isUnilateral) {
-                    HorizontalDivider(color = EditorialBorder.copy(alpha = 0.2f))
+                HorizontalDivider(color = EditorialBorder.copy(alpha = 0.2f))
 
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = "Weight logged per side",
-                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                            )
-                            Text(
-                                text = "Doubles one-side load in workout summaries and WhatsApp shares.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = OliveSubtext,
-                            )
-                        }
-                        Spacer(Modifier.width(12.dp))
-                        Switch(
-                            checked = state.isWeightPerSide,
-                            onCheckedChange = { state = state.copy(isWeightPerSide = it) },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = DarkOnPrimary,
-                                checkedTrackColor = BrandLime,
-                                uncheckedThumbColor = OliveSubtext,
-                                uncheckedTrackColor = SurfaceControl,
-                            ),
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Weight logged per side",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                            color = if (state.isUnilateral) {
+                                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                            } else {
+                                MaterialTheme.colorScheme.onSurface
+                            },
+                        )
+                        Text(
+                            text = if (state.isUnilateral) {
+                                "Disabled because unilateral exercises already log each side separately."
+                            } else {
+                                "Doubles one-side load in workout summaries and WhatsApp shares."
+                            },
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (state.isUnilateral) MutedOlive else OliveSubtext,
                         )
                     }
+                    Spacer(Modifier.width(12.dp))
+                    Switch(
+                        checked = state.isWeightPerSide && !state.isUnilateral,
+                        onCheckedChange = { state = state.copy(isWeightPerSide = it) },
+                        enabled = !state.isUnilateral,
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = DarkOnPrimary,
+                            checkedTrackColor = BrandLime,
+                            uncheckedThumbColor = OliveSubtext,
+                            uncheckedTrackColor = SurfaceControl,
+                            disabledUncheckedThumbColor = MutedOlive.copy(alpha = 0.5f),
+                            disabledUncheckedTrackColor = SurfaceDeep,
+                        ),
+                    )
                 }
             }
 
