@@ -1,7 +1,14 @@
 package dev.francescolofranco.gymtracker.ui.screens.sessions
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -46,6 +53,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
@@ -662,6 +670,8 @@ private fun GhostStepper(
     }
 }
 
+private enum class CheckVisualState { Skipped, Logged, Active, Idle }
+
 /**
  * Tap-to-toggle check, a technical square. Logged sets fill lime with a dark tick;
  * the active set shows a lime border with an inner lime square; upcoming un-logged sets
@@ -677,6 +687,7 @@ private fun CheckSquare(
     onTap: () -> Unit,
     onLongPress: () -> Unit,
 ) {
+    val haptic = LocalHapticFeedback.current
     val bg = when {
         isSkipped -> SurfaceControl
         isLogged -> BrandLime
@@ -688,7 +699,13 @@ private fun CheckSquare(
         label = "set status background",
     )
     val clickModifier = if (editable) {
-        Modifier.combinedClickable(onClick = onTap, onLongClick = onLongPress)
+        Modifier.combinedClickable(
+            onClick = {
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                onTap()
+            },
+            onLongClick = onLongPress,
+        )
     } else {
         Modifier.clickable(enabled = false, onClick = {})
     }
@@ -698,6 +715,12 @@ private fun CheckSquare(
         isLogged -> Modifier
         isActive -> Modifier.border(2.dp, BrandLime, shape)
         else -> Modifier.border(1.dp, EditorialBorder, shape)
+    }
+    val visualState = when {
+        isSkipped -> CheckVisualState.Skipped
+        isLogged -> CheckVisualState.Logged
+        isActive -> CheckVisualState.Active
+        else -> CheckVisualState.Idle
     }
     Box(
         modifier = Modifier
@@ -725,30 +748,48 @@ private fun CheckSquare(
             },
         contentAlignment = Alignment.Center,
     ) {
-        when {
-            isSkipped -> {
-                Icon(
-                    imageVector = Icons.Filled.NotInterested,
-                    contentDescription = null,
-                    tint = MutedOlive,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-            isLogged -> {
-                Icon(
-                    imageVector = Icons.Rounded.Check,
-                    contentDescription = null,
-                    tint = DarkOnPrimary,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-            isActive -> {
-                Box(
-                    modifier = Modifier
-                        .size(10.dp)
-                        .clip(RoundedCornerShape(1.dp))
-                        .background(BrandLime),
-                )
+        AnimatedContent(
+            targetState = visualState,
+            transitionSpec = {
+                (scaleIn(
+                    initialScale = 0.65f,
+                    animationSpec = tween(GymMotion.Quick, easing = GymMotion.EmphasizedEasing),
+                ) + fadeIn(tween(GymMotion.Quick, easing = GymMotion.EmphasizedEasing)))
+                    .togetherWith(
+                        scaleOut(
+                            targetScale = 0.65f,
+                            animationSpec = tween(GymMotion.Quick / 2, easing = GymMotion.ExitEasing),
+                        ) + fadeOut(tween(GymMotion.Quick / 2, easing = GymMotion.ExitEasing)),
+                    ) using SizeTransform(clip = false)
+            },
+            label = "set-check-state",
+        ) { state ->
+            when (state) {
+                CheckVisualState.Skipped -> {
+                    Icon(
+                        imageVector = Icons.Filled.NotInterested,
+                        contentDescription = null,
+                        tint = MutedOlive,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                CheckVisualState.Logged -> {
+                    Icon(
+                        imageVector = Icons.Rounded.Check,
+                        contentDescription = null,
+                        tint = DarkOnPrimary,
+                        modifier = Modifier.size(18.dp),
+                    )
+                }
+                CheckVisualState.Active -> {
+                    Box(
+                        modifier = Modifier
+                            .size(10.dp)
+                            .clip(RoundedCornerShape(1.dp))
+                            .background(BrandLime),
+                    )
+                }
+                CheckVisualState.Idle -> Unit
             }
         }
     }

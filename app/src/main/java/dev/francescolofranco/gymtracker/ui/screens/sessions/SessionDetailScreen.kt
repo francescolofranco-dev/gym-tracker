@@ -186,6 +186,7 @@ fun SessionDetailScreen(
             }
         } else {
             val reorder = rememberSessionExerciseDrag(details, viewModel::reorderExercises)
+            val orderedDetails = reorder.orderedDetails(details)
             androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(SurfaceDeep).padding(padding)) {
                 LazyColumn(
                     state = reorder.listState,
@@ -219,11 +220,16 @@ fun SessionDetailScreen(
                             Spacer(Modifier.height(12.dp))
                         }
                     }
-                    details.forEach { detail ->
+                    orderedDetails.forEach { detail ->
+                        val sectionId = detail.sessionExercise.id
                         exerciseSection(
                             detail = detail,
-                            headerModifier = reorder.headerModifier(detail.sessionExercise.id),
-                            footerModifier = reorder.footerModifier(detail.sessionExercise.id),
+                            headerModifier = reorder.headerModifier(sectionId),
+                            bodyModifier = reorder.bodyModifier(sectionId),
+                            footerModifier = reorder.footerModifier(sectionId),
+                            isDragged = reorder.isDragged(sectionId),
+                            isDropTarget = reorder.isDropTarget(sectionId),
+                            isRecentlyMoved = reorder.isRecentlyMoved(sectionId),
                             unit = unit,
                             hints = hints.byExerciseId[detail.exercise.id] ?: emptyList(),
                             editable = true,
@@ -244,7 +250,7 @@ fun SessionDetailScreen(
                         )
                     }
                 }
-                SessionExerciseDragPreview(reorder, details)
+                SessionExerciseDragPreview(reorder, orderedDetails)
             }
         }
     }

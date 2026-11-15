@@ -1,39 +1,76 @@
 package dev.francescolofranco.gymtracker.ui.screens.sessions
 
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Color
-import kotlin.math.roundToInt
-import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.SwapVert
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetail
+import dev.francescolofranco.gymtracker.ui.motion.GymMotion
+import dev.francescolofranco.gymtracker.ui.theme.BrandLime
+import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
+import dev.francescolofranco.gymtracker.ui.theme.OliveSubtext
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceControl
+import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlin.math.roundToInt
 
 /** Keeps the granular set rows intact while dragging a header to another exercise's position. */
 internal class SessionExerciseDrag(val listState: LazyListState) {
@@ -44,21 +81,56 @@ internal class SessionExerciseDrag(val listState: LazyListState) {
     var gestures: Modifier = Modifier
     var indicatorColor: Color = Color.Unspecified
     var dropAfter by mutableStateOf(false)
+    var pendingOrder by mutableStateOf<List<Long>?>(null)
+    var recentlyMovedId by mutableStateOf<Long?>(null)
+    var moveToken by mutableIntStateOf(0)
+
+    fun orderedDetails(details: List<SessionExerciseDetail>): List<SessionExerciseDetail> =
+        orderedExerciseDetails(details, pendingOrder)
+
+    fun isDragged(id: Long): Boolean = draggedId == id
+
+    fun isDropTarget(id: Long): Boolean = targetId == id && draggedId != null && draggedId != id
+
+    fun isRecentlyMoved(id: Long): Boolean = recentlyMovedId == id
 
     fun headerModifier(id: Long): Modifier {
-        val dragged = draggedId == id
-        return Modifier
-            .drawBehind {
-                if (targetId == id && draggedId != null && draggedId != id && !dropAfter) {
-                    drawLine(indicatorColor, Offset.Zero, Offset(size.width, 0f), 3.dp.toPx())
+        val base = Modifier.drawWithContent {
+            drawContent()
+            if (isDropTarget(id) && !dropAfter) {
+                drawDropIndicator(indicatorColor, y = 0f)
+            }
+        }
+        if (draggedId == null) return base
+        return base.graphicsLayer {
+            when {
+                isDragged(id) -> {
+                    alpha = 0.28f
+                    scaleX = 0.985f
+                    scaleY = 0.985f
+                }
+                isDropTarget(id) -> {
+                    translationY = targetNudgeDirection(draggedId, targetId, dropAfter, id) * 5.dp.toPx()
                 }
             }
-            .graphicsLayer { alpha = if (dragged) 0.35f else 1f }
+        }
+    }
+
+    fun bodyModifier(id: Long): Modifier {
+        if (draggedId == null) return Modifier
+        return Modifier.graphicsLayer {
+            when {
+                isDragged(id) -> alpha = 0.28f
+                isDropTarget(id) -> {
+                    translationY = targetNudgeDirection(draggedId, targetId, dropAfter, id) * 5.dp.toPx()
+                }
+            }
+        }
     }
 
     fun footerModifier(id: Long): Modifier = Modifier.drawBehind {
-        if (targetId == id && draggedId != null && draggedId != id && dropAfter) {
-            drawLine(indicatorColor, Offset.Zero, Offset(size.width, 0f), 3.dp.toPx())
+        if (isDropTarget(id) && dropAfter) {
+            drawDropIndicator(indicatorColor, y = size.height / 2f)
         }
     }
 
@@ -74,6 +146,29 @@ internal class SessionExerciseDrag(val listState: LazyListState) {
     }
 }
 
+private fun DrawScope.drawDropIndicator(color: Color, y: Float) {
+    val capInset = 4.dp.toPx()
+    val start = Offset(capInset, y)
+    val end = Offset((size.width - capInset).coerceAtLeast(capInset), y)
+    drawLine(
+        color = color.copy(alpha = 0.28f),
+        start = start,
+        end = end,
+        strokeWidth = 10.dp.toPx(),
+        cap = StrokeCap.Round,
+    )
+    drawLine(
+        color = color,
+        start = start,
+        end = end,
+        strokeWidth = 3.dp.toPx(),
+        cap = StrokeCap.Round,
+    )
+    val capRadius = 4.5.dp.toPx()
+    drawCircle(color = color, radius = capRadius, center = start)
+    drawCircle(color = color, radius = capRadius, center = end)
+}
+
 @Composable
 internal fun rememberSessionExerciseDrag(
     details: List<SessionExerciseDetail>,
@@ -83,11 +178,28 @@ internal fun rememberSessionExerciseDrag(
     val state = remember(listState) { SessionExerciseDrag(listState) }
     val latestDetails by rememberUpdatedState(details)
     val latestOnReorder by rememberUpdatedState(onReorder)
-    state.indicatorColor = MaterialTheme.colorScheme.primary
+    state.indicatorColor = BrandLime
     val haptics = LocalHapticFeedback.current
     val edge = with(LocalDensity.current) { 64.dp.toPx() }
 
+    LaunchedEffect(details, state.pendingOrder) {
+        val pending = state.pendingOrder ?: return@LaunchedEffect
+        val currentIds = details.map { it.sessionExercise.id }
+        if (currentIds == pending || currentIds.toSet() != pending.toSet()) {
+            state.pendingOrder = null
+        }
+    }
+
+    LaunchedEffect(state.moveToken) {
+        if (state.recentlyMovedId != null) {
+            delay(650)
+            state.recentlyMovedId = null
+        }
+    }
+
     fun updateTarget() {
+        val previousTargetId = state.targetId
+        val previousDropAfter = state.dropAfter
         state.updateTarget()
         val item = listState.layoutInfo.visibleItemsInfo.firstOrNull {
             state.fingerY >= it.offset && state.fingerY < it.offset + it.size
@@ -98,8 +210,13 @@ internal fun rememberSessionExerciseDrag(
             latestDetails.firstOrNull { detail -> detail.setLogs.any { it.id == setId } }
                 ?.let { state.targetId = it.sessionExercise.id }
         }
-        val ids = latestDetails.map { it.sessionExercise.id }
+        val ids = state.orderedDetails(latestDetails).map { it.sessionExercise.id }
         state.dropAfter = ids.indexOf(state.targetId) > ids.indexOf(state.draggedId)
+        if (state.draggedId != null &&
+            (state.targetId != previousTargetId || state.dropAfter != previousDropAfter)
+        ) {
+            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        }
     }
 
     LaunchedEffect(state.draggedId) {
@@ -133,6 +250,7 @@ internal fun rememberSessionExerciseDrag(
                 if (id != null && latestDetails.size > 1) {
                     state.draggedId = id
                     state.targetId = id
+                    state.dropAfter = false
                     state.fingerY = position.y - listState.layoutInfo.beforeContentPadding
                     state.grabOffset = state.fingerY - item.offset
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -146,15 +264,23 @@ internal fun rememberSessionExerciseDrag(
                 }
             },
             onDragEnd = {
-                val ids = latestDetails.map { it.sessionExercise.id }
+                val ids = state.orderedDetails(latestDetails).map { it.sessionExercise.id }
                 val reordered = reorderedExerciseIds(ids, state.draggedId, state.targetId)
-                if (reordered != ids) latestOnReorder(reordered)
+                if (reordered != ids) {
+                    state.pendingOrder = reordered
+                    state.recentlyMovedId = state.draggedId
+                    state.moveToken += 1
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    latestOnReorder(reordered)
+                }
                 state.draggedId = null
                 state.targetId = null
+                state.dropAfter = false
             },
             onDragCancel = {
                 state.draggedId = null
                 state.targetId = null
+                state.dropAfter = false
             },
         )
     }
@@ -168,28 +294,174 @@ internal fun reorderedExerciseIds(ids: List<Long>, draggedId: Long?, targetId: L
     return ids.toMutableList().apply { add(to, removeAt(from)) }
 }
 
+internal fun orderedExerciseDetails(
+    details: List<SessionExerciseDetail>,
+    pendingOrder: List<Long>?,
+): List<SessionExerciseDetail> {
+    if (pendingOrder == null || pendingOrder.size != details.size) return details
+    val byId = details.associateBy { it.sessionExercise.id }
+    val ordered = pendingOrder.mapNotNull { byId[it] }
+    return if (ordered.size == details.size && ordered.map { it.sessionExercise.id }.toSet() == byId.keys) {
+        ordered
+    } else {
+        details
+    }
+}
+
+internal fun targetNudgeDirection(
+    draggedId: Long?,
+    targetId: Long?,
+    dropAfter: Boolean,
+    sectionId: Long,
+): Int {
+    if (draggedId == null || draggedId == sectionId || targetId != sectionId) return 0
+    return if (dropAfter) -1 else 1
+}
+
 /** Rendered outside the lazy items so the dragged label stays visible during edge scrolling. */
 @Composable
 internal fun SessionExerciseDragPreview(state: SessionExerciseDrag, details: List<SessionExerciseDetail>) {
-    val dragged = details.firstOrNull { it.sessionExercise.id == state.draggedId } ?: return
+    val dragged = details.firstOrNull { it.sessionExercise.id == state.draggedId }
     val target = details.firstOrNull { it.sessionExercise.id == state.targetId }
+    var lastDragged by remember { mutableStateOf<SessionExerciseDetail?>(null) }
+    var lastStatus by remember { mutableStateOf("DRAG UP OR DOWN TO REORDER") }
+    var lastDropAfter by remember { mutableStateOf(false) }
+
+    if (dragged != null) {
+        lastDragged = dragged
+        lastDropAfter = state.dropAfter
+        lastStatus = if (target == null || target == dragged) {
+            "DRAG UP OR DOWN TO REORDER"
+        } else {
+            "DROP ${if (state.dropAfter) "AFTER" else "BEFORE"} ${target.exercise.name.uppercase()}"
+        }
+    }
+
+    val scale by animateFloatAsState(
+        targetValue = if (dragged != null) 1.02f else 0.96f,
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMedium),
+        label = "drag-preview-scale",
+    )
+    val alpha by animateFloatAsState(
+        targetValue = if (dragged != null) 1f else 0f,
+        animationSpec = tween(GymMotion.Quick, easing = GymMotion.EmphasizedEasing),
+        label = "drag-preview-alpha",
+    )
+
+    LaunchedEffect(dragged, alpha) {
+        if (dragged == null && alpha <= 0.01f) {
+            lastDragged = null
+        }
+    }
+
+    val active = dragged ?: lastDragged
+    if (active == null || (dragged == null && alpha <= 0.01f)) return
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp)
-            .offset { IntOffset(0, (state.fingerY - state.grabOffset + state.listState.layoutInfo.beforeContentPadding).roundToInt()) },
-        shape = MaterialTheme.shapes.medium,
-        color = MaterialTheme.colorScheme.surfaceContainerHigh,
-        shadowElevation = 8.dp,
+            .offset {
+                IntOffset(
+                    0,
+                    (state.fingerY - state.grabOffset + state.listState.layoutInfo.beforeContentPadding).roundToInt(),
+                )
+            }
+            .graphicsLayer {
+                scaleX = scale
+                scaleY = scale
+                this.alpha = alpha
+            },
+        shape = RoundedCornerShape(4.dp),
+        color = SurfaceElevated,
+        border = BorderStroke(1.5.dp, BrandLime),
+        shadowElevation = 16.dp,
     ) {
-        Column(Modifier.padding(12.dp)) {
-            Text(dragged.exercise.name, style = MaterialTheme.typography.titleMedium)
-            Text(
-                if (target == null || target == dragged) "Drag up or down to reorder"
-                else "Release to place ${if (state.dropAfter) "after" else "before"} ${target.exercise.name}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary,
-            )
+        Row(
+            modifier = Modifier.padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(SurfaceControl)
+                    .border(1.dp, EditorialBorder, RoundedCornerShape(4.dp)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.SwapVert,
+                    contentDescription = null,
+                    tint = BrandLime,
+                    modifier = Modifier.size(18.dp),
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(3.dp),
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = active.exercise.name.uppercase(),
+                        style = MaterialTheme.typography.titleMedium.copy(
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.4.sp,
+                        ),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(2.dp))
+                            .background(SurfaceControl)
+                            .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Text(
+                            text = active.setPlanLabel().uppercase(),
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = 0.5.sp,
+                            ),
+                            color = OliveSubtext,
+                            maxLines = 1,
+                        )
+                    }
+                }
+                AnimatedContent(
+                    targetState = lastStatus,
+                    transitionSpec = {
+                        val direction = if (lastDropAfter) 1 else -1
+                        (slideInVertically(tween(GymMotion.Quick, easing = GymMotion.EmphasizedEasing)) { direction * it / 2 } +
+                            fadeIn(tween(GymMotion.Quick, easing = GymMotion.EmphasizedEasing)))
+                            .togetherWith(
+                                slideOutVertically(tween(GymMotion.Quick / 2, easing = GymMotion.ExitEasing)) { -direction * it / 2 } +
+                                    fadeOut(tween(GymMotion.Quick / 2, easing = GymMotion.ExitEasing)),
+                            ) using SizeTransform(clip = false)
+                    },
+                    label = "drag-preview-status",
+                ) { text ->
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 0.6.sp,
+                        ),
+                        color = BrandLime,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
     }
 }

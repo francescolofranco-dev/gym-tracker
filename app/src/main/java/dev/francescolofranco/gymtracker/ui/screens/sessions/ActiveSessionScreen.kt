@@ -1,15 +1,23 @@
 package dev.francescolofranco.gymtracker.ui.screens.sessions
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -82,6 +90,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -100,6 +109,7 @@ import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.screens.exercises.PersonalRecordType
 import dev.francescolofranco.gymtracker.ui.theme.BrandLime
 import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
+import dev.francescolofranco.gymtracker.ui.theme.DarkPrimaryContainer
 import dev.francescolofranco.gymtracker.ui.theme.DestructiveCoral
 import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
 import dev.francescolofranco.gymtracker.ui.theme.MutedOlive
@@ -368,6 +378,7 @@ fun ActiveSessionScreen(
             }
 
             val reorder = rememberSessionExerciseDrag(details, viewModel::reorderExercises)
+            val orderedDetails = reorder.orderedDetails(details)
             androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
                 LazyColumn(
                     state = reorder.listState,
@@ -384,11 +395,16 @@ fun ActiveSessionScreen(
                             Spacer(Modifier.height(12.dp))
                         }
                     }
-                    details.forEach { detail ->
+                    orderedDetails.forEach { detail ->
+                        val sectionId = detail.sessionExercise.id
                         exerciseSection(
                             detail = detail,
-                            headerModifier = reorder.headerModifier(detail.sessionExercise.id),
-                            footerModifier = reorder.footerModifier(detail.sessionExercise.id),
+                            headerModifier = reorder.headerModifier(sectionId),
+                            bodyModifier = reorder.bodyModifier(sectionId),
+                            footerModifier = reorder.footerModifier(sectionId),
+                            isDragged = reorder.isDragged(sectionId),
+                            isDropTarget = reorder.isDropTarget(sectionId),
+                            isRecentlyMoved = reorder.isRecentlyMoved(sectionId),
                             unit = unit,
                             hints = hints.byExerciseId[detail.exercise.id] ?: emptyList(),
                             personalRecords = personalRecords[detail.exercise.id].orEmpty(),
@@ -410,7 +426,7 @@ fun ActiveSessionScreen(
                         )
                     }
                 }
-                SessionExerciseDragPreview(reorder, details)
+                SessionExerciseDragPreview(reorder, orderedDetails)
             }
         }
     }
@@ -537,6 +553,16 @@ fun ActiveSessionScreen(
     }
 }
 
+private fun AnimatedContentTransitionScope<*>.rollingCounterTransform(increasing: Boolean): ContentTransform {
+    val direction = if (increasing) -1 else 1
+    return (slideInVertically(tween(GymMotion.Quick, easing = GymMotion.EmphasizedEasing)) { direction * it / 2 } +
+        fadeIn(tween(GymMotion.Quick, easing = GymMotion.EmphasizedEasing)))
+        .togetherWith(
+            slideOutVertically(tween(GymMotion.Quick, easing = GymMotion.ExitEasing)) { -direction * it / 2 } +
+                fadeOut(tween(GymMotion.Quick, easing = GymMotion.ExitEasing)),
+        ) using SizeTransform(clip = false)
+}
+
 @Composable
 private fun ActiveSessionMetricsBand(
     loggedSets: Int,
@@ -545,9 +571,6 @@ private fun ActiveSessionMetricsBand(
     unit: WeightUnit,
 ) {
     val convertedVolume = convertFromKg(totalVolumeKg, unit).roundToInt()
-    val formattedVol = remember(convertedVolume) {
-        NumberFormat.getIntegerInstance(Locale.US).format(convertedVolume)
-    }
     Column(modifier = Modifier.fillMaxWidth().background(SurfaceBase)) {
         Row(
             modifier = Modifier
@@ -581,14 +604,20 @@ private fun ActiveSessionMetricsBand(
                     verticalAlignment = Alignment.Bottom,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Text(
-                        text = "$loggedSets",
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontSize = 20.sp,
-                            fontWeight = FontWeight.Bold,
-                        ),
-                        color = BrandLime,
-                    )
+                    AnimatedContent(
+                        targetState = loggedSets,
+                        transitionSpec = { rollingCounterTransform(targetState >= initialState) },
+                        label = "logged-sets-counter",
+                    ) { count ->
+                        Text(
+                            text = "$count",
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            color = BrandLime,
+                        )
+                    }
                     Text(
                         text = "/ $plannedSets SETS",
                         style = MaterialTheme.typography.labelSmall.copy(
@@ -621,14 +650,23 @@ private fun ActiveSessionMetricsBand(
                     verticalAlignment = Alignment.Bottom,
                     horizontalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Text(
-                        text = formattedVol,
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                        ),
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
+                    AnimatedContent(
+                        targetState = convertedVolume,
+                        transitionSpec = { rollingCounterTransform(targetState >= initialState) },
+                        label = "total-volume-counter",
+                    ) { vol ->
+                        val formattedVol = remember(vol) {
+                            NumberFormat.getIntegerInstance(Locale.US).format(vol)
+                        }
+                        Text(
+                            text = formattedVol,
+                            style = MaterialTheme.typography.titleLarge.copy(
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                    }
                     Text(
                         text = unit.label().uppercase(),
                         style = MaterialTheme.typography.labelSmall.copy(
@@ -759,7 +797,11 @@ private fun Modifier.completionRail(isComplete: Boolean): Modifier {
  */
 internal fun LazyListScope.exerciseSection(
     headerModifier: Modifier = Modifier,
+    bodyModifier: Modifier = Modifier,
     footerModifier: Modifier = Modifier,
+    isDragged: Boolean = false,
+    isDropTarget: Boolean = false,
+    isRecentlyMoved: Boolean = false,
     detail: SessionExerciseDetail,
     unit: WeightUnit,
     hints: List<HintRow>,
@@ -788,7 +830,13 @@ internal fun LazyListScope.exerciseSection(
         contentType = "exercise-header",
     ) {
         ExerciseSectionHeader(
-            modifier = headerModifier,
+            modifier = Modifier
+                .animateItem(
+                    fadeInSpec = GymMotion.ItemFadeIn,
+                    placementSpec = GymMotion.ItemPlacement,
+                    fadeOutSpec = GymMotion.ItemFadeOut,
+                )
+                .then(headerModifier),
             detail = detail,
             hints = hints,
             personalRecords = personalRecords,
@@ -796,6 +844,9 @@ internal fun LazyListScope.exerciseSection(
             incomplete = incomplete,
             hasSets = sets.isNotEmpty(),
             editable = editable,
+            isDragged = isDragged,
+            isDropTarget = isDropTarget,
+            isRecentlyMoved = isRecentlyMoved,
             onSkipExercise = onSkipExercise,
             onEditExerciseNotes = onEditExerciseNotes,
             onRemoveExercise = onRemoveExercise,
@@ -810,6 +861,12 @@ internal fun LazyListScope.exerciseSection(
         ) {
             Column(
                 modifier = Modifier
+                    .animateItem(
+                        fadeInSpec = GymMotion.ItemFadeIn,
+                        placementSpec = GymMotion.ItemPlacement,
+                        fadeOutSpec = GymMotion.ItemFadeOut,
+                    )
+                    .then(bodyModifier)
                     .fillMaxWidth()
                     .completionRail(isComplete)
                     .border(width = 1.dp, color = EditorialBorder),
@@ -837,6 +894,12 @@ internal fun LazyListScope.exerciseSection(
             }
             Column(
                 modifier = Modifier
+                    .animateItem(
+                        fadeInSpec = GymMotion.ItemFadeIn,
+                        placementSpec = GymMotion.ItemPlacement,
+                        fadeOutSpec = GymMotion.ItemFadeOut,
+                    )
+                    .then(bodyModifier)
                     .fillMaxWidth()
                     .clip(shape)
                     .completionRail(isComplete)
@@ -867,7 +930,17 @@ internal fun LazyListScope.exerciseSection(
         key = "exercise-$sectionId-gap",
         contentType = "gap",
     ) {
-        Spacer(footerModifier.fillMaxWidth().height(12.dp))
+        Spacer(
+            Modifier
+                .animateItem(
+                    fadeInSpec = GymMotion.ItemFadeIn,
+                    placementSpec = GymMotion.ItemPlacement,
+                    fadeOutSpec = GymMotion.ItemFadeOut,
+                )
+                .then(footerModifier)
+                .fillMaxWidth()
+                .height(12.dp),
+        )
     }
 }
 
@@ -882,6 +955,9 @@ private fun ExerciseSectionHeader(
     incomplete: Boolean,
     hasSets: Boolean,
     editable: Boolean,
+    isDragged: Boolean = false,
+    isDropTarget: Boolean = false,
+    isRecentlyMoved: Boolean = false,
     onSkipExercise: (skipped: Boolean) -> Unit,
     onEditExerciseNotes: () -> Unit,
     onRemoveExercise: () -> Unit,
@@ -897,12 +973,42 @@ private fun ExerciseSectionHeader(
     val pinnedNote = detail.sessionExercise.pinnedNotes?.takeIf { it.isNotBlank() }
     val sessionNote = detail.sessionExercise.notes?.takeIf { it.isNotBlank() }
 
+    val headerBorderColor by animateColorAsState(
+        targetValue = when {
+            isRecentlyMoved || isDragged -> BrandLime
+            isDropTarget -> BrandLime.copy(alpha = 0.6f)
+            else -> EditorialBorder
+        },
+        animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
+        label = "exercise-header-border",
+    )
+    val headerBgColor by animateColorAsState(
+        targetValue = if (isDropTarget) SurfaceCard else SurfaceElevated,
+        animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
+        label = "exercise-header-bg",
+    )
+    val settleScale by animateFloatAsState(
+        targetValue = if (isRecentlyMoved) 1.015f else 1f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
+        label = "exercise-header-settle-scale",
+    )
+
     Column(
         modifier = modifier
+            .then(
+                if (settleScale != 1f) {
+                    Modifier.graphicsLayer {
+                        scaleX = settleScale
+                        scaleY = settleScale
+                    }
+                } else {
+                    Modifier
+                },
+            )
             .fillMaxWidth()
             .clip(shape)
-            .background(SurfaceElevated)
-            .border(1.dp, EditorialBorder, shape)
+            .background(headerBgColor)
+            .border(1.dp, headerBorderColor, shape)
             .padding(start = 12.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -919,6 +1025,7 @@ private fun ExerciseSectionHeader(
                     isComplete = isComplete,
                     isFirstTime = hints.isEmpty(),
                     personalRecords = personalRecords,
+                    isRecentlyMoved = isRecentlyMoved,
                 )
                 Text(
                     text = buildList {
@@ -1276,7 +1383,11 @@ private fun ExerciseNameAndBadges(
     isComplete: Boolean,
     isFirstTime: Boolean,
     personalRecords: Set<PersonalRecordType>,
+    isRecentlyMoved: Boolean = false,
 ) {
+    var lastRecords by remember { mutableStateOf(personalRecords) }
+    if (personalRecords.isNotEmpty()) lastRecords = personalRecords
+
     FlowRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -1291,15 +1402,60 @@ private fun ExerciseNameAndBadges(
                 letterSpacing = 0.4.sp,
             ),
         )
-        when {
-            isComplete -> CompletedBadge()
-            isFirstTime -> FirstTimeBadge()
+        AnimatedVisibility(
+            visible = isComplete || isFirstTime,
+            enter = badgeEnterTransition(),
+            exit = badgeExitTransition(),
+        ) {
+            AnimatedContent(
+                targetState = isComplete,
+                transitionSpec = {
+                    badgeEnterTransition()
+                        .togetherWith(badgeExitTransition()) using SizeTransform(clip = false)
+                },
+                label = "exercise-status-badge",
+            ) { complete ->
+                if (complete) CompletedBadge() else FirstTimeBadge()
+            }
         }
-        if (personalRecords.isNotEmpty()) {
-            PersonalRecordBadge(personalRecords)
+        AnimatedVisibility(
+            visible = personalRecords.isNotEmpty(),
+            enter = badgeEnterTransition(),
+            exit = badgeExitTransition(),
+        ) {
+            PersonalRecordBadge(lastRecords)
+        }
+        AnimatedVisibility(
+            visible = isRecentlyMoved,
+            enter = fadeIn(tween(GymMotion.Quick, easing = GymMotion.EmphasizedEasing)) +
+                scaleIn(
+                    initialScale = 0.88f,
+                    animationSpec = tween(GymMotion.Quick, easing = GymMotion.EmphasizedEasing),
+                ),
+            exit = fadeOut(tween(GymMotion.Standard, easing = GymMotion.ExitEasing)) +
+                scaleOut(
+                    targetScale = 0.88f,
+                    animationSpec = tween(GymMotion.Standard, easing = GymMotion.ExitEasing),
+                ),
+        ) {
+            ReorderedBadge()
         }
     }
 }
+
+private fun badgeEnterTransition() =
+    fadeIn(tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing)) +
+        scaleIn(
+            initialScale = 0.88f,
+            animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
+        )
+
+private fun badgeExitTransition() =
+    fadeOut(tween(GymMotion.Quick, easing = GymMotion.ExitEasing)) +
+        scaleOut(
+            targetScale = 0.88f,
+            animationSpec = tween(GymMotion.Quick, easing = GymMotion.ExitEasing),
+        )
 
 /**
  * Compact pill rendered next to an exercise name when there's no prior session to compare
@@ -1359,6 +1515,26 @@ private fun PersonalRecordBadge(records: Set<PersonalRecordType>) {
                 fontWeight = FontWeight.Bold,
             ),
             color = DarkOnPrimary,
+        )
+    }
+}
+
+@Composable
+private fun ReorderedBadge() {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(2.dp))
+            .background(DarkPrimaryContainer)
+            .border(1.dp, BrandLime.copy(alpha = 0.7f), RoundedCornerShape(2.dp))
+            .padding(horizontal = 6.dp, vertical = 2.dp),
+    ) {
+        Text(
+            text = "REORDERED",
+            style = MaterialTheme.typography.labelSmall.copy(
+                fontSize = 9.sp,
+                fontWeight = FontWeight.Bold,
+            ),
+            color = BrandLime,
         )
     }
 }
