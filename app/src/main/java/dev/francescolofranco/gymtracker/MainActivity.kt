@@ -1,5 +1,6 @@
 package dev.francescolofranco.gymtracker
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -7,11 +8,16 @@ import androidx.activity.enableEdgeToEdge
 import dagger.hilt.android.AndroidEntryPoint
 import dev.francescolofranco.gymtracker.ui.GymApp
 import dev.francescolofranco.gymtracker.ui.theme.GymTrackerTheme
+import dev.francescolofranco.gymtracker.ui.theme.withUiZoom
 import dev.francescolofranco.gymtracker.service.TimerService
 import dev.francescolofranco.gymtracker.service.TimerState
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+    override fun attachBaseContext(newBase: Context) {
+        super.attachBaseContext(newBase.withUiZoom())
+    }
+
     override fun onStart() {
         super.onStart()
         TimerService.setAppInFocus(hasWindowFocus())

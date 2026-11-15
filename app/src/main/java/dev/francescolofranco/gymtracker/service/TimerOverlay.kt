@@ -11,6 +11,7 @@ import android.view.Gravity
 import android.view.WindowManager
 import android.widget.Chronometer
 import dev.francescolofranco.gymtracker.R
+import dev.francescolofranco.gymtracker.ui.theme.UI_ZOOM_SCALE
 import kotlin.math.roundToInt
 
 /** A small service-owned window; the platform Chronometer ticks without a polling coroutine. */
@@ -39,7 +40,7 @@ internal class TimerOverlay(private val context: Context) {
         }
         if (view == null) {
             val timer = Chronometer(context).apply {
-                textSize = 18f
+                textSize = 18f * UI_ZOOM_SCALE
                 setTextColor(Color.WHITE)
                 typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
                 includeFontPadding = false
@@ -86,7 +87,8 @@ internal class TimerOverlay(private val context: Context) {
         }
     }
 
-    private fun dp(value: Int) = (value * context.resources.displayMetrics.density).roundToInt()
+    private fun dp(value: Int) =
+        (value * context.resources.displayMetrics.density * UI_ZOOM_SCALE).roundToInt()
 
     companion object {
         internal const val WINDOW_FLAGS =
