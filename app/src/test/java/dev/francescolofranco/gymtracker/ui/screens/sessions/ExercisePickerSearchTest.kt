@@ -78,6 +78,39 @@ class ExercisePickerSearchTest {
         )
     }
 
+    @Test
+    fun `resolveSelectedExerciseIds applies add and remove overrides over excludeIds`() {
+        val resolved = resolveSelectedExerciseIds(
+            excludeIds = setOf(1L, 2L),
+            selectionOverrides = mapOf(
+                1L to false,
+                3L to true,
+                4L to false,
+            ),
+        )
+
+        assertEquals(setOf(2L, 3L), resolved)
+    }
+
+    @Test
+    fun `pickerConfirmLabel reflects selection diff from initial exercises`() {
+        val initial = setOf(1L, 2L)
+
+        assertEquals("DONE", pickerConfirmLabel(emptySet(), emptySet()))
+        assertEquals("DONE", pickerConfirmLabel(initial, setOf(1L, 2L)))
+        assertEquals("ADD 1 EXERCISE", pickerConfirmLabel(initial, setOf(1L, 2L, 3L)))
+        assertEquals("ADD 2 EXERCISES", pickerConfirmLabel(initial, setOf(1L, 2L, 3L, 4L)))
+        assertEquals("UPDATE EXERCISES", pickerConfirmLabel(initial, setOf(1L)))
+        assertEquals("UPDATE EXERCISES", pickerConfirmLabel(initial, setOf(1L, 3L)))
+        assertEquals("UPDATE EXERCISES", pickerConfirmLabel(initial, setOf(1L, 3L, 4L)))
+
+        val pickedThenUnpicked = resolveSelectedExerciseIds(
+            excludeIds = initial + 3L,
+            selectionOverrides = mapOf(3L to false),
+        )
+        assertEquals("DONE", pickerConfirmLabel(initial, pickedThenUnpicked))
+    }
+
     private fun exercise(id: Long, name: String, primaryMuscle: Muscle) =
         exercise(id, name, setOf(primaryMuscle))
 

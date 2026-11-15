@@ -88,6 +88,7 @@ fun ExercisePickerSheet(
 ) {
     val rowState by viewModel.rows.collectAsStateWithLifecycle()
     val rows = (rowState as? Loadable.Ready)?.value.orEmpty()
+    val initialSelectedIds = remember { excludeIds }
     var selectionOverrides by remember { mutableStateOf(emptyMap<Long, Boolean>()) }
     var filterKey by rememberSaveable { mutableStateOf(PickerFilter.All.saveKey()) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
@@ -280,11 +281,8 @@ fun ExercisePickerSheet(
                             }
                         }
 
-                        val selectedCount = remember(rows, excludeIds, selectionOverrides) {
-                            rows.count { r ->
-                                val id = r.exercise.id
-                                selectionOverrides[id] ?: (id in excludeIds)
-                            }
+                        val currentSelectedIds = remember(excludeIds, selectionOverrides) {
+                            resolveSelectedExerciseIds(excludeIds, selectionOverrides)
                         }
                         Column(
                             modifier = Modifier
@@ -310,11 +308,7 @@ fun ExercisePickerSheet(
                                     modifier = Modifier.size(20.dp),
                                 )
                                 Text(
-                                    text = when {
-                                        selectedCount == 1 -> "  ADD 1 EXERCISE"
-                                        selectedCount > 1 -> "  ADD $selectedCount EXERCISES"
-                                        else -> "  DONE"
-                                    },
+                                    text = "  ${pickerConfirmLabel(initialSelectedIds, currentSelectedIds)}",
                                     style = MaterialTheme.typography.titleMedium.copy(
                                         fontSize = 17.sp,
                                         fontWeight = FontWeight.Bold,
@@ -579,5 +573,29 @@ private fun PickerRow(
                 )
             }
         }
+    }
+}
+
+internal fun resolveSelectedExerciseIds(
+    excludeIds: Set<Long>,
+    selectionOverrides: Map<Long, Boolean>,
+): Set<Long> = buildSet {
+    addAll(excludeIds)
+    selectionOverrides.forEach { (id, selected) ->
+        if (selected) add(id) else remove(id)
+    }
+}
+
+internal fun pickerConfirmLabel(
+    initialSelectedIds: Set<Long>,
+    currentSelectedIds: Set<Long>,
+): String {
+    val addedCount = (currentSelectedIds - initialSelectedIds).size
+    val removedCount = (initialSelectedIds - currentSelectedIds).size
+    return when {
+        removedCount > 0 -> "UPDATE EXERCISES"
+        addedCount == 1 -> "ADD 1 EXERCISE"
+        addedCount > 1 -> "ADD $addedCount EXERCISES"
+        else -> "DONE"
     }
 }
