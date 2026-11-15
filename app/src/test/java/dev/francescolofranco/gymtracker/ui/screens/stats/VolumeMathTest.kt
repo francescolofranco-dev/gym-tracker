@@ -129,8 +129,22 @@ class VolumeMathTest {
         assertEquals(50.0, signal.percentChange!!, 1e-9)
     }
 
+    @Test
+    fun `negativeWeight flag clamps volume even with positive raw weights and tracks reduced assistance as progress`() {
+        val assistedPositive = row(reps = 10, kg = 25.0, negativeWeight = true)
+        val chest = computeMuscleVolumes(listOf(assistedPositive))[Muscle.CHEST]!!
+        assertEquals(0.0, chest.totalVolumeKg, 1e-9)
+        assertEquals(1.0, chest.effectiveSets, 1e-9)
+
+        val previous = listOf(row(kg = 30.0, reps = 10, negativeWeight = true))
+        val current = listOf(row(kg = 15.0, reps = 10, negativeWeight = true))
+        val signal = computeExerciseProgress(current, previous).single()
+        assertEquals(50.0, signal.percentChange!!, 1e-9)
+    }
+
     private fun row(
         unilateral: Boolean = false,
+        negativeWeight: Boolean = false,
         side: ExerciseSide = ExerciseSide.BOTH,
         secondaries: Set<Muscle> = emptySet(),
         sessionId: Long = 1,
@@ -146,6 +160,7 @@ class VolumeMathTest {
         secondaryMuscles = secondaries,
         isBodyweight = false,
         isUnilateral = unilateral,
+        isNegativeWeight = negativeWeight,
         setNumber = 1,
         side = side,
         reps = reps,

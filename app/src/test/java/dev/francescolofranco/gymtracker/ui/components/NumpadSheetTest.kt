@@ -108,4 +108,36 @@ class NumpadSheetTest {
         assertEquals("", initialBuffer(-0.0, allowDecimal = true))
         assertEquals("", initialBuffer(-0.0001, allowDecimal = true))
     }
+
+    @Test
+    fun `forceNegative prefixes digits automatically without sign toggle`() {
+        var state = initialNumpadState(0.0, allowDecimal = true)
+        assertEquals("-0", displayBuffer(state.buffer, forceNegative = true))
+
+        state = state.onToken("2", allowDecimal = true, allowNegative = true, forceNegative = true)
+            .onToken("5", allowDecimal = true, allowNegative = true, forceNegative = true)
+        assertEquals("-25", state.buffer)
+        assertEquals(-25.0, bufferToDouble(state.buffer)!!, 1e-9)
+
+        state = state.onToken(".", allowDecimal = true, allowNegative = true, forceNegative = true)
+            .onToken("5", allowDecimal = true, allowNegative = true, forceNegative = true)
+        assertEquals("-25.5", state.buffer)
+        assertEquals(-25.5, bufferToDouble(state.buffer)!!, 1e-9)
+    }
+
+    @Test
+    fun `forceNegative handles decimal from empty, backspace to zero, and ignores sign toggle`() {
+        var state = initialNumpadState(0.0, allowDecimal = true)
+            .onToken(".", allowDecimal = true, allowNegative = true, forceNegative = true)
+            .onToken("5", allowDecimal = true, allowNegative = true, forceNegative = true)
+        assertEquals("-0.5", state.buffer)
+
+        state = state.onToken(SIGN_TOKEN, allowDecimal = true, allowNegative = true, forceNegative = true)
+        assertEquals("-0.5", state.buffer)
+
+        var two = initialNumpadState(-2.0, allowDecimal = true)
+            .onToken(BACKSPACE_TOKEN, allowDecimal = true, allowNegative = true, forceNegative = true)
+        assertEquals("", two.buffer)
+        assertEquals("-0", displayBuffer(two.buffer, forceNegative = true))
+    }
 }

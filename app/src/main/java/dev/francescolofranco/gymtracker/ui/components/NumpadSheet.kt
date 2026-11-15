@@ -69,6 +69,7 @@ fun NumpadSheet(
     minValue: Double = 0.0,
     maxValue: Double = 9999.0,
     allowNegative: Boolean = minValue < 0.0,
+    forceNegative: Boolean = false,
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -154,7 +155,7 @@ fun NumpadSheet(
                     horizontalArrangement = Arrangement.Center,
                 ) {
                     Text(
-                        text = displayBuffer(state.buffer),
+                        text = displayBuffer(state.buffer, forceNegative),
                         style = MaterialTheme.typography.displayLarge.copy(
                             fontWeight = FontWeight.ExtraBold,
                         ),
@@ -190,8 +191,8 @@ fun NumpadSheet(
                 listOf("7", "8", "9"),
                 listOf(
                     when {
-                        allowNegative && allowDecimal -> SIGN_DECIMAL_SLOT
-                        allowNegative -> SIGN_TOKEN
+                        allowNegative && !forceNegative && allowDecimal -> SIGN_DECIMAL_SLOT
+                        allowNegative && !forceNegative -> SIGN_TOKEN
                         allowDecimal -> "."
                         else -> ""
                     },
@@ -226,7 +227,7 @@ fun NumpadSheet(
                                                 token = SIGN_TOKEN,
                                                 isActive = state.buffer.startsWith("-"),
                                                 onTap = { tapped ->
-                                                    state = state.onToken(tapped, allowDecimal, allowNegative)
+                                                    state = state.onToken(tapped, allowDecimal, allowNegative, forceNegative)
                                                 },
                                             )
                                         }
@@ -238,7 +239,7 @@ fun NumpadSheet(
                                             NumpadKey(
                                                 token = ".",
                                                 onTap = { tapped ->
-                                                    state = state.onToken(tapped, allowDecimal, allowNegative)
+                                                    state = state.onToken(tapped, allowDecimal, allowNegative, forceNegative)
                                                 },
                                             )
                                         }
@@ -249,7 +250,7 @@ fun NumpadSheet(
                                         token = token,
                                         isActive = token == SIGN_TOKEN && state.buffer.startsWith("-"),
                                         onTap = { tapped ->
-                                            state = state.onToken(tapped, allowDecimal, allowNegative)
+                                            state = state.onToken(tapped, allowDecimal, allowNegative, forceNegative)
                                         },
                                     )
                                 }
@@ -333,9 +334,10 @@ internal fun NumpadState.onToken(
     token: String,
     allowDecimal: Boolean,
     allowNegative: Boolean = false,
+    forceNegative: Boolean = false,
 ): NumpadState {
     if (token == SIGN_TOKEN) {
-        if (!allowNegative) return this
+        if (!allowNegative || forceNegative) return this
         val nextBuffer = if (buffer.startsWith("-")) buffer.removePrefix("-") else "-$buffer"
         return copy(
             buffer = nextBuffer,
@@ -344,7 +346,7 @@ internal fun NumpadState.onToken(
     }
     if (token == BACKSPACE_TOKEN) {
         return NumpadState(
-            buffer = applyToken(buffer, token, allowDecimal, allowNegative),
+            buffer = applyToken(buffer, token, allowDecimal, allowNegative, forceNegative),
             pristine = false,
             signToggledWhilePristine = false,
         )
@@ -356,14 +358,14 @@ internal fun NumpadState.onToken(
         else -> ""
     }
     return NumpadState(
-        buffer = applyToken(seed, token, allowDecimal, allowNegative),
+        buffer = applyToken(seed, token, allowDecimal, allowNegative, forceNegative),
         pristine = false,
         signToggledWhilePristine = false,
     )
 }
 
-internal fun displayBuffer(buffer: String): String = when {
-    buffer.isEmpty() -> "0"
+internal fun displayBuffer(buffer: String, forceNegative: Boolean = false): String = when {
+    buffer.isEmpty() -> if (forceNegative) "-0" else "0"
     buffer == "-" -> "-0"
     else -> buffer
 }
@@ -373,17 +375,22 @@ internal fun applyToken(
     token: String,
     allowDecimal: Boolean,
     allowNegative: Boolean = false,
+    forceNegative: Boolean = false,
 ): String {
     return when (token) {
-        BACKSPACE_TOKEN -> buffer.dropLast(1)
-        SIGN_TOKEN -> if (!allowNegative) buffer
+        BACKSPACE_TOKEN -> {
+            val dropped = buffer.dropLast(1)
+            if (forceNegative && dropped == "-") "" else dropped
+        }
+        SIGN_TOKEN -> if (!allowNegative || forceNegative) buffer
         else if (buffer.startsWith("-")) buffer.removePrefix("-") else "-$buffer"
         "." -> if (!allowDecimal || buffer.contains(".")) buffer
-        else if (buffer.isEmpty()) "0."
-        else if (buffer == "-") "-0."
-        else "$buffer."
+        else if (buffer.isEmpty() || buffer == "-") {
+            if (forceNegative || buffer == "-") "-0." else "0."
+        } else "$buffer."
         else -> {
-            val candidate = buffer + token
+            val base = if (forceNegative && !buffer.startsWith("-")) "-$buffer" else buffer
+            val candidate = if (base == "-0" && token != ".") "-$token" else base + token
             // Cap fractional precision at 3 (user wants "up to 3 decimal precision"),
             // and integer side at 4 so we still fit "9999" or "-9999.999".
             val unsigned = candidate.removePrefix("-")

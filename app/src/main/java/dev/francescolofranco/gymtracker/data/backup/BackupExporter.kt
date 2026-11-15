@@ -70,6 +70,7 @@ private fun ExerciseEntity.toJson(): JSONObject = JSONObject().apply {
     put("isBodyweight", isBodyweight)
     put("isUnilateral", isUnilateral)
     put("isWeightPerSide", isWeightPerSide)
+    put("isNegativeWeight", isNegativeWeight)
     put("createdAt", createdAt.toString())
     put("deletedAt", deletedAt?.toString() ?: JSONObject.NULL)
 }

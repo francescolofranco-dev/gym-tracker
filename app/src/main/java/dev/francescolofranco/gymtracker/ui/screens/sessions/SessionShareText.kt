@@ -45,7 +45,8 @@ fun summarizeFinishedSession(details: List<SessionExerciseDetail>): SessionShare
             val isPerSideBilateral = detail.exercise.isWeightPerSide &&
                 !detail.exercise.isUnilateral &&
                 firstSet.side == ExerciseSide.BOTH
-            val summaryKg = firstSet.kg?.let { kg ->
+            val summaryKg = firstSet.kg?.let { rawKg ->
+                val kg = if (detail.exercise.isNegativeWeight && rawKg > 0.0) -rawKg else rawKg
                 if (isPerSideBilateral) kg * 2.0 else kg
             }
             SessionShareExercise(

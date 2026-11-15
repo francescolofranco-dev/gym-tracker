@@ -44,7 +44,11 @@ class ExerciseDetailViewModel @Inject constructor(
         repo.observeSetHistory(exerciseId),
         userPrefs.unit,
     ) { exercise, rows, unit ->
-        ExerciseDetailContent(exercise, aggregateSessions(rows), unit)
+        ExerciseDetailContent(
+            exercise,
+            aggregateSessions(rows, isNegativeWeight = exercise?.isNegativeWeight == true),
+            unit,
+        )
     }
         .flowOn(Dispatchers.Default)
         .asLoadableState(viewModelScope)
@@ -67,6 +71,7 @@ class ExerciseDetailViewModel @Inject constructor(
             isBodyweight = state.isBodyweight,
             isUnilateral = state.isUnilateral,
             isWeightPerSide = state.isWeightPerSide,
+            isNegativeWeight = state.isNegativeWeight,
         )
     }
 }

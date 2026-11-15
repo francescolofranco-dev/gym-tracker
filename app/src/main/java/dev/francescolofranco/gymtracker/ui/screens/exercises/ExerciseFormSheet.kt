@@ -201,13 +201,61 @@ fun ExerciseFormSheet(
                     Spacer(Modifier.width(12.dp))
                     Switch(
                         checked = state.isBodyweight,
-                        onCheckedChange = { state = state.copy(isBodyweight = it) },
+                        onCheckedChange = {
+                            state = state.copy(
+                                isBodyweight = it,
+                                isNegativeWeight = if (it) false else state.isNegativeWeight,
+                            )
+                        },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = DarkOnPrimary,
                             checkedTrackColor = BrandLime,
                             uncheckedThumbColor = OliveSubtext,
                             uncheckedTrackColor = SurfaceControl,
                         ),
+                    )
+                }
+
+                HorizontalDivider(color = EditorialBorder.copy(alpha = 0.2f))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Negative weight (assisted)",
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                        )
+                        Text(
+                            text = "Logged weight is assistance; less weight means higher load.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = OliveSubtext,
+                        )
+                    }
+                    Spacer(Modifier.width(12.dp))
+                    Switch(
+                        checked = state.isNegativeWeight,
+                        onCheckedChange = {
+                            state = state.copy(
+                                isNegativeWeight = it,
+                                isBodyweight = if (it) false else state.isBodyweight,
+                            )
+                        },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = DarkOnPrimary,
+                            checkedTrackColor = BrandLime,
+                            uncheckedThumbColor = OliveSubtext,
+                            uncheckedTrackColor = SurfaceControl,
+                        ),
+                    )
+                }
+
+                if (state.isNegativeWeight != initial.isNegativeWeight) {
+                    Text(
+                        "Converts existing logged weights for this exercise and recalculates progression and PRs.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = OliveSubtext,
                     )
                 }
 

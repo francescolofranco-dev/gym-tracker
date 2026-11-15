@@ -171,6 +171,32 @@ class ExerciseProgressTest {
         assertEquals(33.3333, result.percentChange, 1e-3)
     }
 
+    @Test
+    fun aggregateSessions_isNegativeWeightConvertsPositiveHistoricalWeightsAndTrendsProgress() {
+        val rows = listOf(
+            setRow(sessionId = 1, day = 0, setNumber = 1, reps = 10, kg = 25.0),
+            setRow(sessionId = 2, day = 3, setNumber = 1, reps = 10, kg = 20.0),
+            setRow(sessionId = 3, day = 6, setNumber = 1, reps = 10, kg = 15.0),
+        )
+
+        val points = aggregateSessions(rows, isNegativeWeight = true)
+
+        assertEquals(listOf(-25.0, -20.0, -15.0), points.map { it.topSetKg!! })
+        assertTrue(points.all { it.volumeKg == 0.0 })
+        val e1rms = points.map { it.bestE1rmKg!! }
+        assertTrue(e1rms[0] < e1rms[1] && e1rms[1] < e1rms[2])
+        assertEquals(OverloadTrend.Progressing, overloadTrend(e1rms).trend)
+        assertEquals(
+            listOf(
+                ProgressMetric.Est1Rm,
+                ProgressMetric.TopSet,
+                ProgressMetric.BestReps,
+                ProgressMetric.TotalReps,
+            ),
+            metricsFor(isBodyweight = false, isNegativeWeight = true),
+        )
+    }
+
     private fun setRow(sessionId: Long, day: Long, setNumber: Int, reps: Int, kg: Double?) =
         ExerciseSetRow(
             sessionId = sessionId,

@@ -111,7 +111,7 @@ fun computeMuscleVolumes(rows: List<StatSetRow>): Map<Muscle, MuscleVolume> {
     val byMuscleByExercise = HashMap<Muscle, HashMap<Long, ExerciseAccumulator>>()
 
     rows.forEach { r ->
-        val setVol = (r.kg ?: 0.0).coerceAtLeast(0.0) * r.reps
+        val setVol = if (r.isNegativeWeight) 0.0 else (r.kg ?: 0.0).coerceAtLeast(0.0) * r.reps
         // Left/right logs are each half of one bilateral-equivalent working set. Their tonnage
         // remains additive: 10 kg × 10 on each arm really is 200 kg of external work.
         // Side is stored on the historical set itself, so later editing the exercise's
@@ -217,8 +217,12 @@ fun computeExerciseProgress(
     val previousByExercise = previousRows.groupBy { it.exerciseId }
     return currentRows.groupBy { it.exerciseId }.mapNotNull { (exerciseId, rows) ->
         val first = rows.firstOrNull() ?: return@mapNotNull null
-        val currentValue = headlineValue(rows, first.isBodyweight) ?: return@mapNotNull null
-        val previousValue = headlineValue(previousByExercise[exerciseId].orEmpty(), first.isBodyweight)
+        val currentValue = headlineValue(rows, first.isBodyweight, first.isNegativeWeight) ?: return@mapNotNull null
+        val previousValue = headlineValue(
+            previousByExercise[exerciseId].orEmpty(),
+            first.isBodyweight,
+            first.isNegativeWeight,
+        )
         ExerciseProgressSignal(
             exerciseId = exerciseId,
             name = first.exerciseName,
@@ -234,11 +238,20 @@ fun computeExerciseProgress(
     )
 }
 
-private fun headlineValue(rows: List<StatSetRow>, isBodyweight: Boolean): Double? =
+private fun headlineValue(
+    rows: List<StatSetRow>,
+    isBodyweight: Boolean,
+    isNegativeWeight: Boolean = false,
+): Double? =
     if (isBodyweight) {
         rows.maxOfOrNull { it.reps.toDouble() }
     } else {
-        rows.mapNotNull { row -> row.kg?.takeIf { it != 0.0 }?.let { epley1Rm(it, row.reps) } }.maxOrNull()
+        rows.mapNotNull { row ->
+            row.kg
+                ?.let { if (isNegativeWeight && it > 0.0) -it else it }
+                ?.takeIf { it != 0.0 }
+                ?.let { epley1Rm(it, row.reps) }
+        }.maxOrNull()
     }
 
 data class PersonalRecordActivity(val count: Int, val exerciseIds: Set<Long>)
@@ -248,8 +261,12 @@ fun personalRecordActivity(allRows: List<StatSetRow>, current: DateRange): Perso
     var count = 0
     val exerciseIds = linkedSetOf<Long>()
     allRows.groupBy { it.exerciseId }.forEach { (exerciseId, rows) ->
-        val points = aggregateSessions(rows.map(StatSetRow::toExerciseSetRow))
-        val records = detectPersonalRecords(points, rows.first().isBodyweight)
+        val first = rows.first()
+        val points = aggregateSessions(
+            rows.map(StatSetRow::toExerciseSetRow),
+            isNegativeWeight = first.isNegativeWeight,
+        )
+        val records = detectPersonalRecords(points, first.isBodyweight)
         points.forEach { point ->
             if (!point.startedAt.isBefore(current.startInclusive) && point.startedAt.isBefore(current.endExclusive)) {
                 val earned = records[point.sessionId].orEmpty()

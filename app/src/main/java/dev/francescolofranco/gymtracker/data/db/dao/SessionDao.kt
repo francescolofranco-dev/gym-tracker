@@ -25,9 +25,11 @@ interface SessionDao {
                COALESCE(COUNT(DISTINCT se.id), 0) AS exerciseCount,
                COALESCE(SUM(CASE WHEN sl.loggedAt IS NOT NULL AND sl.reps IS NOT NULL AND sl.isSkipped = 0 THEN 1 ELSE 0 END), 0) AS setCount,
                COALESCE(SUM(CASE WHEN sl.loggedAt IS NOT NULL AND sl.reps IS NOT NULL AND sl.isSkipped = 0
+                                  AND COALESCE(e.isNegativeWeight, 0) = 0
                                  THEN sl.reps * MAX(COALESCE(sl.kg, 0.0), 0.0) ELSE 0 END), 0.0) AS totalVolume
         FROM session s
         LEFT JOIN session_exercise se ON se.sessionId = s.id AND se.isSkipped = 0
+        LEFT JOIN exercise e ON se.exerciseId = e.id
         LEFT JOIN set_log sl ON sl.sessionExerciseId = se.id
         WHERE s.acceptedAt IS NOT NULL
         GROUP BY s.id
@@ -204,6 +206,7 @@ interface SessionDao {
                e.id AS exerciseId, e.name AS exerciseName,
                e.primaryMuscles AS primaryMuscles, e.secondaryMuscles AS secondaryMuscles,
                e.isBodyweight AS isBodyweight, e.isUnilateral AS isUnilateral,
+               e.isNegativeWeight AS isNegativeWeight,
                sl.setNumber AS setNumber, sl.side AS side,
                sl.reps AS reps, sl.kg AS kg
         FROM set_log sl
@@ -228,6 +231,7 @@ interface SessionDao {
                e.id AS exerciseId, e.name AS exerciseName,
                e.primaryMuscles AS primaryMuscles, e.secondaryMuscles AS secondaryMuscles,
                e.isBodyweight AS isBodyweight, e.isUnilateral AS isUnilateral,
+               e.isNegativeWeight AS isNegativeWeight,
                sl.setNumber AS setNumber, sl.side AS side, sl.reps AS reps, sl.kg AS kg
         FROM set_log sl
         JOIN session_exercise se ON sl.sessionExerciseId = se.id AND se.isSkipped = 0

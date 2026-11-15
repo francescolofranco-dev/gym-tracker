@@ -395,6 +395,29 @@ class SessionShareTextTest {
         assertEquals(PercentDelta("+20%", PercentTone.Up), percentDeltaOrDash(-20.0, -25.0))
         assertEquals(PercentDelta("-20%", PercentTone.Down), percentDeltaOrDash(-30.0, -25.0))
         assertEquals(PercentDelta("0%", PercentTone.Same), percentDeltaOrDash(-25.0, -25.0))
+
+        assertEquals("-0", formatWeightChip(0.0, isBodyweight = false, isNegativeWeight = true))
+        assertEquals("-25", formatWeightChip(-25.0, isBodyweight = false, isNegativeWeight = true))
+        assertEquals("-25", formatWeightChip(25.0, isBodyweight = false, isNegativeWeight = true))
+    }
+
+    @Test
+    fun `negativeWeight exercise normalizes positive raw weights in summary`() {
+        val summary = summarizeFinishedSession(
+            listOf(
+                detail(
+                    id = 1,
+                    name = "Assisted pull-up",
+                    negativeWeight = true,
+                    sets = listOf(
+                        set(id = 1, sessionExerciseId = 1, reps = 8, kg = 25.0, completed = true),
+                    ),
+                ),
+            ),
+        )
+
+        assertEquals(-25.0, summary.exercises.single().firstSetKg!!, 1e-9)
+        assertEquals("-25 kg", summary.exercises.single().firstSetWeightLabel(WeightUnit.KG))
     }
 
     @Test
@@ -413,6 +436,7 @@ class SessionShareTextTest {
         bodyweight: Boolean = false,
         unilateral: Boolean = false,
         weightPerSide: Boolean = false,
+        negativeWeight: Boolean = false,
     ) = SessionExerciseDetail(
         sessionExercise = SessionExerciseEntity(
             id = id,
@@ -432,6 +456,7 @@ class SessionShareTextTest {
             isBodyweight = bodyweight,
             isUnilateral = unilateral,
             isWeightPerSide = weightPerSide,
+            isNegativeWeight = negativeWeight,
             createdAt = Instant.EPOCH,
         ),
         setLogs = sets,

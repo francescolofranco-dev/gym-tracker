@@ -26,7 +26,7 @@ import dev.francescolofranco.gymtracker.data.db.entities.TemplateExerciseEntity
         TemplateEntity::class,
         TemplateExerciseEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -39,6 +39,34 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "gym-tracker.db"
+
+        /**
+         * v7 → v8: exercises can be marked as negative-weight (assisted). Existing assisted
+         * exercises (by name) are automatically flagged and their logged weights converted to negative.
+         */
+        val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE exercise ADD COLUMN isNegativeWeight INTEGER NOT NULL DEFAULT 0")
+                db.execSQL(
+                    """
+                    UPDATE exercise
+                    SET isNegativeWeight = 1, isBodyweight = 0
+                    WHERE LOWER(name) LIKE '%assisted%'
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    UPDATE set_log
+                    SET kg = -ABS(kg)
+                    WHERE sessionExerciseId IN (
+                        SELECT se.id FROM session_exercise se
+                        JOIN exercise e ON e.id = se.exerciseId
+                        WHERE e.isNegativeWeight = 1
+                    ) AND kg IS NOT NULL AND kg != 0.0
+                    """.trimIndent(),
+                )
+            }
+        }
 
         /** v6 → v7: bilateral exercises can record whether weight is entered per side. */
         val MIGRATION_6_7 = object : Migration(6, 7) {

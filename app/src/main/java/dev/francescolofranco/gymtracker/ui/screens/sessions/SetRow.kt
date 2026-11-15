@@ -104,6 +104,7 @@ data class SetRowState(
     val log: SetLogEntity,
     val targetReps: IntRange,
     val isBodyweight: Boolean,
+    val isNegativeWeight: Boolean = false,
     val unit: WeightUnit,
     /** Reps to display when log.reps is null (planned). */
     val hintReps: Int?,
@@ -172,14 +173,16 @@ fun SetRow(
     val isSkipped = log.isSkipped
 
     val initialReps = (log.reps ?: state.hintReps ?: state.targetReps.first).coerceAtLeast(0)
-    val initialKgInternal = log.kg ?: state.hintKg ?: 0.0
+    val effectiveHintKg = state.hintKg?.let { if (state.isNegativeWeight && it > 0.0) -it else it }
+    val rawInitialKg = log.kg ?: effectiveHintKg ?: 0.0
+    val initialKgInternal = if (state.isNegativeWeight && rawInitialKg > 0.0) -rawInitialKg else rawInitialKg
 
     // hintReps/hintKg are keyed here too: they arrive asynchronously (DB round trip), and a row
     // that first composes before the hint loads must re-derive its initial value once it does.
     // Safe for rows with an existing draft — log.reps/log.kg take precedence over the hint in the
     // initializer above, so an in-progress edit is never overwritten by a later hint update.
     var reps by remember(log.id, log.loggedAt, log.reps, state.hintReps) { mutableIntStateOf(initialReps) }
-    var kgInternal by remember(log.id, log.loggedAt, log.kg, state.hintKg) { mutableDoubleStateOf(initialKgInternal) }
+    var kgInternal by remember(log.id, log.loggedAt, log.kg, state.hintKg, state.isNegativeWeight) { mutableDoubleStateOf(initialKgInternal) }
     var numpadFor by remember(log.id) { mutableStateOf<NumpadField?>(null) }
 
     // Snapshot the values the numpad was opened against — on dismiss we only fire onDraft
@@ -194,7 +197,7 @@ fun SetRow(
 
     // Deltas vs the matching set last session. Weight always renders ("-" when no reference);
     // reps only renders the % once committed (while scrubbing an un-logged set the live % nags).
-    val kgDelta = percentDeltaOrDash(kgInternal, state.hintKg)
+    val kgDelta = percentDeltaOrDash(kgInternal, effectiveHintKg)
     val kgDeltaColor = kgDelta.tone.color()
     val repsDelta = when {
         state.hintReps == null -> percentDeltaOrDash(reps.toDouble(), null)
@@ -310,7 +313,7 @@ fun SetRow(
                 captionColor = kgDeltaColor,
             ) {
                 WeightValue(
-                    number = formatWeightChip(displayKg, state.isBodyweight),
+                    number = formatWeightChip(displayKg, state.isBodyweight, state.isNegativeWeight),
                     unit = state.unit.label(),
                     isActive = isActiveSet,
                     isSkipped = isSkipped,
@@ -445,7 +448,8 @@ fun SetRow(
                 initialValue = displayKg,
                 allowDecimal = true,
                 onValueChange = { v ->
-                    kgInternal = convertToKg(v, state.unit)
+                    val signed = if (state.isNegativeWeight && v > 0.0) -v else v
+                    kgInternal = convertToKg(signed, state.unit)
                     if (isLogged) onCommit(reps, kgInternal)
                 },
                 onDismiss = { finishNumpad() },
@@ -454,6 +458,7 @@ fun SetRow(
                 minValue = -9999.0,
                 maxValue = 9999.0,
                 allowNegative = true,
+                forceNegative = state.isNegativeWeight,
             )
         }
 
@@ -809,9 +814,18 @@ private fun TextStyle.asNumber(): TextStyle = copy(
     ),
 )
 
-internal fun formatWeightChip(value: Double, isBodyweight: Boolean): String {
+internal fun formatWeightChip(
+    value: Double,
+    isBodyweight: Boolean,
+    isNegativeWeight: Boolean = false,
+): String {
     val formatted = formatWeightNumber(value)
-    val prefix = if (isBodyweight && !formatted.startsWith("-")) "+" else ""
+    val prefix = when {
+        formatted.startsWith("-") -> ""
+        isNegativeWeight -> "-"
+        isBodyweight -> "+"
+        else -> ""
+    }
     return "$prefix$formatted"
 }
 

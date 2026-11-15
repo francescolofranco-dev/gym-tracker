@@ -32,6 +32,11 @@ data class ExerciseEntity(
      * workout summaries and shares.
      */
     val isWeightPerSide: Boolean = false,
+    /**
+     * Assisted exercises where the logged weight is counterweight assistance (stored as negative kg
+     * so less assistance means higher effective load).
+     */
+    val isNegativeWeight: Boolean = false,
     val createdAt: Instant,
     val deletedAt: Instant? = null,
 )

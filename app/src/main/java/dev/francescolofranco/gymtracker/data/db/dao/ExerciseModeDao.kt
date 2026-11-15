@@ -15,4 +15,15 @@ interface ExerciseModeDao {
         ORDER BY sl.sessionExerciseId, sl.setNumber, sl.id
     """)
     suspend fun openSessionSets(exerciseId: Long): List<SetLogEntity>
+
+    @Query(
+        """
+        UPDATE set_log
+        SET kg = CASE WHEN :isNegativeWeight THEN -ABS(kg) ELSE ABS(kg) END
+        WHERE sessionExerciseId IN (
+            SELECT id FROM session_exercise WHERE exerciseId = :exerciseId
+        ) AND kg IS NOT NULL AND kg != 0.0
+        """
+    )
+    suspend fun normalizeExerciseSetWeights(exerciseId: Long, isNegativeWeight: Boolean)
 }

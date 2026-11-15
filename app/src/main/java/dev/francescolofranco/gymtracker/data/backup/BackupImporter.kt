@@ -94,7 +94,23 @@ open class BackupImporter {
         val templateExercises = parseList(root, BackupSchema.K_TEMPLATE_EXERCISES) { it.parseTemplateExercise() }
         val sessions = parseList(root, BackupSchema.K_SESSIONS) { it.parseSession() }
         val sessionExercises = parseList(root, BackupSchema.K_SESSION_EXERCISES) { it.parseSessionExercise() }
-        val setLogs = parseList(root, BackupSchema.K_SET_LOGS) { it.parseSetLog() }
+        val rawSetLogs = parseList(root, BackupSchema.K_SET_LOGS) { it.parseSetLog() }
+        val negativeExerciseIds = exercises.filter { it.isNegativeWeight }.mapTo(HashSet()) { it.id }
+        val negativeSessionExerciseIds = sessionExercises
+            .filter { it.exerciseId in negativeExerciseIds }
+            .mapTo(HashSet()) { it.id }
+        val setLogs = if (negativeSessionExerciseIds.isEmpty()) {
+            rawSetLogs
+        } else {
+            rawSetLogs.map { log ->
+                val kg = log.kg
+                if (log.sessionExerciseId in negativeSessionExerciseIds && kg != null && kg != 0.0) {
+                    log.copy(kg = -kotlin.math.abs(kg))
+                } else {
+                    log
+                }
+            }
+        }
 
         validateBackupData(exercises, templates, templateExercises, sessions, sessionExercises, setLogs)
         val summary = BackupSummary(
@@ -156,6 +172,7 @@ private fun JSONObject.parseExercise(): ExerciseEntity {
         ?.let { parseMuscleSet(it) }
         ?: setOf(Muscle.valueOf(getString("primaryMuscle")))
     val unilateral = optBoolean("isUnilateral", false)
+    val negativeWeight = optBoolean("isNegativeWeight", false)
     return ExerciseEntity(
         id = getLong("id"),
         name = getString("name"),
@@ -164,9 +181,10 @@ private fun JSONObject.parseExercise(): ExerciseEntity {
         targetSets = getInt("targetSets"),
         repRangeMin = getInt("repRangeMin"),
         repRangeMax = getInt("repRangeMax"),
-        isBodyweight = getBoolean("isBodyweight"),
+        isBodyweight = getBoolean("isBodyweight") && !negativeWeight,
         isUnilateral = unilateral,
         isWeightPerSide = !unilateral && optBoolean("isWeightPerSide", false),
+        isNegativeWeight = negativeWeight,
         createdAt = Instant.parse(getString("createdAt")),
         deletedAt = optStringOrNull("deletedAt")?.let { Instant.parse(it) },
     )

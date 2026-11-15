@@ -34,6 +34,7 @@ class ExerciseRepository @Inject constructor(
         isBodyweight: Boolean,
         isUnilateral: Boolean,
         isWeightPerSide: Boolean = false,
+        isNegativeWeight: Boolean = false,
     ): Long = dao.insert(
         ExerciseEntity(
             name = name.trim(),
@@ -42,9 +43,10 @@ class ExerciseRepository @Inject constructor(
             targetSets = targetSets,
             repRangeMin = repRangeMin,
             repRangeMax = repRangeMax,
-            isBodyweight = isBodyweight,
+            isBodyweight = isBodyweight && !isNegativeWeight,
             isUnilateral = isUnilateral,
             isWeightPerSide = isWeightPerSide && !isUnilateral,
+            isNegativeWeight = isNegativeWeight,
             createdAt = Instant.now(),
         )
     )
@@ -69,8 +71,10 @@ class ExerciseRepository @Inject constructor(
         isBodyweight: Boolean,
         isUnilateral: Boolean,
         isWeightPerSide: Boolean = false,
+        isNegativeWeight: Boolean = false,
     ) = db.withTransaction {
         val current = dao.byId(id) ?: return@withTransaction
+        val effectiveBodyweight = isBodyweight && !isNegativeWeight
         if (current.isUnilateral != isUnilateral) {
             val original = db.exerciseModeDao().openSessionSets(id)
             val reconciled = reconcileSetMode(original, isUnilateral)
@@ -83,6 +87,9 @@ class ExerciseRepository @Inject constructor(
                 else if (row != originalsById[row.id]) setDao.update(row)
             }
         }
+        if (current.isNegativeWeight != isNegativeWeight || isNegativeWeight) {
+            db.exerciseModeDao().normalizeExerciseSetWeights(id, isNegativeWeight)
+        }
         dao.update(
             current.copy(
                 name = name.trim(),
@@ -91,9 +98,10 @@ class ExerciseRepository @Inject constructor(
                 targetSets = targetSets,
                 repRangeMin = repRangeMin,
                 repRangeMax = repRangeMax,
-                isBodyweight = isBodyweight,
+                isBodyweight = effectiveBodyweight,
                 isUnilateral = isUnilateral,
                 isWeightPerSide = isWeightPerSide && !isUnilateral,
+                isNegativeWeight = isNegativeWeight,
             ),
         )
     }

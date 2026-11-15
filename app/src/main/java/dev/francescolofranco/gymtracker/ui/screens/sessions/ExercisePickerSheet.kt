@@ -536,6 +536,7 @@ private fun PickerRow(
                         .joinToString(" + ") { it.displayName }
                     if (primaries.isNotEmpty()) add(primaries)
                     if (exercise.isBodyweight) add("BW")
+                    if (exercise.isNegativeWeight) add("Assisted")
                     if (exercise.isUnilateral) add("Unilateral")
                     add("${exercise.targetSets}×${exercise.repRangeMin}–${exercise.repRangeMax}${if (exercise.isUnilateral) "/side" else ""}")
                     val secondaries = exercise.secondaryMuscles.sortedTopToBottom()

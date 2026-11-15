@@ -203,7 +203,7 @@ fun ActiveSessionScreen(
     }
     val totalVolumeKg = remember(details) {
         details
-            .filter { !it.sessionExercise.isSkipped }
+            .filter { !it.sessionExercise.isSkipped && !it.exercise.isNegativeWeight }
             .sumOf { d ->
                 d.setLogs
                     .filter { it.loggedAt != null && it.reps != null && !it.isSkipped }
@@ -910,6 +910,7 @@ internal fun LazyListScope.exerciseSection(
                         log = log,
                         targetReps = exercise.repRangeMin..exercise.repRangeMax,
                         isBodyweight = exercise.isBodyweight,
+                        isNegativeWeight = exercise.isNegativeWeight,
                         unit = unit,
                         hintReps = hint?.reps,
                         hintKg = hint?.kg,
@@ -1031,6 +1032,7 @@ private fun ExerciseSectionHeader(
                     text = buildList {
                         add(exercise.primaryMuscles.sortedTopToBottom().joinToString(" + ") { it.displayName })
                         if (exercise.isBodyweight) add("BW")
+                        if (exercise.isNegativeWeight) add("Assisted")
                         add(detail.setPlanLabel())
                         if (detail.sessionExercise.isSkipped) add("Skipped")
                         else if (incomplete) add("Incomplete")
@@ -1266,6 +1268,7 @@ fun ExerciseCard(
                     text = buildList {
                         add(exercise.primaryMuscles.sortedTopToBottom().joinToString(" + ") { it.displayName })
                         if (exercise.isBodyweight) add("BW")
+                        if (exercise.isNegativeWeight) add("Assisted")
                         add(detail.setPlanLabel())
                         if (detail.sessionExercise.isSkipped) add("Skipped")
                         else if (incomplete) add("Incomplete")
@@ -1353,6 +1356,7 @@ fun ExerciseCard(
                         log = log,
                         targetReps = exercise.repRangeMin..exercise.repRangeMax,
                         isBodyweight = exercise.isBodyweight,
+                        isNegativeWeight = exercise.isNegativeWeight,
                         unit = unit,
                         hintReps = hint?.reps,
                         hintKg = hint?.kg,

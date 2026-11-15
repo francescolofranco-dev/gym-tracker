@@ -129,20 +129,21 @@ class ActiveSessionViewModel @Inject constructor(
         .map { items ->
             items
                 .distinctBy { it.exercise.id }
-                .map { it.exercise.id to it.exercise.isBodyweight }
+                .map { Triple(it.exercise.id, it.exercise.isBodyweight, it.exercise.isNegativeWeight) }
         }
         .distinctUntilChanged()
         .flatMapLatest { exercises ->
             if (exercises.isEmpty()) {
                 flowOf(emptyMap())
             } else {
-                combine(exercises.map { (exerciseId, isBodyweight) ->
-                    repo.observeExerciseSetHistory(exerciseId).map { rows ->
-                        Triple(exerciseId, isBodyweight, rows)
+                combine(exercises.map { meta ->
+                    repo.observeExerciseSetHistory(meta.first).map { rows ->
+                        meta to rows
                     }
                 }) { histories ->
-                    histories.associate { (exerciseId, isBodyweight, rows) ->
-                        val points = aggregateSessions(rows)
+                    histories.associate { (meta, rows) ->
+                        val (exerciseId, isBodyweight, isNegativeWeight) = meta
+                        val points = aggregateSessions(rows, isNegativeWeight = isNegativeWeight)
                         exerciseId to detectPersonalRecords(points, isBodyweight)
                             .getOrElse(sessionId) { emptySet() }
                     }

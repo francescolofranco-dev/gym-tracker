@@ -43,7 +43,10 @@ data class LoadSideKey(val kg: Double, val side: ExerciseSide)
  * (rows are expected oldest-first, as the DAO returns them). Sets with a null or zero weight still
  * count toward volume and reps but are ignored for estimated 1RM and top set.
  */
-fun aggregateSessions(rows: List<ExerciseSetRow>): List<SessionProgressPoint> {
+fun aggregateSessions(
+    rows: List<ExerciseSetRow>,
+    isNegativeWeight: Boolean = false,
+): List<SessionProgressPoint> {
     if (rows.isEmpty()) return emptyList()
 
     // LinkedHashMap preserves first-seen (oldest) session order.
@@ -62,7 +65,8 @@ fun aggregateSessions(rows: List<ExerciseSetRow>): List<SessionProgressPoint> {
         val bestRepsBySide = HashMap<ExerciseSide, Int>()
 
         sessionRows.forEach { r ->
-            val kg = r.kg
+            val rawKg = r.kg
+            val kg = if (isNegativeWeight && rawKg != null && rawKg > 0.0) -rawKg else rawKg
             volumeKg += r.reps * (kg ?: 0.0).coerceAtLeast(0.0)
             totalReps += r.reps
             if (r.reps > bestReps) bestReps = r.reps
@@ -105,10 +109,17 @@ enum class ProgressMetric(val label: String, val isWeight: Boolean) {
     TotalReps("Total reps", isWeight = false),
 }
 
-/** Weighted lifts get load-based metrics; bodyweight exercises get reps-based ones (load is ~0). */
-fun metricsFor(isBodyweight: Boolean): List<ProgressMetric> =
-    if (isBodyweight) listOf(ProgressMetric.BestReps, ProgressMetric.TotalReps)
-    else listOf(ProgressMetric.Est1Rm, ProgressMetric.TopSet, ProgressMetric.Volume)
+/** Weighted lifts get load-based metrics; assisted adds rep metrics; bodyweight uses reps. */
+fun metricsFor(isBodyweight: Boolean, isNegativeWeight: Boolean = false): List<ProgressMetric> = when {
+    isBodyweight -> listOf(ProgressMetric.BestReps, ProgressMetric.TotalReps)
+    isNegativeWeight -> listOf(
+        ProgressMetric.Est1Rm,
+        ProgressMetric.TopSet,
+        ProgressMetric.BestReps,
+        ProgressMetric.TotalReps,
+    )
+    else -> listOf(ProgressMetric.Est1Rm, ProgressMetric.TopSet, ProgressMetric.Volume)
+}
 
 /** The metric the overload verdict is judged on: estimated 1RM for weighted lifts, best reps otherwise. */
 fun headlineMetric(isBodyweight: Boolean): ProgressMetric =

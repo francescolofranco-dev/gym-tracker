@@ -57,6 +57,7 @@ class ExercisesViewModel @Inject constructor(
                 isBodyweight = state.isBodyweight,
                 isUnilateral = state.isUnilateral,
                 isWeightPerSide = state.isWeightPerSide,
+                isNegativeWeight = state.isNegativeWeight,
             )
             _editing.value = EditMode.None
         }

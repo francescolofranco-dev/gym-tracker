@@ -29,7 +29,7 @@ class LoggedSetQueriesTest(unittest.TestCase):
         schema = max(schemas.glob('*.json'), key=lambda p: int(p.stem))
         for entity in json.loads(schema.read_text())['database']['entities']:
             self.db.execute(entity['createSql'].replace('${TABLE_NAME}', entity['tableName']))
-        self.db.execute("INSERT INTO exercise VALUES (1, 'Row', 'BACK', '', 3, 8, 12, 0, 1, 0, 0, NULL)")
+        self.db.execute("INSERT INTO exercise VALUES (1, 'Row', 'BACK', '', 3, 8, 12, 0, 1, 0, 0, 0, NULL)")
         for session_id in (1, 2):
             self.db.execute('INSERT INTO session (id, startedAt, acceptedAt, endedAt) VALUES (?, ?, ?, ?)',
                             (session_id, session_id * 100, session_id * 100, session_id * 100 + 50))
@@ -77,6 +77,13 @@ class LoggedSetQueriesTest(unittest.TestCase):
         self.db.execute('UPDATE set_log SET kg = -25 WHERE id = 3')
         summary = self.run_query('SessionDao.kt', 'observeAllSummaries')[0]
         self.assertEqual((1, 0.0), (summary['setCount'], summary['totalVolume']))
+
+    def test_is_negative_weight_exercise_excludes_volume_and_projects_flag(self):
+        self.db.execute('UPDATE exercise SET isNegativeWeight = 1 WHERE id = 1')
+        summary = self.run_query('SessionDao.kt', 'observeAllSummaries')[0]
+        self.assertEqual((1, 0.0), (summary['setCount'], summary['totalVolume']))
+        rows = self.run_query('SessionDao.kt', 'loggedSetsBetween', startInclusive=200, endExclusive=300)
+        self.assertEqual(1, rows[0]['isNegativeWeight'])
 
     def test_history_hints_skip_drafts_and_skipped_occurrences(self):
         params = dict(exerciseId=1, setNumber=1, side='RIGHT', beforeStartedAtEpochMs=300)

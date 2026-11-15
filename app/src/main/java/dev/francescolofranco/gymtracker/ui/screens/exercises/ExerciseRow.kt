@@ -100,6 +100,7 @@ private fun ExerciseEntity.summaryLine(showPrimaryMuscles: Boolean): String {
         parts += primaryMuscles.sortedTopToBottom().joinToString(" + ") { it.displayName }
     }
     if (isBodyweight) parts += "BW"
+    if (isNegativeWeight) parts += "Assisted"
     if (isUnilateral) parts += "Unilateral"
     parts += sets
     if (secondaries.isNotEmpty()) parts += secondaries

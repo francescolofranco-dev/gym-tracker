@@ -185,6 +185,7 @@ fun ExerciseDetailScreen(
                 ProgressSection(
                     points = progress,
                     isBodyweight = ex.isBodyweight,
+                    isNegativeWeight = ex.isNegativeWeight,
                     unit = unit,
                     modifier = Modifier.padding(horizontal = 16.dp),
                 )
@@ -194,6 +195,7 @@ fun ExerciseDetailScreen(
                     PersonalRecordsCard(
                         summary = personalRecordSummary(progress),
                         isBodyweight = ex.isBodyweight,
+                        isNegativeWeight = ex.isNegativeWeight,
                         unit = unit,
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
@@ -323,6 +325,7 @@ private fun Header(exercise: ExerciseEntity) {
                     }
                     val qualifiers = buildList {
                         if (exercise.isBodyweight) add("BODYWEIGHT")
+                        if (exercise.isNegativeWeight) add("ASSISTED")
                         if (exercise.isUnilateral) add("UNILATERAL")
                         if (exercise.deletedAt != null) add("DELETED")
                     }
@@ -397,11 +400,12 @@ private fun Header(exercise: ExerciseEntity) {
 private fun ProgressSection(
     points: List<SessionProgressPoint>,
     isBodyweight: Boolean,
+    isNegativeWeight: Boolean = false,
     unit: WeightUnit,
     modifier: Modifier = Modifier,
 ) {
-    val metrics = remember(isBodyweight) { metricsFor(isBodyweight) }
-    var selectedIndex by rememberSaveable(isBodyweight) { mutableIntStateOf(0) }
+    val metrics = remember(isBodyweight, isNegativeWeight) { metricsFor(isBodyweight, isNegativeWeight) }
+    var selectedIndex by rememberSaveable(isBodyweight, isNegativeWeight) { mutableIntStateOf(0) }
     val metric = metrics[selectedIndex.coerceIn(0, metrics.lastIndex)]
 
     Column(
@@ -703,6 +707,7 @@ private fun HistoryRow(
 private fun PersonalRecordsCard(
     summary: PersonalRecordSummary,
     isBodyweight: Boolean,
+    isNegativeWeight: Boolean = false,
     unit: WeightUnit,
     modifier: Modifier = Modifier,
 ) {
@@ -777,13 +782,23 @@ private fun PersonalRecordsCard(
                         modifier = Modifier.weight(1f),
                     )
                 }
-                RecordTile(
-                    label = "SESSION VOLUME",
-                    number = formatWeightNumber(convertFromKg(summary.bestVolumeKg, unit)),
-                    unit = unit.label().uppercase(),
-                    caption = "Best single-session load",
-                    modifier = Modifier.weight(1f),
-                )
+                if (isNegativeWeight) {
+                    RecordTile(
+                        label = "BEST SET",
+                        number = "${summary.bestReps}",
+                        unit = "REPS",
+                        caption = "Most reps in a single set",
+                        modifier = Modifier.weight(1f),
+                    )
+                } else {
+                    RecordTile(
+                        label = "SESSION VOLUME",
+                        number = formatWeightNumber(convertFromKg(summary.bestVolumeKg, unit)),
+                        unit = unit.label().uppercase(),
+                        caption = "Best single-session load",
+                        modifier = Modifier.weight(1f),
+                    )
+                }
             }
         }
         Row(

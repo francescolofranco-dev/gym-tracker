@@ -149,6 +149,7 @@ internal fun ExerciseEntity.matchesExerciseQuery(query: String): Boolean {
             append(muscle.name.replace('_', ' '))
         }
         if (isBodyweight) append(" bodyweight bw")
+        if (isNegativeWeight) append(" assisted negative counterweight")
         if (isUnilateral) append(" unilateral single side")
     }.normalizedForSearch()
 
