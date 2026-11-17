@@ -2,7 +2,6 @@ package dev.francescolofranco.gymtracker.ui.screens.templates
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -10,7 +9,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -55,14 +53,12 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
@@ -89,7 +85,6 @@ import dev.francescolofranco.gymtracker.ui.theme.SurfaceChip
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceControl
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
-import kotlinx.coroutines.delay
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -100,18 +95,9 @@ fun TemplateEditScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     var showPicker by remember { mutableStateOf(false) }
     val haptics = LocalHapticFeedback.current
-    var recentlyMovedId by remember { mutableStateOf<Long?>(null) }
-    var moveToken by remember { mutableIntStateOf(0) }
 
     LaunchedEffect(state.saved) {
         if (state.saved) onBack()
-    }
-
-    LaunchedEffect(moveToken) {
-        if (recentlyMovedId != null) {
-            delay(550)
-            recentlyMovedId = null
-        }
     }
 
     Scaffold(
@@ -412,17 +398,12 @@ fun TemplateEditScreen(
                                 exercise = e,
                                 isFirst = index == 0,
                                 isLast = index == state.exercises.lastIndex,
-                                isRecentlyMoved = recentlyMovedId == e.id,
                                 onMoveUp = {
                                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    recentlyMovedId = e.id
-                                    moveToken += 1
                                     viewModel.moveUp(e.id)
                                 },
                                 onMoveDown = {
                                     haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    recentlyMovedId = e.id
-                                    moveToken += 1
                                     viewModel.moveDown(e.id)
                                 },
                                 onRemove = { viewModel.remove(e.id) },
@@ -509,29 +490,16 @@ private fun TemplateExerciseRow(
     exercise: ExerciseEntity,
     isFirst: Boolean,
     isLast: Boolean,
-    isRecentlyMoved: Boolean = false,
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit,
     onRemove: () -> Unit,
 ) {
-    val borderColor by animateColorAsState(
-        targetValue = if (isRecentlyMoved) BrandLime else Color.Transparent,
-        animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
-        label = "template-row-border",
-    )
-    val railColor by animateColorAsState(
-        targetValue = if (isFirst || isRecentlyMoved) BrandLime else SurfaceChip,
-        animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
-        label = "template-row-rail",
-    )
-
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
             .clip(RoundedCornerShape(4.dp))
             .background(SurfaceElevated)
-            .border(1.dp, borderColor, RoundedCornerShape(4.dp))
             .height(IntrinsicSize.Min),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -539,7 +507,7 @@ private fun TemplateExerciseRow(
             modifier = Modifier
                 .width(4.dp)
                 .fillMaxHeight()
-                .background(railColor),
+                .background(if (isFirst) BrandLime else SurfaceChip),
         )
         Row(
             modifier = Modifier
@@ -558,7 +526,7 @@ private fun TemplateExerciseRow(
                 Icon(
                     imageVector = Icons.Filled.FitnessCenter,
                     contentDescription = null,
-                    tint = if (isFirst || isRecentlyMoved) BrandLime else OliveSubtext,
+                    tint = if (isFirst) BrandLime else OliveSubtext,
                     modifier = Modifier.size(18.dp),
                 )
             }
@@ -589,7 +557,7 @@ private fun TemplateExerciseRow(
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                             ),
-                            color = if (isFirst || isRecentlyMoved) BrandLime else OliveSubtext,
+                            color = if (isFirst) BrandLime else OliveSubtext,
                         )
                     }
                     Text(

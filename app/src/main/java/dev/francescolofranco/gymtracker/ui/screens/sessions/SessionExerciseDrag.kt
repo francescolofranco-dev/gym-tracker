@@ -2,9 +2,6 @@ package dev.francescolofranco.gymtracker.ui.screens.sessions
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -37,7 +34,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -82,8 +78,6 @@ internal class SessionExerciseDrag(val listState: LazyListState) {
     var indicatorColor: Color = Color.Unspecified
     var dropAfter by mutableStateOf(false)
     var pendingOrder by mutableStateOf<List<Long>?>(null)
-    var recentlyMovedId by mutableStateOf<Long?>(null)
-    var moveToken by mutableIntStateOf(0)
 
     fun orderedDetails(details: List<SessionExerciseDetail>): List<SessionExerciseDetail> =
         orderedExerciseDetails(details, pendingOrder)
@@ -91,8 +85,6 @@ internal class SessionExerciseDrag(val listState: LazyListState) {
     fun isDragged(id: Long): Boolean = draggedId == id
 
     fun isDropTarget(id: Long): Boolean = targetId == id && draggedId != null && draggedId != id
-
-    fun isRecentlyMoved(id: Long): Boolean = recentlyMovedId == id
 
     fun headerModifier(id: Long): Modifier {
         val base = Modifier.drawWithContent {
@@ -190,13 +182,6 @@ internal fun rememberSessionExerciseDrag(
         }
     }
 
-    LaunchedEffect(state.moveToken) {
-        if (state.recentlyMovedId != null) {
-            delay(650)
-            state.recentlyMovedId = null
-        }
-    }
-
     fun updateTarget() {
         val previousTargetId = state.targetId
         val previousDropAfter = state.dropAfter
@@ -268,8 +253,6 @@ internal fun rememberSessionExerciseDrag(
                 val reordered = reorderedExerciseIds(ids, state.draggedId, state.targetId)
                 if (reordered != ids) {
                     state.pendingOrder = reordered
-                    state.recentlyMovedId = state.draggedId
-                    state.moveToken += 1
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                     latestOnReorder(reordered)
                 }
@@ -321,41 +304,13 @@ internal fun targetNudgeDirection(
 /** Rendered outside the lazy items so the dragged label stays visible during edge scrolling. */
 @Composable
 internal fun SessionExerciseDragPreview(state: SessionExerciseDrag, details: List<SessionExerciseDetail>) {
-    val dragged = details.firstOrNull { it.sessionExercise.id == state.draggedId }
+    val dragged = details.firstOrNull { it.sessionExercise.id == state.draggedId } ?: return
     val target = details.firstOrNull { it.sessionExercise.id == state.targetId }
-    var lastDragged by remember { mutableStateOf<SessionExerciseDetail?>(null) }
-    var lastStatus by remember { mutableStateOf("DRAG UP OR DOWN TO REORDER") }
-    var lastDropAfter by remember { mutableStateOf(false) }
-
-    if (dragged != null) {
-        lastDragged = dragged
-        lastDropAfter = state.dropAfter
-        lastStatus = if (target == null || target == dragged) {
-            "DRAG UP OR DOWN TO REORDER"
-        } else {
-            "DROP ${if (state.dropAfter) "AFTER" else "BEFORE"} ${target.exercise.name.uppercase()}"
-        }
+    val statusText = if (target == null || target == dragged) {
+        "DRAG UP OR DOWN TO REORDER"
+    } else {
+        "DROP ${if (state.dropAfter) "AFTER" else "BEFORE"} ${target.exercise.name.uppercase()}"
     }
-
-    val scale by animateFloatAsState(
-        targetValue = if (dragged != null) 1.02f else 0.96f,
-        animationSpec = spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMedium),
-        label = "drag-preview-scale",
-    )
-    val alpha by animateFloatAsState(
-        targetValue = if (dragged != null) 1f else 0f,
-        animationSpec = tween(GymMotion.Quick, easing = GymMotion.EmphasizedEasing),
-        label = "drag-preview-alpha",
-    )
-
-    LaunchedEffect(dragged, alpha) {
-        if (dragged == null && alpha <= 0.01f) {
-            lastDragged = null
-        }
-    }
-
-    val active = dragged ?: lastDragged
-    if (active == null || (dragged == null && alpha <= 0.01f)) return
 
     Surface(
         modifier = Modifier
@@ -366,11 +321,6 @@ internal fun SessionExerciseDragPreview(state: SessionExerciseDrag, details: Lis
                     0,
                     (state.fingerY - state.grabOffset + state.listState.layoutInfo.beforeContentPadding).roundToInt(),
                 )
-            }
-            .graphicsLayer {
-                scaleX = scale
-                scaleY = scale
-                this.alpha = alpha
             },
         shape = RoundedCornerShape(4.dp),
         color = SurfaceElevated,
@@ -406,7 +356,7 @@ internal fun SessionExerciseDragPreview(state: SessionExerciseDrag, details: Lis
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
-                        text = active.exercise.name.uppercase(),
+                        text = dragged.exercise.name.uppercase(),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
@@ -425,7 +375,7 @@ internal fun SessionExerciseDragPreview(state: SessionExerciseDrag, details: Lis
                             .padding(horizontal = 6.dp, vertical = 2.dp),
                     ) {
                         Text(
-                            text = active.setPlanLabel().uppercase(),
+                            text = dragged.setPlanLabel().uppercase(),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,
@@ -437,9 +387,9 @@ internal fun SessionExerciseDragPreview(state: SessionExerciseDrag, details: Lis
                     }
                 }
                 AnimatedContent(
-                    targetState = lastStatus,
+                    targetState = statusText,
                     transitionSpec = {
-                        val direction = if (lastDropAfter) 1 else -1
+                        val direction = if (state.dropAfter) 1 else -1
                         (slideInVertically(tween(GymMotion.Quick, easing = GymMotion.EmphasizedEasing)) { direction * it / 2 } +
                             fadeIn(tween(GymMotion.Quick, easing = GymMotion.EmphasizedEasing)))
                             .togetherWith(

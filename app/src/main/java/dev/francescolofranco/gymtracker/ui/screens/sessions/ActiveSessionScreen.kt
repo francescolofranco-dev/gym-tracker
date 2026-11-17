@@ -6,10 +6,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -90,7 +87,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
@@ -109,7 +105,6 @@ import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.screens.exercises.PersonalRecordType
 import dev.francescolofranco.gymtracker.ui.theme.BrandLime
 import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
-import dev.francescolofranco.gymtracker.ui.theme.DarkPrimaryContainer
 import dev.francescolofranco.gymtracker.ui.theme.DestructiveCoral
 import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
 import dev.francescolofranco.gymtracker.ui.theme.MutedOlive
@@ -402,9 +397,6 @@ fun ActiveSessionScreen(
                             headerModifier = reorder.headerModifier(sectionId),
                             bodyModifier = reorder.bodyModifier(sectionId),
                             footerModifier = reorder.footerModifier(sectionId),
-                            isDragged = reorder.isDragged(sectionId),
-                            isDropTarget = reorder.isDropTarget(sectionId),
-                            isRecentlyMoved = reorder.isRecentlyMoved(sectionId),
                             unit = unit,
                             hints = hints.byExerciseId[detail.exercise.id] ?: emptyList(),
                             personalRecords = personalRecords[detail.exercise.id].orEmpty(),
@@ -799,9 +791,6 @@ internal fun LazyListScope.exerciseSection(
     headerModifier: Modifier = Modifier,
     bodyModifier: Modifier = Modifier,
     footerModifier: Modifier = Modifier,
-    isDragged: Boolean = false,
-    isDropTarget: Boolean = false,
-    isRecentlyMoved: Boolean = false,
     detail: SessionExerciseDetail,
     unit: WeightUnit,
     hints: List<HintRow>,
@@ -845,9 +834,6 @@ internal fun LazyListScope.exerciseSection(
             loggedSets = loggedSets,
             hasSets = sets.isNotEmpty(),
             editable = editable,
-            isDragged = isDragged,
-            isDropTarget = isDropTarget,
-            isRecentlyMoved = isRecentlyMoved,
             onSkipExercise = onSkipExercise,
             onEditExerciseNotes = onEditExerciseNotes,
             onRemoveExercise = onRemoveExercise,
@@ -958,9 +944,6 @@ private fun ExerciseSectionHeader(
     loggedSets: Int,
     hasSets: Boolean,
     editable: Boolean,
-    isDragged: Boolean = false,
-    isDropTarget: Boolean = false,
-    isRecentlyMoved: Boolean = false,
     onSkipExercise: (skipped: Boolean) -> Unit,
     onEditExerciseNotes: () -> Unit,
     onRemoveExercise: () -> Unit,
@@ -976,42 +959,12 @@ private fun ExerciseSectionHeader(
     val pinnedNote = detail.sessionExercise.pinnedNotes?.takeIf { it.isNotBlank() }
     val sessionNote = detail.sessionExercise.notes?.takeIf { it.isNotBlank() }
 
-    val headerBorderColor by animateColorAsState(
-        targetValue = when {
-            isRecentlyMoved || isDragged -> BrandLime
-            isDropTarget -> BrandLime.copy(alpha = 0.6f)
-            else -> EditorialBorder
-        },
-        animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
-        label = "exercise-header-border",
-    )
-    val headerBgColor by animateColorAsState(
-        targetValue = if (isDropTarget) SurfaceCard else SurfaceElevated,
-        animationSpec = tween(GymMotion.Standard, easing = GymMotion.EmphasizedEasing),
-        label = "exercise-header-bg",
-    )
-    val settleScale by animateFloatAsState(
-        targetValue = if (isRecentlyMoved) 1.015f else 1f,
-        animationSpec = spring(dampingRatio = 0.6f, stiffness = Spring.StiffnessMedium),
-        label = "exercise-header-settle-scale",
-    )
-
     Column(
         modifier = modifier
-            .then(
-                if (settleScale != 1f) {
-                    Modifier.graphicsLayer {
-                        scaleX = settleScale
-                        scaleY = settleScale
-                    }
-                } else {
-                    Modifier
-                },
-            )
             .fillMaxWidth()
             .clip(shape)
-            .background(headerBgColor)
-            .border(1.dp, headerBorderColor, shape)
+            .background(SurfaceElevated)
+            .border(1.dp, EditorialBorder, shape)
             .padding(start = 12.dp, end = 8.dp, top = 10.dp, bottom = 10.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -1028,7 +981,6 @@ private fun ExerciseSectionHeader(
                     isComplete = isComplete,
                     isFirstTime = hints.isEmpty(),
                     personalRecords = personalRecords,
-                    isRecentlyMoved = isRecentlyMoved,
                 )
                 Text(
                     text = buildList {
@@ -1389,7 +1341,6 @@ private fun ExerciseNameAndBadges(
     isComplete: Boolean,
     isFirstTime: Boolean,
     personalRecords: Set<PersonalRecordType>,
-    isRecentlyMoved: Boolean = false,
 ) {
     var lastRecords by remember { mutableStateOf(personalRecords) }
     if (personalRecords.isNotEmpty()) lastRecords = personalRecords
@@ -1430,21 +1381,6 @@ private fun ExerciseNameAndBadges(
             exit = badgeExitTransition(),
         ) {
             PersonalRecordBadge(lastRecords)
-        }
-        AnimatedVisibility(
-            visible = isRecentlyMoved,
-            enter = fadeIn(tween(GymMotion.Quick, easing = GymMotion.EmphasizedEasing)) +
-                scaleIn(
-                    initialScale = 0.88f,
-                    animationSpec = tween(GymMotion.Quick, easing = GymMotion.EmphasizedEasing),
-                ),
-            exit = fadeOut(tween(GymMotion.Standard, easing = GymMotion.ExitEasing)) +
-                scaleOut(
-                    targetScale = 0.88f,
-                    animationSpec = tween(GymMotion.Standard, easing = GymMotion.ExitEasing),
-                ),
-        ) {
-            ReorderedBadge()
         }
     }
 }
@@ -1521,26 +1457,6 @@ private fun PersonalRecordBadge(records: Set<PersonalRecordType>) {
                 fontWeight = FontWeight.Bold,
             ),
             color = DarkOnPrimary,
-        )
-    }
-}
-
-@Composable
-private fun ReorderedBadge() {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(2.dp))
-            .background(DarkPrimaryContainer)
-            .border(1.dp, BrandLime.copy(alpha = 0.7f), RoundedCornerShape(2.dp))
-            .padding(horizontal = 6.dp, vertical = 2.dp),
-    ) {
-        Text(
-            text = "REORDERED",
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 9.sp,
-                fontWeight = FontWeight.Bold,
-            ),
-            color = BrandLime,
         )
     }
 }
