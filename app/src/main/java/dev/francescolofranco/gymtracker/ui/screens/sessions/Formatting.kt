@@ -32,14 +32,13 @@ fun convertToKg(value: Double, unit: WeightUnit): Double = when (unit) {
 }
 
 /**
- * Renders a weight number with up to 3 decimals, trimming trailing zeros so 12 reads as "12",
- * 12.5 as "12.5", and 12.345 as "12.345". The numpad allows 3 fractional digits so the display
- * needs to match — otherwise the user enters "2.345" and the chip rounds it back to "2.3".
+ * Renders weights and derived stats with up to 2 decimals, trimming trailing zeros.
+ * Stored values retain their full precision for calculations and editing.
  */
 fun formatWeightNumber(value: Double): String {
-    val normalized = if (kotlin.math.abs(value) < 0.0005) 0.0 else value
+    val normalized = if (kotlin.math.abs(value) < 0.005) 0.0 else value
     if (normalized % 1.0 == 0.0) return normalized.toInt().toString()
-    return String.format(Locale.US, "%.3f", normalized).trimEnd('0').trimEnd('.')
+    return String.format(Locale.US, "%.2f", normalized).trimEnd('0').trimEnd('.')
 }
 
 fun formatTotalVolume(kg: Double, unit: WeightUnit): String {

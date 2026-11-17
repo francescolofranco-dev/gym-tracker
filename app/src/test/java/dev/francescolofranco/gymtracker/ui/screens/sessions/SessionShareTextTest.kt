@@ -334,7 +334,7 @@ class SessionShareTextTest {
             locale = Locale.ENGLISH,
         )
 
-        assertTrue(text.contains("• Deadlift — 2 sets (10, 8 reps) · 220.462 lbs"))
+        assertTrue(text.contains("• Deadlift — 2 sets (10, 8 reps) · 220.46 lbs"))
         assertFalse(text.contains("volume"))
         assertFalse(text.contains("kg"))
     }
