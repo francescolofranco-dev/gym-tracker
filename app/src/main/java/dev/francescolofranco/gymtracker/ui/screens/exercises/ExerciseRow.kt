@@ -93,7 +93,8 @@ fun ExerciseRow(
 }
 
 private fun ExerciseEntity.summaryLine(showPrimaryMuscles: Boolean): String {
-    val sets = "${targetSets}×${repRangeMin}–${repRangeMax}${if (isUnilateral) "/side" else ""}"
+    val reps = if (repRangeMin == repRangeMax) "$repRangeMin" else "$repRangeMin–$repRangeMax"
+    val sets = "${targetSets}×${reps}${if (isUnilateral) "/side" else ""}"
     val secondaries = secondaryMuscles.sortedTopToBottom().joinToString(", ") { it.displayName }
     val parts = mutableListOf<String>()
     if (showPrimaryMuscles) {
