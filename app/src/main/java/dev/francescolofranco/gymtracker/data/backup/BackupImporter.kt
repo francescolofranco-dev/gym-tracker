@@ -78,7 +78,7 @@ open class BackupImporter {
         return parsed.summary
     }
 
-    private fun parseBackup(json: String): ParsedBackup {
+    internal fun parseBackup(json: String): ParsedBackup {
         val root = parseRoot(json)
         val schemaVersion = root.optInt(BackupSchema.K_SCHEMA_VERSION, -1)
         if (schemaVersion < BackupSchema.MIN_SUPPORTED_VERSION || schemaVersion > BackupSchema.CURRENT_SCHEMA_VERSION) {
@@ -89,25 +89,50 @@ open class BackupImporter {
         }
         val exportedAt = root.optStringOrNull(BackupSchema.K_EXPORTED_AT)?.let { runCatching { Instant.parse(it) }.getOrNull() }
 
-        val exercises = parseList(root, BackupSchema.K_EXERCISES) { it.parseExercise() }
+        val rawExercises = parseList(root, BackupSchema.K_EXERCISES) { it.parseExercise() }
+        val exercises = if (schemaVersion < 8) {
+            rawExercises.map { ex ->
+                if (ex.name.lowercase(java.util.Locale.ROOT).contains("assisted")) {
+                    ex.copy(isNegativeWeight = true, isBodyweight = false)
+                } else {
+                    ex
+                }
+            }
+        } else {
+            rawExercises
+        }
         val templates = parseList(root, BackupSchema.K_TEMPLATES) { it.parseTemplate() }
         val templateExercises = parseList(root, BackupSchema.K_TEMPLATE_EXERCISES) { it.parseTemplateExercise() }
         val sessions = parseList(root, BackupSchema.K_SESSIONS) { it.parseSession() }
         val sessionExercises = parseList(root, BackupSchema.K_SESSION_EXERCISES) { it.parseSessionExercise() }
         val rawSetLogs = parseList(root, BackupSchema.K_SET_LOGS) { it.parseSetLog() }
+
+        val assistedOffsetExerciseIds = if (schemaVersion < 8) {
+            exercises
+                .filter { it.name.lowercase(java.util.Locale.ROOT).contains("assisted") }
+                .mapTo(HashSet()) { it.id }
+        } else {
+            emptySet()
+        }
+        val assistedOffsetSessionExerciseIds = sessionExercises
+            .filter { it.exerciseId in assistedOffsetExerciseIds }
+            .mapTo(HashSet()) { it.id }
         val negativeExerciseIds = exercises.filter { it.isNegativeWeight }.mapTo(HashSet()) { it.id }
         val negativeSessionExerciseIds = sessionExercises
             .filter { it.exerciseId in negativeExerciseIds }
             .mapTo(HashSet()) { it.id }
-        val setLogs = if (negativeSessionExerciseIds.isEmpty()) {
+        val setLogs = if (negativeSessionExerciseIds.isEmpty() && assistedOffsetSessionExerciseIds.isEmpty()) {
             rawSetLogs
         } else {
             rawSetLogs.map { log ->
                 val kg = log.kg
-                if (log.sessionExerciseId in negativeSessionExerciseIds && kg != null && kg != 0.0) {
-                    log.copy(kg = -kotlin.math.abs(kg))
-                } else {
-                    log
+                when {
+                    kg == null || kg == 0.0 -> log
+                    log.sessionExerciseId in assistedOffsetSessionExerciseIds && kotlin.math.abs(kg) <= 70.0 ->
+                        log.copy(kg = kotlin.math.abs(kg) - 70.0)
+                    log.sessionExerciseId in negativeSessionExerciseIds ->
+                        log.copy(kg = -kotlin.math.abs(kg))
+                    else -> log
                 }
             }
         }
@@ -155,7 +180,7 @@ open class BackupImporter {
 
 }
 
-private data class ParsedBackup(
+internal data class ParsedBackup(
     val exercises: List<ExerciseEntity>,
     val templates: List<TemplateEntity>,
     val templateExercises: List<TemplateExerciseEntity>,

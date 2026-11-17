@@ -26,7 +26,7 @@ import dev.francescolofranco.gymtracker.data.db.entities.TemplateExerciseEntity
         TemplateEntity::class,
         TemplateExerciseEntity::class,
     ],
-    version = 8,
+    version = 9,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -39,6 +39,34 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "gym-tracker.db"
+
+        /**
+         * v8 → v9: historical assisted exercise sets were logged as effective lifted weight
+         * relative to a 70 kg bodyweight (`70 - assistance`). Convert them to negative
+         * counterweight (`ABS(kg) - 70`) so 35 → -35 kg, 60 → -10 kg, and 70 → 0 kg.
+         */
+        val MIGRATION_8_9 = object : Migration(8, 9) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    UPDATE exercise
+                    SET isNegativeWeight = 1, isBodyweight = 0
+                    WHERE LOWER(name) LIKE '%assisted%'
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    UPDATE set_log
+                    SET kg = ABS(kg) - 70.0
+                    WHERE sessionExerciseId IN (
+                        SELECT se.id FROM session_exercise se
+                        JOIN exercise e ON e.id = se.exerciseId
+                        WHERE LOWER(e.name) LIKE '%assisted%'
+                    ) AND kg IS NOT NULL AND kg != 0.0 AND ABS(kg) <= 70.0
+                    """.trimIndent(),
+                )
+            }
+        }
 
         /**
          * v7 → v8: exercises can be marked as negative-weight (assisted). Existing assisted

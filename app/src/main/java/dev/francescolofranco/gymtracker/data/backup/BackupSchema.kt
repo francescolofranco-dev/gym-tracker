@@ -17,8 +17,9 @@ object BackupSchema {
      *  - v5: separate regular and pinned exercise notes.
      *  - v6: bilateral per-side weight metadata on exercises.
      *  - v7: negative-weight (assisted) exercise metadata.
+     *  - v8: assisted exercise weights converted from 70 kg bodyweight offset.
      */
-    const val CURRENT_SCHEMA_VERSION = 7
+    const val CURRENT_SCHEMA_VERSION = 8
     const val MIN_SUPPORTED_VERSION = 1
 
     const val K_SCHEMA_VERSION = "schemaVersion"
