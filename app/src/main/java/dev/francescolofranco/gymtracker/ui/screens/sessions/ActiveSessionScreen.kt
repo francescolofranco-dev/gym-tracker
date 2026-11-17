@@ -842,6 +842,7 @@ internal fun LazyListScope.exerciseSection(
             personalRecords = personalRecords,
             isComplete = isComplete,
             incomplete = incomplete,
+            loggedSets = loggedSets,
             hasSets = sets.isNotEmpty(),
             editable = editable,
             isDragged = isDragged,
@@ -954,6 +955,7 @@ private fun ExerciseSectionHeader(
     personalRecords: Set<PersonalRecordType>,
     isComplete: Boolean,
     incomplete: Boolean,
+    loggedSets: Int,
     hasSets: Boolean,
     editable: Boolean,
     isDragged: Boolean = false,
@@ -1035,7 +1037,7 @@ private fun ExerciseSectionHeader(
                         if (exercise.isNegativeWeight) add("Assisted")
                         add(detail.setPlanLabel())
                         if (detail.sessionExercise.isSkipped) add("Skipped")
-                        else if (incomplete) add("Incomplete")
+                        else if (incomplete) add(if (loggedSets == 0) "No sets logged yet" else "Incomplete")
                     }.joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.sp),
                     color = OliveSubtext,
@@ -1271,7 +1273,7 @@ fun ExerciseCard(
                         if (exercise.isNegativeWeight) add("Assisted")
                         add(detail.setPlanLabel())
                         if (detail.sessionExercise.isSkipped) add("Skipped")
-                        else if (incomplete) add("Incomplete")
+                        else if (incomplete) add(if (loggedSets == 0) "No sets logged yet" else "Incomplete")
                     }.joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
