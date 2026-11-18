@@ -65,4 +65,20 @@ class SessionExerciseDragTest {
         assertEquals(0, targetNudgeDirection(draggedId = 11L, targetId = 22L, dropAfter = true, sectionId = 33L))
         assertEquals(0, targetNudgeDirection(draggedId = null, targetId = 22L, dropAfter = false, sectionId = 22L))
     }
+
+    @Test fun sectionDisplacementDpShiftsTargetAndIntermediateExercises() {
+        // Dragging first exercise (11L) down to last exercise (44L, dropAfter = true):
+        // intermediate 22L and 33L shift up (-6dp), target 44L shifts up (-10dp), dragged 11L stays 0dp.
+        assertEquals(0f, sectionDisplacementDp(ids, draggedId = 11L, targetId = 44L, dropAfter = true, sectionId = 11L), 0.001f)
+        assertEquals(-6f, sectionDisplacementDp(ids, draggedId = 11L, targetId = 44L, dropAfter = true, sectionId = 22L), 0.001f)
+        assertEquals(-6f, sectionDisplacementDp(ids, draggedId = 11L, targetId = 44L, dropAfter = true, sectionId = 33L), 0.001f)
+        assertEquals(-10f, sectionDisplacementDp(ids, draggedId = 11L, targetId = 44L, dropAfter = true, sectionId = 44L), 0.001f)
+
+        // Dragging last exercise (44L) up to first exercise (11L, dropAfter = false):
+        // target 11L shifts down (+10dp), intermediate 22L and 33L shift down (+6dp), dragged 44L stays 0dp.
+        assertEquals(10f, sectionDisplacementDp(ids, draggedId = 44L, targetId = 11L, dropAfter = false, sectionId = 11L), 0.001f)
+        assertEquals(6f, sectionDisplacementDp(ids, draggedId = 44L, targetId = 11L, dropAfter = false, sectionId = 22L), 0.001f)
+        assertEquals(6f, sectionDisplacementDp(ids, draggedId = 44L, targetId = 11L, dropAfter = false, sectionId = 33L), 0.001f)
+        assertEquals(0f, sectionDisplacementDp(ids, draggedId = 44L, targetId = 11L, dropAfter = false, sectionId = 44L), 0.001f)
+    }
 }

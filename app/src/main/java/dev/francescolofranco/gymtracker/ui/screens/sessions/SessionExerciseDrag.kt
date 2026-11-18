@@ -2,6 +2,10 @@ package dev.francescolofranco.gymtracker.ui.screens.sessions
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -32,8 +36,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -57,6 +63,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.util.lerp
 import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetail
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.theme.BrandLime
@@ -78,6 +85,9 @@ internal class SessionExerciseDrag(val listState: LazyListState) {
     var indicatorColor: Color = Color.Unspecified
     var dropAfter by mutableStateOf(false)
     var pendingOrder by mutableStateOf<List<Long>?>(null)
+    var pickupProgress by mutableFloatStateOf(0f)
+    var indicatorProgress by mutableFloatStateOf(0f)
+    val displacementBySection = mutableStateMapOf<Long, State<Float>>()
 
     fun orderedDetails(details: List<SessionExerciseDetail>): List<SessionExerciseDetail> =
         orderedExerciseDetails(details, pendingOrder)
@@ -90,20 +100,19 @@ internal class SessionExerciseDrag(val listState: LazyListState) {
         val base = Modifier.drawWithContent {
             drawContent()
             if (isDropTarget(id) && !dropAfter) {
-                drawDropIndicator(indicatorColor, y = 0f)
+                drawDropIndicator(indicatorColor, y = 0f, progress = indicatorProgress)
             }
         }
         if (draggedId == null) return base
         return base.graphicsLayer {
-            when {
-                isDragged(id) -> {
-                    alpha = 0.28f
-                    scaleX = 0.985f
-                    scaleY = 0.985f
-                }
-                isDropTarget(id) -> {
-                    translationY = targetNudgeDirection(draggedId, targetId, dropAfter, id) * 5.dp.toPx()
-                }
+            if (isDragged(id)) {
+                alpha = lerp(1f, 0.32f, pickupProgress)
+                val scale = lerp(1f, 0.98f, pickupProgress)
+                scaleX = scale
+                scaleY = scale
+            } else {
+                val shiftDp = displacementBySection[id]?.value ?: 0f
+                translationY = shiftDp.dp.toPx()
             }
         }
     }
@@ -111,18 +120,18 @@ internal class SessionExerciseDrag(val listState: LazyListState) {
     fun bodyModifier(id: Long): Modifier {
         if (draggedId == null) return Modifier
         return Modifier.graphicsLayer {
-            when {
-                isDragged(id) -> alpha = 0.28f
-                isDropTarget(id) -> {
-                    translationY = targetNudgeDirection(draggedId, targetId, dropAfter, id) * 5.dp.toPx()
-                }
+            if (isDragged(id)) {
+                alpha = lerp(1f, 0.32f, pickupProgress)
+            } else {
+                val shiftDp = displacementBySection[id]?.value ?: 0f
+                translationY = shiftDp.dp.toPx()
             }
         }
     }
 
     fun footerModifier(id: Long): Modifier = Modifier.drawBehind {
         if (isDropTarget(id) && dropAfter) {
-            drawDropIndicator(indicatorColor, y = size.height / 2f)
+            drawDropIndicator(indicatorColor, y = size.height / 2f, progress = indicatorProgress)
         }
     }
 
@@ -138,27 +147,31 @@ internal class SessionExerciseDrag(val listState: LazyListState) {
     }
 }
 
-private fun DrawScope.drawDropIndicator(color: Color, y: Float) {
+private fun DrawScope.drawDropIndicator(color: Color, y: Float, progress: Float) {
+    val clamped = progress.coerceIn(0f, 1f)
+    if (clamped <= 0.01f) return
     val capInset = 4.dp.toPx()
-    val start = Offset(capInset, y)
-    val end = Offset((size.width - capInset).coerceAtLeast(capInset), y)
+    val halfSpan = ((size.width / 2f) - capInset).coerceAtLeast(0f) * clamped
+    val centerX = size.width / 2f
+    val start = Offset(centerX - halfSpan, y)
+    val end = Offset(centerX + halfSpan, y)
     drawLine(
-        color = color.copy(alpha = 0.28f),
+        color = color.copy(alpha = 0.28f * clamped),
         start = start,
         end = end,
         strokeWidth = 10.dp.toPx(),
         cap = StrokeCap.Round,
     )
     drawLine(
-        color = color,
+        color = color.copy(alpha = clamped),
         start = start,
         end = end,
         strokeWidth = 3.dp.toPx(),
         cap = StrokeCap.Round,
     )
-    val capRadius = 4.5.dp.toPx()
-    drawCircle(color = color, radius = capRadius, center = start)
-    drawCircle(color = color, radius = capRadius, center = end)
+    val capRadius = 4.5.dp.toPx() * clamped
+    drawCircle(color = color.copy(alpha = clamped), radius = capRadius, center = start)
+    drawCircle(color = color.copy(alpha = clamped), radius = capRadius, center = end)
 }
 
 @Composable
@@ -173,6 +186,63 @@ internal fun rememberSessionExerciseDrag(
     state.indicatorColor = BrandLime
     val haptics = LocalHapticFeedback.current
     val edge = with(LocalDensity.current) { 64.dp.toPx() }
+
+    val orderedIds = remember(details, state.pendingOrder) {
+        state.orderedDetails(details).map { it.sessionExercise.id }
+    }
+
+    val pickupAnim = remember { Animatable(0f) }
+    LaunchedEffect(state.draggedId) {
+        if (state.draggedId != null) {
+            pickupAnim.snapTo(0f)
+            pickupAnim.animateTo(
+                targetValue = 1f,
+                animationSpec = spring(
+                    dampingRatio = 0.75f,
+                    stiffness = Spring.StiffnessMedium,
+                ),
+            )
+        } else {
+            pickupAnim.snapTo(0f)
+        }
+    }
+    state.pickupProgress = pickupAnim.value
+
+    val indicatorAnim = remember { Animatable(0f) }
+    LaunchedEffect(state.draggedId, state.targetId, state.dropAfter) {
+        val activeTarget = state.draggedId != null &&
+            state.targetId != null &&
+            state.targetId != state.draggedId
+        if (activeTarget) {
+            indicatorAnim.snapTo(0f)
+            indicatorAnim.animateTo(
+                targetValue = 1f,
+                animationSpec = tween(GymMotion.Quick, easing = GymMotion.EmphasizedEasing),
+            )
+        } else {
+            indicatorAnim.snapTo(0f)
+        }
+    }
+    state.indicatorProgress = indicatorAnim.value
+
+    orderedIds.forEach { sectionId ->
+        val targetShift = sectionDisplacementDp(
+            orderedIds = orderedIds,
+            draggedId = state.draggedId,
+            targetId = state.targetId,
+            dropAfter = state.dropAfter,
+            sectionId = sectionId,
+        )
+        val animatedShift = animateFloatAsState(
+            targetValue = targetShift,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessMedium,
+            ),
+            label = "section-displacement-$sectionId",
+        )
+        state.displacementBySection[sectionId] = animatedShift
+    }
 
     LaunchedEffect(details, state.pendingOrder) {
         val pending = state.pendingOrder ?: return@LaunchedEffect
@@ -252,6 +322,12 @@ internal fun rememberSessionExerciseDrag(
                 val ids = state.orderedDetails(latestDetails).map { it.sessionExercise.id }
                 val reordered = reorderedExerciseIds(ids, state.draggedId, state.targetId)
                 if (reordered != ids) {
+                    // Keep the viewport anchored at its current scroll offset instead of jumping
+                    // to follow the first visible item's key when the top exercise is moved.
+                    listState.requestScrollToItem(
+                        index = listState.firstVisibleItemIndex,
+                        scrollOffset = listState.firstVisibleItemScrollOffset,
+                    )
                     state.pendingOrder = reordered
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                     latestOnReorder(reordered)
@@ -301,6 +377,36 @@ internal fun targetNudgeDirection(
     return if (dropAfter) -1 else 1
 }
 
+/**
+ * Vertical displacement (in dp) applied to non-dragged exercise sections while a drag is active:
+ * the drop target shifts by 10dp away from the insertion line to open a clear slot, and any
+ * intermediate sections between the dragged exercise and the target shift by 6dp toward their
+ * upcoming swapped position.
+ */
+internal fun sectionDisplacementDp(
+    orderedIds: List<Long>,
+    draggedId: Long?,
+    targetId: Long?,
+    dropAfter: Boolean,
+    sectionId: Long,
+): Float {
+    if (draggedId == null || targetId == null || draggedId == targetId || draggedId == sectionId) {
+        return 0f
+    }
+    if (sectionId == targetId) {
+        return if (dropAfter) -10f else 10f
+    }
+    val fromIndex = orderedIds.indexOf(draggedId)
+    val toIndex = orderedIds.indexOf(targetId)
+    val sectionIndex = orderedIds.indexOf(sectionId)
+    if (fromIndex < 0 || toIndex < 0 || sectionIndex < 0) return 0f
+    return when {
+        fromIndex < toIndex && sectionIndex in (fromIndex + 1) until toIndex -> -6f
+        fromIndex > toIndex && sectionIndex in (toIndex + 1) until fromIndex -> 6f
+        else -> 0f
+    }
+}
+
 /** Rendered outside the lazy items so the dragged label stays visible during edge scrolling. */
 @Composable
 internal fun SessionExerciseDragPreview(state: SessionExerciseDrag, details: List<SessionExerciseDetail>) {
@@ -311,6 +417,7 @@ internal fun SessionExerciseDragPreview(state: SessionExerciseDrag, details: Lis
     } else {
         "DROP ${if (state.dropAfter) "AFTER" else "BEFORE"} ${target.exercise.name.uppercase()}"
     }
+    val previewScale = lerp(0.96f, 1.02f, state.pickupProgress)
 
     Surface(
         modifier = Modifier
@@ -321,11 +428,15 @@ internal fun SessionExerciseDragPreview(state: SessionExerciseDrag, details: Lis
                     0,
                     (state.fingerY - state.grabOffset + state.listState.layoutInfo.beforeContentPadding).roundToInt(),
                 )
+            }
+            .graphicsLayer {
+                scaleX = previewScale
+                scaleY = previewScale
             },
         shape = RoundedCornerShape(4.dp),
         color = SurfaceElevated,
         border = BorderStroke(1.5.dp, BrandLime),
-        shadowElevation = 16.dp,
+        shadowElevation = lerp(4f, 16f, state.pickupProgress).dp,
     ) {
         Row(
             modifier = Modifier.padding(12.dp),
