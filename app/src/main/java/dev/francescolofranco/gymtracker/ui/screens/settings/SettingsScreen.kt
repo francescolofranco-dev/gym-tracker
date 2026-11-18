@@ -389,7 +389,6 @@ fun SettingsScreen(
                 ) {
                     SectionHeader(
                         title = "APP INFO & DIAGNOSTICS",
-                        rightLabel = "Production Build",
                     )
                     SettingsGroupCard {
                         AboutRow(onClick = { showAboutPopup = true })
@@ -478,19 +477,11 @@ fun SettingsScreen(
 
 @Composable
 private fun SettingsTopHeader() {
-    val context = LocalContext.current
-    val version = remember {
-        runCatching {
-            val pi = context.packageManager.getPackageInfo(context.packageName, 0)
-            pi.versionName ?: "?"
-        }.getOrDefault("?")
-    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text(
             text = "SETTINGS",
@@ -502,23 +493,6 @@ private fun SettingsTopHeader() {
             ),
             color = DarkOnSurface,
         )
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(2.dp))
-                .background(SurfaceControl)
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-        ) {
-            Text(
-                text = "V$version",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontFamily = SpaceGroteskFontFamily,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 1.1.sp,
-                ),
-                color = BrandLime,
-            )
-        }
     }
 }
 
@@ -1115,7 +1089,7 @@ private fun AboutRow(onClick: () -> Unit) {
                 color = DarkOnSurface,
             )
             Text(
-                text = "Kinetic Brutalist Framework • Tap to inspect engine",
+                text = "Tap to see more information",
                 style = MaterialTheme.typography.bodySmall.copy(
                     fontFamily = SpaceGroteskFontFamily,
                     fontSize = 12.sp,
