@@ -1,5 +1,6 @@
 package dev.francescolofranco.gymtracker.ui.components
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -22,7 +23,37 @@ import dev.francescolofranco.gymtracker.ui.theme.MutedOlive
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceChip
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
 
-private val SecondarySelectedFill = Color(0xFF404755)
+internal val SecondarySelectedFill = BrandLime.copy(alpha = 0.20f)
+internal val SecondarySelectedBorderColor = BrandLime
+internal val SecondarySelectedBorderWidth = 1.5.dp
+
+internal data class MuscleChipSelectedSpec(
+    val containerColor: Color,
+    val labelColor: Color,
+    val border: BorderStroke?,
+)
+
+internal fun muscleChipSelectedSpec(
+    isSecondary: Boolean,
+    isSelected: Boolean,
+    isEnabled: Boolean,
+): MuscleChipSelectedSpec = if (isSecondary) {
+    MuscleChipSelectedSpec(
+        containerColor = SecondarySelectedFill,
+        labelColor = BrandLime,
+        border = if (isSelected && isEnabled) {
+            BorderStroke(SecondarySelectedBorderWidth, SecondarySelectedBorderColor)
+        } else {
+            null
+        },
+    )
+} else {
+    MuscleChipSelectedSpec(
+        containerColor = BrandLime,
+        labelColor = DarkOnPrimary,
+        border = null,
+    )
+}
 
 /**
  * Tap-only muscle picker. Caller controls whether the underlying selection
@@ -46,6 +77,11 @@ fun MuscleChips(
         Muscle.topToBottom.forEach { muscle ->
             val isSelected = selected(muscle)
             val isEnabled = enabled(muscle)
+            val selectedSpec = muscleChipSelectedSpec(
+                isSecondary = isSecondary,
+                isSelected = isSelected,
+                isEnabled = isEnabled,
+            )
             FilterChip(
                 selected = isSelected,
                 onClick = { onTap(muscle) },
@@ -60,13 +96,14 @@ fun MuscleChips(
                 },
                 enabled = isEnabled,
                 shape = RoundedCornerShape(4.dp),
-                border = null,
+                border = selectedSpec.border,
                 colors = FilterChipDefaults.filterChipColors(
                     containerColor = SurfaceChip,
                     labelColor = DarkOnSurface,
-                    selectedContainerColor = if (isSecondary) SecondarySelectedFill else BrandLime,
-                    selectedLabelColor = if (isSecondary) DarkOnSurface else DarkOnPrimary,
+                    selectedContainerColor = selectedSpec.containerColor,
+                    selectedLabelColor = selectedSpec.labelColor,
                     disabledContainerColor = SurfaceDeep,
+                    disabledSelectedContainerColor = SurfaceDeep,
                     disabledLabelColor = MutedOlive.copy(alpha = 0.5f),
                 ),
             )
