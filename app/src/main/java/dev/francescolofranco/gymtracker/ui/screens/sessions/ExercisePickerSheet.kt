@@ -78,8 +78,9 @@ fun ExercisePickerSheet(
     /** IDs already selected; tappable for removal when [onUnpick] is supplied. */
     excludeIds: Set<Long> = emptySet(),
     onDismiss: () -> Unit,
-    onPick: (ExerciseEntity) -> Unit,
+    onPick: ((ExerciseEntity) -> Unit)? = null,
     onUnpick: ((ExerciseEntity) -> Unit)? = null,
+    onConfirmAdd: ((List<Long>) -> Unit)? = null,
     viewModel: ExercisePickerViewModel = hiltViewModel(),
 ) {
     val rowState by viewModel.rows.collectAsStateWithLifecycle()
@@ -120,8 +121,7 @@ fun ExercisePickerSheet(
         filterPickerExercises(rows, filter, searchQuery)
     }
 
-    // Keep the picker open while several exercises are added. It is intentionally dismissed only
-    // by its close button, so an accidental scrim tap or back press cannot discard the user's place.
+    // Only the explicit close and confirm buttons dismiss the picker.
     Dialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(
@@ -251,20 +251,22 @@ fun ExercisePickerSheet(
                                 itemsIndexed(items = visibleExercises, key = { _, it -> it.id }) { index, e ->
                                     // Reflect taps immediately while persistence catches up.
                                     val alreadyAdded = selectionOverrides[e.id] ?: (e.id in excludeIds)
+                                    val canRemove = onUnpick != null ||
+                                        (onConfirmAdd != null && e.id !in excludeIds)
                                     PickerRow(
                                         exercise = e,
                                         alreadyAdded = alreadyAdded,
                                         isAlternate = index % 2 == 1,
-                                        canRemove = onUnpick != null,
+                                        canRemove = canRemove,
                                         onClick = {
                                             if (alreadyAdded) {
-                                                onUnpick?.let { remove ->
+                                                if (canRemove) {
                                                     selectionOverrides = selectionOverrides + (e.id to false)
-                                                    remove(e)
+                                                    onUnpick?.invoke(e)
                                                 }
                                             } else {
                                                 selectionOverrides = selectionOverrides + (e.id to true)
-                                                onPick(e)
+                                                onPick?.invoke(e)
                                             }
                                         },
                                         modifier = Modifier.animateItem(
@@ -287,7 +289,11 @@ fun ExercisePickerSheet(
                         ) {
                             HorizontalDivider(color = EditorialBorder, thickness = 1.dp)
                             Button(
-                                onClick = onDismiss,
+                                onClick = {
+                                    val addedIds = currentSelectedIds - excludeIds
+                                    if (addedIds.isNotEmpty()) onConfirmAdd?.invoke(addedIds.toList())
+                                    onDismiss()
+                                },
                                 shape = RoundedCornerShape(4.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = BrandLime,

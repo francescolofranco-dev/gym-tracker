@@ -150,14 +150,26 @@ interface SessionDao {
     @Query("DELETE FROM session_exercise WHERE id = :id")
     suspend fun removeExercise(id: Long)
 
+    @Query("SELECT EXISTS(SELECT 1 FROM session_exercise WHERE sessionId = :sessionId AND exerciseId = :exerciseId)")
+    suspend fun hasExercise(sessionId: Long, exerciseId: Long): Boolean
+
     @Query("SELECT * FROM session_exercise WHERE id = :id LIMIT 1")
     suspend fun sessionExerciseById(id: Long): SessionExerciseEntity?
 
     @Query("UPDATE session_exercise SET orderInSession = :order WHERE id = :id")
     suspend fun setExerciseOrder(id: Long, order: Int)
 
-    @Query("SELECT id FROM session_exercise WHERE sessionId = :sessionId")
+    @Query("SELECT id FROM session_exercise WHERE sessionId = :sessionId ORDER BY orderInSession, id")
     suspend fun exerciseIdsForSession(sessionId: Long): List<Long>
+
+    @Query(
+        """
+        UPDATE session_exercise
+        SET sessionId = :sessionId, orderInSession = :order
+        WHERE id = :id
+        """,
+    )
+    suspend fun moveExercise(id: Long, sessionId: Long, order: Int)
 
     /** Save a complete session order atomically, rejecting stale or cross-session lists. */
     @Transaction

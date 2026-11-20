@@ -25,6 +25,7 @@ class LoggedSetQueriesTest(unittest.TestCase):
         self.db = sqlite3.connect(':memory:')
         self.addCleanup(self.db.close)
         self.db.row_factory = sqlite3.Row
+        self.db.execute('PRAGMA foreign_keys = ON')
         schemas = ROOT / 'app/schemas/dev.francescolofranco.gymtracker.data.db.AppDatabase'
         schema = max(schemas.glob('*.json'), key=lambda p: int(p.stem))
         for entity in json.loads(schema.read_text())['database']['entities']:
@@ -102,6 +103,20 @@ class LoggedSetQueriesTest(unittest.TestCase):
             if method.endswith('Before'):
                 args['beforeStartedAtEpochMs'] = 300
             self.assertEqual([1, 2], [r['id'] for r in self.run_query('SetLogDao.kt', method, **args)])
+
+    def test_moving_another_occurrence_of_the_same_exercise_keeps_its_sets(self):
+        original_sets = self.db.execute('SELECT * FROM set_log ORDER BY id').fetchall()
+        self.run_query('SessionDao.kt', 'moveExercise', id=2, sessionId=1, order=1)
+        self.db.execute('DELETE FROM session WHERE id = 2')
+
+        self.assertEqual(original_sets, self.db.execute('SELECT * FROM set_log ORDER BY id').fetchall())
+        occurrences = self.db.execute('SELECT id, orderInSession FROM session_exercise ORDER BY orderInSession')
+        self.assertEqual([(1, 0), (2, 1)], [tuple(row) for row in occurrences])
+        summaries = self.run_query('SessionDao.kt', 'observeAllSummaries')
+        self.assertEqual(1, len(summaries))
+        self.assertEqual((1, 2, 3, 316), tuple(summaries[0][key] for key in (
+            'id', 'exerciseCount', 'setCount', 'totalVolume',
+        )))
 
 
 if __name__ == '__main__':

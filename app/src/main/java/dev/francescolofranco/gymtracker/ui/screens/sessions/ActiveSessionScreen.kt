@@ -787,7 +787,7 @@ internal fun LazyListScope.exerciseSection(
     onToggleSetSkipped: (setLogId: Long, currentlySkipped: Boolean) -> Unit,
     onSkipExercise: (skipped: Boolean) -> Unit,
     onEditExerciseNotes: () -> Unit,
-    onRemoveExercise: () -> Unit,
+    onRemoveExercise: (() -> Unit)?,
     onOpenExerciseStats: () -> Unit,
 ) {
     val exercise = detail.exercise
@@ -931,7 +931,7 @@ private fun ExerciseSectionHeader(
     editable: Boolean,
     onSkipExercise: (skipped: Boolean) -> Unit,
     onEditExerciseNotes: () -> Unit,
-    onRemoveExercise: () -> Unit,
+    onRemoveExercise: (() -> Unit)?,
     onOpenExerciseStats: () -> Unit,
 ) {
     val exercise = detail.exercise
@@ -1053,7 +1053,7 @@ private fun ExerciseSectionHeader(
                             onEditExerciseNotes()
                         },
                     )
-                    if (editable) {
+                    if (editable && onRemoveExercise != null) {
                         DropdownMenuItem(
                             text = { Text("Remove from session") },
                             onClick = {

@@ -3,6 +3,7 @@ package dev.francescolofranco.gymtracker.ui.screens.sessions
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.PaddingValues
@@ -12,28 +13,38 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
@@ -53,6 +64,7 @@ import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.theme.BrandLime
 import dev.francescolofranco.gymtracker.ui.theme.DestructiveCoral
+import dev.francescolofranco.gymtracker.ui.theme.DialogShape
 import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
 import dev.francescolofranco.gymtracker.ui.theme.MutedOlive
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceBase
@@ -76,6 +88,7 @@ fun SessionDetailScreen(
     val session = content?.session
     val details = content?.details.orEmpty()
     val unit = content?.unit ?: WeightUnit.KG
+    val canAmend = session?.acceptedAt != null && session.endedAt != null
     val hints by viewModel.hints.collectAsStateWithLifecycle()
 
     (loadableContent as? Loadable.Error)?.let {
@@ -87,8 +100,16 @@ fun SessionDetailScreen(
     var exerciseNotesTarget by remember { mutableStateOf<SessionExerciseDetail?>(null) }
     var deleteStage by remember { mutableStateOf(DeleteStage.None) }
     var timingEditor by remember { mutableStateOf(false) }
+    var sessionMenu by remember { mutableStateOf(false) }
+    var showExercisePicker by rememberSaveable { mutableStateOf(false) }
+    var showMergePicker by rememberSaveable { mutableStateOf(false) }
+    var exerciseToRemove by remember { mutableStateOf<SessionExerciseDetail?>(null) }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
+    val snackbar = remember { SnackbarHostState() }
+    LaunchedEffect(viewModel) {
+        viewModel.editMessages.collect { snackbar.showSnackbar(it) }
+    }
     val shareText = remember(session, details, unit) {
         session
             ?.takeIf { it.endedAt != null }
@@ -97,6 +118,7 @@ fun SessionDetailScreen(
 
     Scaffold(
         containerColor = SurfaceDeep,
+        snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             Column(modifier = Modifier.background(SurfaceBase)) {
                 TopAppBar(
@@ -137,12 +159,31 @@ fun SessionDetailScreen(
                         IconButton(onClick = { sessionNotesEditor = true }, enabled = content != null) {
                             Icon(GymIcons.Notes, contentDescription = "Session notes")
                         }
-                        IconButton(onClick = { deleteStage = DeleteStage.First }, enabled = content != null) {
-                            Icon(
-                                imageVector = GymIcons.DeleteForever,
-                                contentDescription = "Delete session",
-                                tint = DestructiveCoral,
-                            )
+                        Box {
+                            IconButton(onClick = { sessionMenu = true }, enabled = session != null) {
+                                Icon(GymIcons.MoreVertical, contentDescription = "Session options")
+                            }
+                            DropdownMenu(expanded = sessionMenu, onDismissRequest = { sessionMenu = false }) {
+                                if (canAmend) {
+                                    DropdownMenuItem(
+                                        text = { Text("Merge with another session") },
+                                        onClick = {
+                                            sessionMenu = false
+                                            showMergePicker = true
+                                        },
+                                    )
+                                }
+                                DropdownMenuItem(
+                                    text = { Text("Delete session", color = DestructiveCoral) },
+                                    leadingIcon = {
+                                        Icon(GymIcons.DeleteForever, contentDescription = null, tint = DestructiveCoral)
+                                    },
+                                    onClick = {
+                                        sessionMenu = false
+                                        deleteStage = DeleteStage.First
+                                    },
+                                )
+                            }
                         }
                     },
                 )
@@ -168,22 +209,10 @@ fun SessionDetailScreen(
     ) { padding ->
         if (content == null) {
             LoadingPane(modifier = Modifier.padding(padding))
-        } else if (details.isEmpty()) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(SurfaceDeep)
-                    .padding(padding)
-                    .padding(32.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally,
-            ) {
-                Text(text = "No exercises were logged.", style = MaterialTheme.typography.bodyMedium)
-            }
         } else {
             val reorder = rememberSessionExerciseDrag(details, viewModel::reorderExercises)
             val orderedDetails = reorder.orderedDetails(details)
-            androidx.compose.foundation.layout.Box(Modifier.fillMaxSize().background(SurfaceDeep).padding(padding)) {
+            Box(Modifier.fillMaxSize().background(SurfaceDeep).padding(padding)) {
                 LazyColumn(
                     state = reorder.listState,
                     modifier = Modifier
@@ -191,6 +220,19 @@ fun SessionDetailScreen(
                         .then(reorder.gestures),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp),
                 ) {
+                    if (canAmend) {
+                        item(key = "add-exercise") {
+                            OutlinedButton(
+                                onClick = { showExercisePicker = true },
+                                shape = RoundedCornerShape(4.dp),
+                                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                            ) {
+                                Icon(GymIcons.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Add exercises")
+                            }
+                        }
+                    }
                     session?.notes?.takeIf { it.isNotBlank() }?.let { notes ->
                         item(key = "session-notes", contentType = "session-notes") {
                             Column(
@@ -216,6 +258,16 @@ fun SessionDetailScreen(
                             Spacer(Modifier.height(12.dp))
                         }
                     }
+                    if (details.isEmpty()) {
+                        item(key = "empty-session") {
+                            Box(Modifier.fillMaxWidth().padding(24.dp), contentAlignment = Alignment.Center) {
+                                Text(
+                                    if (session == null) "This session is no longer available." else "No exercises in this session.",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                )
+                            }
+                        }
+                    }
                     orderedDetails.forEach { detail ->
                         val sectionId = detail.sessionExercise.id
                         exerciseSection(
@@ -238,7 +290,7 @@ fun SessionDetailScreen(
                                 viewModel.setExerciseSkipped(detail.sessionExercise.id, skipped)
                             },
                             onEditExerciseNotes = { exerciseNotesTarget = detail },
-                            onRemoveExercise = { /* read-mostly: no removal from past sessions */ },
+                            onRemoveExercise = if (canAmend) ({ exerciseToRemove = detail }) else null,
                             onOpenExerciseStats = { onOpenExerciseStats(detail.exercise.id) },
                         )
                     }
@@ -246,6 +298,47 @@ fun SessionDetailScreen(
                 SessionExerciseDragPreview(reorder, orderedDetails)
             }
         }
+    }
+
+    if (showExercisePicker && canAmend) {
+        ExercisePickerSheet(
+            excludeIds = details.map { it.exercise.id }.toSet(),
+            onDismiss = { showExercisePicker = false },
+            onConfirmAdd = { viewModel.addExercises(it) },
+        )
+    }
+
+    if (showMergePicker && canAmend) {
+        val candidates by viewModel.mergeCandidates.collectAsStateWithLifecycle()
+        MergeSessionDialog(
+            candidates = candidates,
+            onRetry = viewModel::retry,
+            onDismiss = { showMergePicker = false },
+            onMerge = { sourceId ->
+                showMergePicker = false
+                viewModel.mergeSession(sourceId)
+            },
+        )
+    }
+
+    exerciseToRemove?.let { target ->
+        AlertDialog(
+            onDismissRequest = { exerciseToRemove = null },
+            shape = DialogShape,
+            title = { Text("Remove ${target.exercise.name}?") },
+            text = { Text("This will remove the exercise, its sets, and its notes from this session.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    exerciseToRemove = null
+                    viewModel.removeExercise(target.sessionExercise.id)
+                }) {
+                    Text("Remove exercise", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { exerciseToRemove = null }) { Text("Cancel") }
+            },
+        )
     }
 
     if (sessionNotesEditor) {

@@ -14,13 +14,16 @@ import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.RetryableViewModel
 import dev.francescolofranco.gymtracker.ui.nav.SessionRoutes
 import dev.francescolofranco.gymtracker.work.IdleSessionScheduler
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -55,6 +58,13 @@ class SessionDetailViewModel @Inject constructor(
         .map { (it as? Loadable.Ready)?.value?.details.orEmpty() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    val mergeCandidates = repo.observeAllSummaries()
+        .map { summaries -> summaries.filter { it.session.id != sessionId && it.session.endedAt != null } }
+        .asLoadableState(viewModelScope)
+
+    private val messages = Channel<String>(Channel.BUFFERED)
+    val editMessages = messages.receiveAsFlow()
+
     /**
      * Past-session deltas compare against the session immediately BEFORE the one being viewed,
      * not the globally-latest. Anchor the hint query to this session's [startedAt] so the
@@ -67,10 +77,11 @@ class SessionDetailViewModel @Inject constructor(
         .map { loadable ->
             val ready = (loadable as? Loadable.Ready)?.value
             ready?.session?.startedAt to ready?.details.orEmpty()
-                .sortedBy { it.exercise.id }
-                .map { detail ->
-                    detail.exercise.id to detail.setLogs
-                        .map { it.setNumber to it.side }
+                .groupBy { it.exercise.id }
+                .toSortedMap()
+                .map { (exerciseId, occurrences) ->
+                    exerciseId to occurrences
+                        .flatMap { detail -> detail.setLogs.map { it.setNumber to it.side } }
                         .distinct()
                         .sortedWith(compareBy({ it.first }, { it.second.ordinal }))
                 }
@@ -146,6 +157,29 @@ class SessionDetailViewModel @Inject constructor(
 
     fun setSessionTiming(start: Instant, end: Instant) = viewModelScope.launch {
         repo.updateSessionTiming(sessionId, start, end)
+    }
+
+    fun addExercises(exerciseIds: List<Long>) = editSession("Couldn’t add the selected exercises.") {
+        repo.addExercisesToCompletedSession(sessionId, exerciseIds)
+    }
+
+    fun removeExercise(sessionExerciseId: Long) = editSession("Couldn’t remove this exercise.") {
+        repo.removeExerciseFromCompletedSession(sessionId, sessionExerciseId)
+    }
+
+    fun mergeSession(sourceId: Long) = editSession("Couldn’t merge these sessions.") {
+        repo.mergeCompletedSessions(sessionId, sourceId)
+        messages.send("Sessions merged.")
+    }
+
+    private fun editSession(failureMessage: String, change: suspend () -> Unit) = viewModelScope.launch {
+        try {
+            change()
+        } catch (cancelled: CancellationException) {
+            throw cancelled
+        } catch (_: Exception) {
+            messages.send(failureMessage)
+        }
     }
 
     suspend fun deleteSession() {

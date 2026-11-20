@@ -1,8 +1,11 @@
 package dev.francescolofranco.gymtracker.data.repository
 
+import androidx.room.withTransaction
+import dev.francescolofranco.gymtracker.data.db.AppDatabase
 import dev.francescolofranco.gymtracker.data.db.dao.ExerciseDao
 import dev.francescolofranco.gymtracker.data.db.dao.SessionDao
 import dev.francescolofranco.gymtracker.data.db.dao.SetLogDao
+import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.data.db.entities.SessionEntity
 import dev.francescolofranco.gymtracker.data.db.entities.SessionExerciseEntity
 import dev.francescolofranco.gymtracker.data.db.entities.SetLogEntity
@@ -22,6 +25,7 @@ class SessionRepository @Inject constructor(
     private val setLogDao: SetLogDao,
     private val exerciseDao: ExerciseDao,
     private val templateDao: dev.francescolofranco.gymtracker.data.db.dao.TemplateDao,
+    private val db: AppDatabase,
 ) {
 
     fun observeAllSummaries(): Flow<List<SessionSummary>> = sessionDao.observeAllSummaries()
@@ -93,6 +97,48 @@ class SessionRepository @Inject constructor(
 
     suspend fun updateSessionNotes(id: Long, notes: String?) = sessionDao.updateNotes(id, notes)
 
+    suspend fun mergeCompletedSessions(keepId: Long, sourceId: Long) = db.withTransaction {
+        require(keepId != sourceId)
+        val kept = requireCompletedSession(keepId)
+        val source = requireCompletedSession(sourceId)
+        val nextOrder = sessionDao.nextOrderInSession(keepId)
+
+        // Move the occurrences in place so set logs, notes and skip state keep their original IDs.
+        sessionDao.exerciseIdsForSession(sourceId).forEachIndexed { index, id ->
+            sessionDao.moveExercise(id, keepId, nextOrder + index)
+        }
+        val notes = listOfNotNull(kept.notes, source.notes)
+            .filter { it.isNotBlank() }
+            .joinToString("\n\n")
+            .ifEmpty { null }
+        sessionDao.updateNotes(keepId, notes)
+        sessionDao.deleteById(sourceId)
+    }
+
+    suspend fun addExercisesToCompletedSession(sessionId: Long, exerciseIds: List<Long>) = db.withTransaction {
+        requireCompletedSession(sessionId)
+        for (id in exerciseIds) {
+            if (sessionDao.hasExercise(sessionId, id)) continue
+            val exercise = exerciseDao.byId(id)
+            check(exercise != null && exercise.deletedAt == null)
+            appendExerciseToSession(sessionId, exercise)
+        }
+    }
+
+    suspend fun removeExerciseFromCompletedSession(sessionId: Long, sessionExerciseId: Long) = db.withTransaction {
+        requireCompletedSession(sessionId)
+        check(sessionDao.sessionExerciseById(sessionExerciseId)?.sessionId == sessionId)
+        removeSessionExercise(sessionExerciseId)
+    }
+
+    private suspend fun requireCompletedSession(id: Long): SessionEntity {
+        val session = sessionDao.byId(id)
+        check(session != null && session.acceptedAt != null && session.endedAt != null) {
+            "This completed session is no longer available."
+        }
+        return session
+    }
+
     suspend fun lastActivityAt(sessionId: Long): Instant? = sessionDao.lastActivityAt(sessionId)
 
     /**
@@ -103,17 +149,21 @@ class SessionRepository @Inject constructor(
     suspend fun addExerciseToSession(sessionId: Long, exerciseId: Long): Long {
         val exercise = exerciseDao.byId(exerciseId)
             ?: error("Exercise $exerciseId not found")
+        return appendExerciseToSession(sessionId, exercise)
+    }
+
+    private suspend fun appendExerciseToSession(sessionId: Long, exercise: ExerciseEntity): Long {
         val order = sessionDao.nextOrderInSession(sessionId)
         val note = noteForNextSession(
             sessionDao.latestExerciseOccurrence(
-                exerciseId = exerciseId,
+                exerciseId = exercise.id,
                 targetSessionId = sessionId,
             ),
         )
         val sessionExerciseId = sessionDao.insertExercise(
             SessionExerciseEntity(
                 sessionId = sessionId,
-                exerciseId = exerciseId,
+                exerciseId = exercise.id,
                 orderInSession = order,
                 notes = note?.text,
                 pinnedNotes = note?.pinnedText,
