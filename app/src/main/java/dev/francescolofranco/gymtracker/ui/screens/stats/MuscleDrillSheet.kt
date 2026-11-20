@@ -14,8 +14,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -32,6 +30,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.francescolofranco.gymtracker.ui.components.GymIcons
 import dev.francescolofranco.gymtracker.ui.theme.BrandLime
 import dev.francescolofranco.gymtracker.ui.theme.OliveSubtext
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceChip
@@ -123,7 +122,7 @@ fun MuscleDrillSheet(
                         ),
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Close,
+                        imageVector = GymIcons.Close,
                         contentDescription = "Close",
                         tint = OliveSubtext,
                         modifier = Modifier.size(14.dp),

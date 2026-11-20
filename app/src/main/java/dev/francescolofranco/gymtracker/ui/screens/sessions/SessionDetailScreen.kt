@@ -15,11 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.Notes
-import androidx.compose.material.icons.filled.DeleteForever
-import androidx.compose.material.icons.filled.EditCalendar
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -52,6 +47,7 @@ import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetai
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.domain.workoutDuration
 import dev.francescolofranco.gymtracker.domain.workoutStartedAt
+import dev.francescolofranco.gymtracker.ui.components.GymIcons
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
@@ -131,19 +127,19 @@ fun SessionDetailScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(GymIcons.ArrowBack, contentDescription = "Back")
                         }
                     },
                     actions = {
                         IconButton(onClick = { timingEditor = true }, enabled = session?.endedAt != null) {
-                            Icon(Icons.Filled.EditCalendar, contentDescription = "Edit session date and time")
+                            Icon(GymIcons.EditCalendar, contentDescription = "Edit session date and time")
                         }
                         IconButton(onClick = { sessionNotesEditor = true }, enabled = content != null) {
-                            Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = "Session notes")
+                            Icon(GymIcons.Notes, contentDescription = "Session notes")
                         }
                         IconButton(onClick = { deleteStage = DeleteStage.First }, enabled = content != null) {
                             Icon(
-                                imageVector = Icons.Filled.DeleteForever,
+                                imageVector = GymIcons.DeleteForever,
                                 contentDescription = "Delete session",
                                 tint = DestructiveCoral,
                             )

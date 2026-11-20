@@ -14,9 +14,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -83,7 +80,7 @@ fun ExerciseSearchField(
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Search,
+                    imageVector = GymIcons.Search,
                     contentDescription = null,
                     tint = if (isFocused) BrandLime else SlateSubtext,
                     modifier = Modifier.size(18.dp),
@@ -111,7 +108,7 @@ fun ExerciseSearchField(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Clear,
+                            imageVector = GymIcons.Close,
                             contentDescription = "Clear search",
                             tint = SlateSubtext,
                             modifier = Modifier.size(15.dp),

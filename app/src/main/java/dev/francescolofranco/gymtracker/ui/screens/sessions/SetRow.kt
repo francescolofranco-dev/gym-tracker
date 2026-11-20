@@ -29,11 +29,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.NotInterested
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -74,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.francescolofranco.gymtracker.data.db.entities.SetLogEntity
 import dev.francescolofranco.gymtracker.domain.WeightUnit
+import dev.francescolofranco.gymtracker.ui.components.GymIcons
 import dev.francescolofranco.gymtracker.ui.components.NumpadSheet
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.theme.BrandLime
@@ -362,7 +358,7 @@ fun SetRow(
                             .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp)),
                     ) {
                         GhostStepper(
-                            icon = Icons.Filled.Remove,
+                            icon = GymIcons.Remove,
                             contentDescription = "Decrease reps",
                             enabled = editable && reps > 0,
                             onTap = { bumpReps(-1) },
@@ -374,7 +370,7 @@ fun SetRow(
                             enabled = editable,
                         )
                         GhostStepper(
-                            icon = Icons.Filled.Add,
+                            icon = GymIcons.Add,
                             contentDescription = "Increase reps",
                             enabled = editable && reps < 200,
                             onTap = { bumpReps(1) },
@@ -772,7 +768,7 @@ private fun CheckSquare(
             when (state) {
                 CheckVisualState.Skipped -> {
                     Icon(
-                        imageVector = Icons.Filled.NotInterested,
+                        imageVector = GymIcons.Skip,
                         contentDescription = null,
                         tint = MutedOlive,
                         modifier = Modifier.size(18.dp),
@@ -780,7 +776,7 @@ private fun CheckSquare(
                 }
                 CheckVisualState.Logged -> {
                     Icon(
-                        imageVector = Icons.Rounded.Check,
+                        imageVector = GymIcons.Check,
                         contentDescription = null,
                         tint = DarkOnPrimary,
                         modifier = Modifier.size(18.dp),

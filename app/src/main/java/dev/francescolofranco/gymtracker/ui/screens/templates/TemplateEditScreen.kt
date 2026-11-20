@@ -27,16 +27,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -70,6 +60,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.domain.MuscleCategory
 import dev.francescolofranco.gymtracker.domain.sortedTopToBottom
+import dev.francescolofranco.gymtracker.ui.components.GymIcons
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.screens.sessions.ExercisePickerSheet
@@ -118,7 +109,7 @@ fun TemplateEditScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(GymIcons.ArrowBack, contentDescription = "Back")
                         }
                     },
                 )
@@ -203,7 +194,7 @@ fun TemplateEditScreen(
                         if (state.name.isNotEmpty()) {
                             IconButton(onClick = { viewModel.setName("") }) {
                                 Icon(
-                                    imageVector = Icons.Filled.Close,
+                                    imageVector = GymIcons.Close,
                                     contentDescription = "Clear template name",
                                     tint = OliveSubtext,
                                     modifier = Modifier.size(18.dp),
@@ -350,7 +341,7 @@ fun TemplateEditScreen(
                     ),
                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
                 ) {
-                    Icon(Icons.Filled.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Icon(GymIcons.Add, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(
                         text = "ADD EXERCISE",
@@ -422,7 +413,7 @@ fun TemplateEditScreen(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.SwapVert,
+                                imageVector = GymIcons.SwapVertical,
                                 contentDescription = null,
                                 tint = BrandLime,
                                 modifier = Modifier.size(18.dp),
@@ -457,7 +448,7 @@ fun TemplateEditScreen(
                         .height(54.dp),
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Check,
+                        imageVector = GymIcons.Check,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
                     )
@@ -524,7 +515,7 @@ private fun TemplateExerciseRow(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = Icons.Filled.FitnessCenter,
+                    imageVector = GymIcons.Dumbbell,
                     contentDescription = null,
                     tint = if (isFirst) BrandLime else OliveSubtext,
                     modifier = Modifier.size(18.dp),
@@ -583,7 +574,7 @@ private fun TemplateExerciseRow(
                 modifier = Modifier.size(48.dp),
             ) {
                 Icon(
-                    imageVector = Icons.Filled.ArrowUpward,
+                    imageVector = GymIcons.ArrowUp,
                     contentDescription = "Move up",
                     tint = if (!isFirst) OliveSubtext else OliveSubtext.copy(alpha = 0.3f),
                     modifier = Modifier.size(18.dp),
@@ -595,7 +586,7 @@ private fun TemplateExerciseRow(
                 modifier = Modifier.size(48.dp),
             ) {
                 Icon(
-                    imageVector = Icons.Filled.ArrowDownward,
+                    imageVector = GymIcons.ArrowDown,
                     contentDescription = "Move down",
                     tint = if (!isLast) OliveSubtext else OliveSubtext.copy(alpha = 0.3f),
                     modifier = Modifier.size(18.dp),
@@ -606,7 +597,7 @@ private fun TemplateExerciseRow(
                 modifier = Modifier.size(48.dp),
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Delete,
+                    imageVector = GymIcons.Delete,
                     contentDescription = "Remove",
                     tint = OliveSubtext,
                     modifier = Modifier.size(18.dp),

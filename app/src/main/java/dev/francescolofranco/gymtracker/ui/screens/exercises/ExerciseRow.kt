@@ -10,8 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -28,6 +26,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.domain.sortedTopToBottom
+import dev.francescolofranco.gymtracker.ui.components.GymIcons
 import dev.francescolofranco.gymtracker.ui.theme.CardShape
 import dev.francescolofranco.gymtracker.ui.theme.MutedOlive
 import dev.francescolofranco.gymtracker.ui.theme.SlateSubtext
@@ -83,7 +82,7 @@ fun ExerciseRow(
             contentAlignment = Alignment.Center,
         ) {
             Icon(
-                imageVector = Icons.Filled.DeleteOutline,
+                imageVector = GymIcons.Delete,
                 contentDescription = null,
                 tint = MutedOlive,
                 modifier = Modifier.size(18.dp),

@@ -19,11 +19,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.PlaylistAddCheck
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilterChip
@@ -62,6 +57,7 @@ import dev.francescolofranco.gymtracker.domain.sortedTopToBottom
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.components.ExerciseSearchField
 import dev.francescolofranco.gymtracker.ui.components.ExerciseTopToBottomComparator
+import dev.francescolofranco.gymtracker.ui.components.GymIcons
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.components.matchesExerciseQuery
@@ -184,7 +180,7 @@ fun ExercisePickerSheet(
                                 onClick = onDismiss,
                             ),
                     ) {
-                        Icon(Icons.Filled.Close, contentDescription = "Close")
+                        Icon(GymIcons.Close, contentDescription = "Close")
                     }
                 }
 
@@ -303,7 +299,7 @@ fun ExercisePickerSheet(
                                     .height(52.dp),
                             ) {
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.PlaylistAddCheck,
+                                    imageVector = GymIcons.Checklist,
                                     contentDescription = null,
                                     modifier = Modifier.size(20.dp),
                                 )
@@ -560,14 +556,14 @@ private fun PickerRow(
         ) {
             if (alreadyAdded) {
                 Icon(
-                    imageVector = Icons.Filled.Check,
+                    imageVector = GymIcons.Check,
                     contentDescription = "Already selected",
                     tint = DarkOnPrimary,
                     modifier = Modifier.size(18.dp),
                 )
             } else {
                 Icon(
-                    imageVector = Icons.Filled.Add,
+                    imageVector = GymIcons.Add,
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.onSurface,
                     modifier = Modifier.size(18.dp),

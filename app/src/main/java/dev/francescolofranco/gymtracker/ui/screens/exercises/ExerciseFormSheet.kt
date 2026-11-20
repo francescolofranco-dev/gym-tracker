@@ -16,9 +16,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -46,6 +43,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.francescolofranco.gymtracker.ui.components.GymIcons
 import dev.francescolofranco.gymtracker.ui.components.MuscleChips
 import dev.francescolofranco.gymtracker.ui.components.NumberStepper
 import dev.francescolofranco.gymtracker.ui.theme.BrandLime
@@ -121,7 +119,7 @@ fun ExerciseFormSheet(
                         ),
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Close,
+                        imageVector = GymIcons.Close,
                         contentDescription = "Close",
                         tint = OliveSubtext,
                         modifier = Modifier.size(16.dp),
@@ -507,7 +505,7 @@ fun ExerciseFormSheet(
                     .height(52.dp),
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Check,
+                    imageVector = GymIcons.Check,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
                 )

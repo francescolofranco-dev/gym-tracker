@@ -27,14 +27,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.ArrowDownward
-import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -63,6 +55,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.domain.Muscle
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
+import dev.francescolofranco.gymtracker.ui.components.GymIcons
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
@@ -223,7 +216,7 @@ private fun PeriodToggle(
             ) {
                 if (isSelected) {
                     Icon(
-                        imageVector = Icons.Filled.Check,
+                        imageVector = GymIcons.Check,
                         contentDescription = null,
                         tint = BrandLime,
                         modifier = Modifier
@@ -390,7 +383,7 @@ private fun buildInsights(state: StatsUiState): List<Insight> {
     if (state.currentPeriod.sessions == 0) {
         return listOf(
             Insight(
-                icon = Icons.AutoMirrored.Filled.ArrowForward,
+                icon = GymIcons.ArrowForward,
                 text = "No workouts logged in this period.",
                 emphasized = false,
             ),
@@ -400,28 +393,28 @@ private fun buildInsights(state: StatsUiState): List<Insight> {
     if (state.personalRecords.count > 0) {
         val suffix = if (state.personalRecords.count == 1) "record" else "records"
         result += Insight(
-            icon = Icons.AutoMirrored.Filled.TrendingUp,
+            icon = GymIcons.TrendUp,
             text = "${state.personalRecords.count} personal $suffix",
             emphasized = true,
         )
     }
     state.muscleChanges.filter { it.deltaWeeklySets < 0 }.minByOrNull { it.deltaWeeklySets }?.let {
         result += Insight(
-            icon = Icons.Filled.ArrowDownward,
+            icon = GymIcons.ArrowDown,
             text = "${it.muscle.displayName} received ${abs(it.percentChange ?: 0.0).roundToInt()}% less work",
             emphasized = false,
         )
     }
     state.muscleChanges.filter { it.deltaWeeklySets > 0 }.maxByOrNull { it.deltaWeeklySets }?.let {
         result += Insight(
-            icon = Icons.Filled.ArrowUpward,
+            icon = GymIcons.ArrowUp,
             text = "${it.muscle.displayName} received ${abs(it.percentChange ?: 0.0).roundToInt()}% more work",
             emphasized = true,
         )
     }
     if (result.isEmpty()) {
         result += Insight(
-            icon = Icons.AutoMirrored.Filled.ArrowForward,
+            icon = GymIcons.ArrowForward,
             text = "Training stayed close to the previous ${state.period.days} days.",
             emphasized = false,
         )
@@ -511,7 +504,7 @@ private fun MuscleCoverageCard(
                         ),
                     )
                     Icon(
-                        imageVector = if (showAll) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                        imageVector = if (showAll) GymIcons.ChevronUp else GymIcons.ChevronDown,
                         contentDescription = null,
                         tint = BrandLime,
                         modifier = Modifier

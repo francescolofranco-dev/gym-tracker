@@ -32,16 +32,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.BookmarkBorder
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.KeyboardArrowDown
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -83,6 +73,7 @@ import dev.francescolofranco.gymtracker.data.db.projections.SessionSummary
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.domain.workoutDuration
 import dev.francescolofranco.gymtracker.domain.workoutStartedAt
+import dev.francescolofranco.gymtracker.ui.components.GymIcons
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
@@ -302,7 +293,7 @@ fun SessionsScreen(
                                 .height(54.dp),
                         ) {
                             Icon(
-                                imageVector = if (active != null) Icons.Filled.PlayArrow else Icons.Filled.Add,
+                                imageVector = if (active != null) GymIcons.Play else GymIcons.Add,
                                 contentDescription = null,
                                 modifier = Modifier.size(18.dp),
                             )
@@ -363,7 +354,7 @@ private fun TemplateLaunchButton(
             modifier = Modifier.weight(1f),
         ) {
             Icon(
-                imageVector = Icons.Filled.BookmarkBorder,
+                imageVector = GymIcons.Bookmark,
                 contentDescription = null,
                 tint = BrandLime,
                 modifier = Modifier.size(16.dp),
@@ -405,7 +396,7 @@ private fun TemplateLaunchButton(
                 )
             }
             Icon(
-                imageVector = Icons.Filled.KeyboardArrowDown,
+                imageVector = GymIcons.ChevronDown,
                 contentDescription = null,
                 tint = BrandLime,
                 modifier = Modifier.size(16.dp),
@@ -479,7 +470,7 @@ private fun TemplatePickerSheet(
                         ),
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Close,
+                        imageVector = GymIcons.Close,
                         contentDescription = "Close",
                         tint = SlateSubtext,
                         modifier = Modifier.size(16.dp),
@@ -521,7 +512,7 @@ private fun TemplatePickerSheet(
                             .height(46.dp),
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Add,
+                            imageVector = GymIcons.Add,
                             contentDescription = null,
                             modifier = Modifier.size(16.dp),
                         )
@@ -563,7 +554,7 @@ private fun TemplatePickerSheet(
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Icon(
-                                    imageVector = Icons.Filled.BookmarkBorder,
+                                    imageVector = GymIcons.Bookmark,
                                     contentDescription = null,
                                     tint = if (isSuggested) BrandLime else SlateSubtext,
                                     modifier = Modifier.size(18.dp),
@@ -624,7 +615,7 @@ private fun TemplatePickerSheet(
                                     color = BrandLime,
                                 )
                                 Icon(
-                                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                    imageVector = GymIcons.ChevronForward,
                                     contentDescription = null,
                                     tint = BrandLime,
                                     modifier = Modifier.size(16.dp),
@@ -649,7 +640,7 @@ private fun TemplatePickerSheet(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.Tune,
+                                imageVector = GymIcons.Sliders,
                                 contentDescription = null,
                                 tint = MutedOlive,
                                 modifier = Modifier.size(16.dp),
@@ -665,7 +656,7 @@ private fun TemplatePickerSheet(
                             )
                         }
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                            imageVector = GymIcons.ChevronForward,
                             contentDescription = null,
                             tint = MutedOlive,
                             modifier = Modifier.size(16.dp),
@@ -746,7 +737,7 @@ private fun ActiveSessionBanner(
                 )
             }
             Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                imageVector = GymIcons.ArrowForward,
                 contentDescription = "Resume",
                 tint = BrandLime,
                 modifier = Modifier
@@ -854,7 +845,7 @@ private fun PastSessionRow(
                     )
                 }
                 Icon(
-                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    imageVector = GymIcons.ChevronForward,
                     contentDescription = null,
                     tint = MutedOlive,
                     modifier = Modifier.size(18.dp),
@@ -929,7 +920,7 @@ private fun MonthHeader(label: String, sessionCount: Int) {
                 .padding(horizontal = 10.dp, vertical = 5.dp),
         ) {
             Icon(
-                imageVector = Icons.Filled.BarChart,
+                imageVector = GymIcons.BarChart,
                 contentDescription = null,
                 tint = BrandLime,
                 modifier = Modifier.size(13.dp),
@@ -1045,7 +1036,7 @@ private fun WeeklyProgress(past: List<SessionSummary>, goal: Int, onEditGoal: ()
                     color = BrandLime,
                 )
                 Icon(
-                    imageVector = Icons.Filled.Tune,
+                    imageVector = GymIcons.Sliders,
                     contentDescription = null,
                     tint = BrandLime,
                     modifier = Modifier.size(14.dp),

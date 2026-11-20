@@ -40,23 +40,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.Notes
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.BarChart
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.DeleteOutline
-import androidx.compose.material.icons.filled.EditNote
-import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.foundation.layout.size
-import androidx.compose.material.icons.filled.MoreVert
-import androidx.compose.material.icons.filled.NotInterested
-import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.AlertDialog
@@ -98,6 +82,7 @@ import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetai
 import dev.francescolofranco.gymtracker.domain.ExerciseSide
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.domain.sortedTopToBottom
+import dev.francescolofranco.gymtracker.ui.components.GymIcons
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
@@ -251,7 +236,7 @@ fun ActiveSessionScreen(
                                 ),
                         ) {
                             Icon(
-                                imageVector = Icons.AutoMirrored.Filled.Notes,
+                                imageVector = GymIcons.Notes,
                                 contentDescription = "Session notes",
                                 tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(18.dp),
@@ -291,7 +276,7 @@ fun ActiveSessionScreen(
                                 .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp)),
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.Add,
+                                imageVector = GymIcons.Add,
                                 contentDescription = null,
                                 tint = BrandLime,
                                 modifier = Modifier.size(18.dp),
@@ -315,7 +300,7 @@ fun ActiveSessionScreen(
                                 .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp)),
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.MoreVert,
+                                imageVector = GymIcons.MoreVertical,
                                 contentDescription = "Workout actions",
                                 tint = MaterialTheme.colorScheme.onSurface,
                                 modifier = Modifier.size(20.dp),
@@ -696,7 +681,7 @@ private fun StartWorkoutBanner(enabled: Boolean, onStart: () -> Unit) {
             .height(64.dp),
     ) {
         Icon(
-            imageVector = Icons.Filled.PlayArrow,
+            imageVector = GymIcons.Play,
             contentDescription = null,
             modifier = Modifier.size(24.dp),
         )
@@ -726,7 +711,7 @@ private fun EmptyActiveSession(modifier: Modifier = Modifier) {
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Icon(
-            imageVector = Icons.Filled.FitnessCenter,
+            imageVector = GymIcons.Dumbbell,
             contentDescription = null,
             tint = BrandLime,
         )
@@ -1009,7 +994,7 @@ private fun ExerciseSectionHeader(
                     ),
             ) {
                 Icon(
-                    imageVector = Icons.Filled.BarChart,
+                    imageVector = GymIcons.BarChart,
                     contentDescription = "Exercise stats",
                     tint = SlateSubtext,
                     modifier = Modifier.size(16.dp),
@@ -1029,7 +1014,7 @@ private fun ExerciseSectionHeader(
                         ),
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.MoreVert,
+                        imageVector = GymIcons.MoreVertical,
                         contentDescription = "Exercise options",
                         tint = SlateSubtext,
                         modifier = Modifier.size(16.dp),
@@ -1038,7 +1023,7 @@ private fun ExerciseSectionHeader(
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                     DropdownMenuItem(
                         text = { Text("View stats") },
-                        leadingIcon = { Icon(Icons.Filled.BarChart, contentDescription = null) },
+                        leadingIcon = { Icon(GymIcons.BarChart, contentDescription = null) },
                         onClick = {
                             menuExpanded = false
                             onOpenExerciseStats()
@@ -1046,7 +1031,7 @@ private fun ExerciseSectionHeader(
                     )
                     DropdownMenuItem(
                         text = { Text(if (detail.sessionExercise.isSkipped) "Unskip" else "Skip exercise") },
-                        leadingIcon = { Icon(Icons.Filled.NotInterested, contentDescription = null) },
+                        leadingIcon = { Icon(GymIcons.Skip, contentDescription = null) },
                         onClick = {
                             menuExpanded = false
                             onSkipExercise(!detail.sessionExercise.isSkipped)
@@ -1062,7 +1047,7 @@ private fun ExerciseSectionHeader(
                                 },
                             )
                         },
-                        leadingIcon = { Icon(Icons.Filled.EditNote, contentDescription = null) },
+                        leadingIcon = { Icon(GymIcons.EditNote, contentDescription = null) },
                         onClick = {
                             menuExpanded = false
                             onEditExerciseNotes()
@@ -1085,7 +1070,7 @@ private fun ExerciseSectionHeader(
                 label = "SETUP",
                 text = pinnedNote,
                 accentColor = BrandLime,
-                icon = Icons.Filled.PushPin,
+                icon = GymIcons.Pin,
                 onClick = onEditExerciseNotes,
             )
         }
@@ -1094,7 +1079,7 @@ private fun ExerciseSectionHeader(
                 label = if (!detail.sessionExercise.noteCarryForward) "PREVIOUS NOTE" else "SESSION NOTE",
                 text = sessionNote,
                 accentColor = SlateSubtext,
-                icon = Icons.Filled.Info,
+                icon = GymIcons.Info,
                 onClick = onEditExerciseNotes,
             )
         }
@@ -1233,17 +1218,17 @@ fun ExerciseCard(
             }
             Box {
                 IconButton(onClick = onOpenExerciseStats) {
-                    Icon(Icons.Filled.BarChart, contentDescription = "Exercise stats")
+                    Icon(GymIcons.BarChart, contentDescription = "Exercise stats")
                 }
             }
             Box {
                 IconButton(onClick = { menuExpanded = true }) {
-                    Icon(Icons.Filled.MoreVert, contentDescription = "Exercise options")
+                    Icon(GymIcons.MoreVertical, contentDescription = "Exercise options")
                 }
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
                     DropdownMenuItem(
                         text = { Text("View stats") },
-                        leadingIcon = { Icon(Icons.Filled.BarChart, contentDescription = null) },
+                        leadingIcon = { Icon(GymIcons.BarChart, contentDescription = null) },
                         onClick = {
                             menuExpanded = false
                             onOpenExerciseStats()
@@ -1251,7 +1236,7 @@ fun ExerciseCard(
                     )
                     DropdownMenuItem(
                         text = { Text(if (detail.sessionExercise.isSkipped) "Unskip" else "Skip exercise") },
-                        leadingIcon = { Icon(Icons.Filled.NotInterested, contentDescription = null) },
+                        leadingIcon = { Icon(GymIcons.Skip, contentDescription = null) },
                         onClick = {
                             menuExpanded = false
                             onSkipExercise(!detail.sessionExercise.isSkipped)
@@ -1267,7 +1252,7 @@ fun ExerciseCard(
                                 },
                             )
                         },
-                        leadingIcon = { Icon(Icons.Filled.EditNote, contentDescription = null) },
+                        leadingIcon = { Icon(GymIcons.EditNote, contentDescription = null) },
                         onClick = {
                             menuExpanded = false
                             onEditExerciseNotes()
@@ -1533,7 +1518,7 @@ private fun WorkoutActionsSheet(
                         ),
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Close,
+                        imageVector = GymIcons.Close,
                         contentDescription = "Close",
                         tint = SlateSubtext,
                         modifier = Modifier.size(16.dp),
@@ -1560,7 +1545,7 @@ private fun WorkoutActionsSheet(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            imageVector = Icons.AutoMirrored.Filled.Notes,
+                            imageVector = GymIcons.Notes,
                             contentDescription = null,
                             tint = MaterialTheme.colorScheme.onSurface,
                             modifier = Modifier.size(20.dp),
@@ -1617,7 +1602,7 @@ private fun WorkoutActionsSheet(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Check,
+                            imageVector = GymIcons.Check,
                             contentDescription = null,
                             tint = BrandLime,
                             modifier = Modifier.size(20.dp),
@@ -1639,7 +1624,7 @@ private fun WorkoutActionsSheet(
                         )
                     }
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                        imageVector = GymIcons.ChevronForward,
                         contentDescription = null,
                         tint = BrandLime,
                     )
@@ -1663,7 +1648,7 @@ private fun WorkoutActionsSheet(
                         contentAlignment = Alignment.Center,
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.DeleteOutline,
+                            imageVector = GymIcons.Delete,
                             contentDescription = null,
                             tint = DestructiveCoral,
                             modifier = Modifier.size(20.dp),
@@ -1685,7 +1670,7 @@ private fun WorkoutActionsSheet(
                         )
                     }
                     Icon(
-                        imageVector = Icons.Filled.WarningAmber,
+                        imageVector = GymIcons.Warning,
                         contentDescription = null,
                         tint = DestructiveCoral,
                         modifier = Modifier.size(20.dp),

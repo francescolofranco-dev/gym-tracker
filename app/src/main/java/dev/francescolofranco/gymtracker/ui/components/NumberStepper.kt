@@ -20,9 +20,6 @@ import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -86,7 +83,7 @@ fun NumberStepper(
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
         StepperButton(
-            icon = Icons.Filled.Remove,
+            icon = GymIcons.Remove,
             contentDescription = "Decrease",
             enabled = enabled && value > min,
             onTap = { update(-step) },
@@ -132,7 +129,7 @@ fun NumberStepper(
         }
 
         StepperButton(
-            icon = Icons.Filled.Add,
+            icon = GymIcons.Add,
             contentDescription = "Increase",
             enabled = enabled && value < max,
             onTap = { update(step) },

@@ -16,15 +16,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.TrendingDown
-import androidx.compose.material.icons.automirrored.filled.TrendingFlat
-import androidx.compose.material.icons.automirrored.filled.TrendingUp
-import androidx.compose.material.icons.filled.Bolt
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -60,6 +51,7 @@ import dev.francescolofranco.gymtracker.domain.MuscleCategory
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.domain.sortedTopToBottom
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
+import dev.francescolofranco.gymtracker.ui.components.GymIcons
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
@@ -119,12 +111,12 @@ fun ExerciseDetailScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(GymIcons.ArrowBack, contentDescription = "Back")
                         }
                     },
                     actions = {
                         IconButton(onClick = { showEdit = true }, enabled = exercise != null) {
-                            Icon(Icons.Filled.Edit, contentDescription = "Edit exercise")
+                            Icon(GymIcons.Edit, contentDescription = "Edit exercise")
                         }
                     },
                 )
@@ -516,7 +508,7 @@ private fun ProgressSection(
                     ) {
                         if (isSelected) {
                             Icon(
-                                imageVector = Icons.Filled.Check,
+                                imageVector = GymIcons.Check,
                                 contentDescription = null,
                                 tint = BrandLime,
                                 modifier = Modifier
@@ -597,9 +589,9 @@ private fun OverloadVerdict(trend: TrendResult) {
         else -> OliveSubtext
     }
     val icon: ImageVector = when (trend.trend) {
-        OverloadTrend.Progressing -> Icons.AutoMirrored.Filled.TrendingUp
-        OverloadTrend.Regressing -> Icons.AutoMirrored.Filled.TrendingDown
-        else -> Icons.AutoMirrored.Filled.TrendingFlat
+        OverloadTrend.Progressing -> GymIcons.TrendUp
+        OverloadTrend.Regressing -> GymIcons.TrendDown
+        else -> GymIcons.ArrowForward
     }
     Row(
         modifier = Modifier
@@ -729,7 +721,7 @@ private fun PersonalRecordsCard(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Bolt,
+                    imageVector = GymIcons.Bolt,
                     contentDescription = null,
                     tint = BrandLime,
                     modifier = Modifier.size(18.dp),
@@ -811,7 +803,7 @@ private fun PersonalRecordsCard(
             verticalAlignment = Alignment.Top,
         ) {
             Icon(
-                imageVector = Icons.Outlined.Info,
+                imageVector = GymIcons.Info,
                 contentDescription = null,
                 tint = MutedOlive,
                 modifier = Modifier

@@ -20,8 +20,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -52,6 +50,7 @@ import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.domain.MuscleCategory
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.components.ExerciseSearchField
+import dev.francescolofranco.gymtracker.ui.components.GymIcons
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.components.matchesExerciseQuery
@@ -137,7 +136,7 @@ fun ExercisesScreen(
                             .height(54.dp),
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Add,
+                            imageVector = GymIcons.Add,
                             contentDescription = null,
                             modifier = Modifier.size(18.dp),
                         )

@@ -17,9 +17,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -46,6 +43,7 @@ import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.domain.workoutDuration
 import dev.francescolofranco.gymtracker.domain.workoutStartedAt
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
+import dev.francescolofranco.gymtracker.ui.components.GymIcons
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import androidx.compose.foundation.border
@@ -149,7 +147,7 @@ private fun CompletedSessionContent(
                     contentAlignment = Alignment.Center,
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.EmojiEvents,
+                        imageVector = GymIcons.Trophy,
                         contentDescription = null,
                         tint = BrandLime,
                         modifier = Modifier.size(44.dp),
@@ -318,7 +316,7 @@ fun WhatsAppShareButton(
         ),
         modifier = modifier.height(52.dp),
     ) {
-        Icon(Icons.Filled.Share, contentDescription = null)
+        Icon(GymIcons.Share, contentDescription = null)
         Spacer(Modifier.width(8.dp))
         Text(
             text = "SHARE ON WHATSAPP",

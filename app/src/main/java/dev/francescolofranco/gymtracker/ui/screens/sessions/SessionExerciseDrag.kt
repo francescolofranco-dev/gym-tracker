@@ -28,8 +28,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.SwapVert
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -65,6 +63,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
 import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetail
+import dev.francescolofranco.gymtracker.ui.components.GymIcons
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.theme.BrandLime
 import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
@@ -452,7 +451,7 @@ internal fun SessionExerciseDragPreview(state: SessionExerciseDrag, details: Lis
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = Icons.Filled.SwapVert,
+                    imageVector = GymIcons.SwapVertical,
                     contentDescription = null,
                     tint = BrandLime,
                     modifier = Modifier.size(18.dp),

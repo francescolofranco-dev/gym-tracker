@@ -12,9 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -33,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.service.TimerState
+import dev.francescolofranco.gymtracker.ui.components.GymIcons
 import dev.francescolofranco.gymtracker.ui.theme.BrandLime
 import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
 import dev.francescolofranco.gymtracker.ui.theme.MutedOlive
@@ -102,7 +100,7 @@ fun TimerPill(
                 )
                 if (running) {
                     Icon(
-                        imageVector = Icons.Filled.Refresh,
+                        imageVector = GymIcons.Refresh,
                         contentDescription = "Reset timer",
                         tint = BrandLime,
                         modifier = Modifier.size(16.dp),
@@ -126,7 +124,7 @@ fun TimerPill(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Icon(
-            imageVector = Icons.Filled.Timer,
+            imageVector = GymIcons.Timer,
             contentDescription = null,
             tint = valueColor,
             modifier = Modifier.size(28.dp),
@@ -152,7 +150,7 @@ fun TimerPill(
         }
         if (running) {
             Icon(
-                imageVector = Icons.Filled.Refresh,
+                imageVector = GymIcons.Refresh,
                 contentDescription = "Reset timer",
                 tint = valueColor,
                 modifier = Modifier.size(24.dp),

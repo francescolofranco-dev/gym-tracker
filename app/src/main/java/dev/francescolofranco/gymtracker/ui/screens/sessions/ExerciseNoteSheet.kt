@@ -19,13 +19,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Notes
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.filled.PushPin
-import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -54,6 +47,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.francescolofranco.gymtracker.ui.components.GymIcons
 import dev.francescolofranco.gymtracker.ui.theme.BrandLime
 import dev.francescolofranco.gymtracker.ui.theme.ButtonShape
 import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
@@ -122,7 +116,7 @@ internal fun ExerciseNoteSheet(
                             horizontalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.FitnessCenter,
+                                imageVector = GymIcons.Dumbbell,
                                 contentDescription = null,
                                 tint = BrandLime,
                                 modifier = Modifier.size(16.dp),
@@ -150,7 +144,7 @@ internal fun ExerciseNoteSheet(
                             ),
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Close,
+                            imageVector = GymIcons.Close,
                             contentDescription = "Cancel",
                             tint = OliveSubtext,
                             modifier = Modifier.size(16.dp),
@@ -164,7 +158,7 @@ internal fun ExerciseNoteSheet(
                     badge = "EVERGREEN",
                     description = "Permanent setup & technique cue. Shown every time you do this exercise.",
                     placeholder = "Seat height, grip, technique…",
-                    icon = Icons.Filled.PushPin,
+                    icon = GymIcons.Pin,
                     isPinned = true,
                     value = pinnedValue,
                     onValueChange = { pinnedValue = it },
@@ -175,7 +169,7 @@ internal fun ExerciseNoteSheet(
                     badge = "AUTO-ARCHIVE",
                     description = "Carries forward to the immediate next workout, then automatically archives.",
                     placeholder = "Something to remember next time…",
-                    icon = Icons.Filled.Schedule,
+                    icon = GymIcons.Clock,
                     isPinned = false,
                     value = value,
                     onValueChange = { value = it },
@@ -217,7 +211,7 @@ internal fun ExerciseNoteSheet(
                     modifier = Modifier.weight(1f).heightIn(min = 52.dp),
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.Check,
+                        imageVector = GymIcons.Check,
                         contentDescription = null,
                         modifier = Modifier.size(18.dp),
                     )

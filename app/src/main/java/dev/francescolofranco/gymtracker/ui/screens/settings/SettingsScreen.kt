@@ -31,23 +31,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.automirrored.filled.ListAlt
-import androidx.compose.material.icons.filled.CloudDone
-import androidx.compose.material.icons.filled.CloudDownload
-import androidx.compose.material.icons.filled.CloudOff
-import androidx.compose.material.icons.filled.CloudSync
-import androidx.compose.material.icons.filled.CloudUpload
-import androidx.compose.material.icons.filled.FitnessCenter
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.NotificationsOff
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Restore
-import androidx.compose.material.icons.filled.Sync
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.WarningAmber
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
@@ -97,6 +80,7 @@ import dev.francescolofranco.gymtracker.R
 import dev.francescolofranco.gymtracker.data.backup.drive.DriveSnapshot
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.ui.components.AppLogo
+import dev.francescolofranco.gymtracker.ui.components.GymIcons
 import dev.francescolofranco.gymtracker.ui.components.LogoVariant
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.components.Loadable
@@ -236,7 +220,7 @@ fun SettingsScreen(
                     )
                     SettingsGroupCard {
                         SettingsRow(
-                            icon = Icons.AutoMirrored.Filled.ListAlt,
+                            icon = GymIcons.List,
                             iconTint = BrandLime,
                             title = "WORKOUT TEMPLATES",
                             subtitle = "Create, edit, or reorder saved split routines",
@@ -247,11 +231,11 @@ fun SettingsScreen(
                         if (backupState.hasRecovery) {
                             SettingsGroupDivider()
                             SettingsRow(
-                                icon = Icons.Filled.Restore,
+                                icon = GymIcons.Restore,
                                 iconTint = DestructiveCoral,
                                 title = "UNDO LAST RESTORE",
                                 subtitle = "Recover the automatic safety copy made before the last restore",
-                                trailingIcon = Icons.Filled.WarningAmber,
+                                trailingIcon = GymIcons.Warning,
                                 trailingIconTint = DestructiveCoral,
                                 onClick = { confirmRecovery = true },
                                 enabled = !backupState.running,
@@ -286,23 +270,23 @@ fun SettingsScreen(
                         )
                         SettingsGroupDivider()
                         SettingsRow(
-                            icon = Icons.Filled.CloudUpload,
+                            icon = GymIcons.CloudUpload,
                             iconTint = BrandLime,
                             title = "EXPORT WORKOUT DATA",
                             subtitle = "Save full workout history as JSON snapshot",
                             trailingLabel = "JSON",
-                            trailingIcon = Icons.Filled.CloudUpload,
+                            trailingIcon = GymIcons.CloudUpload,
                             trailingIconTint = OliveSubtext,
                             onClick = { createDoc.launch(backupViewModel.suggestedFilename()) },
                             enabled = !backupState.running,
                         )
                         SettingsGroupDivider()
                         SettingsRow(
-                            icon = Icons.Filled.CloudDownload,
+                            icon = GymIcons.CloudDownload,
                             iconTint = DestructiveCoral,
                             title = "RESTORE FROM BACKUP",
                             subtitle = "Overwrite local database from backup file",
-                            trailingIcon = Icons.Filled.WarningAmber,
+                            trailingIcon = GymIcons.Warning,
                             trailingIconTint = DestructiveCoral,
                             onClick = { openDoc.launch(arrayOf("application/json", "text/plain", "*/*")) },
                             enabled = !backupState.running,
@@ -341,7 +325,7 @@ fun SettingsScreen(
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                                         ) {
-                                            IconBox(icon = Icons.Filled.CloudSync, tint = OliveSubtext)
+                                            IconBox(icon = GymIcons.CloudSync, tint = OliveSubtext)
                                             Text(
                                                 text = "No Drive snapshots yet — daily 03:00 backups or tapping sync above will populate them.",
                                                 style = MaterialTheme.typography.bodySmall.copy(
@@ -526,7 +510,7 @@ private fun DriveAccountRow(
 ) {
     if (state.checkingConnection) {
         SettingsRow(
-            icon = Icons.Filled.CloudSync,
+            icon = GymIcons.CloudSync,
             iconTint = BrandLime,
             title = "CHECKING GOOGLE DRIVE…",
             subtitle = "Looking for an existing backup connection",
@@ -535,7 +519,7 @@ private fun DriveAccountRow(
         )
     } else if (!state.connected) {
         SettingsRow(
-            icon = Icons.Filled.CloudOff,
+            icon = GymIcons.CloudOff,
             iconTint = BrandLime,
             title = "GOOGLE DRIVE SYNC",
             subtitle = "Daily 03:00 backups to your Drive appDataFolder",
@@ -552,7 +536,7 @@ private fun DriveAccountRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            IconBox(icon = Icons.Filled.CloudDone, tint = BrandLime)
+            IconBox(icon = GymIcons.CloudDone, tint = BrandLime)
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -613,7 +597,7 @@ private fun DriveAccountRow(
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Sync,
+                    imageVector = GymIcons.Sync,
                     contentDescription = null,
                     tint = BrandLime,
                     modifier = Modifier.size(18.dp),
@@ -640,7 +624,7 @@ private fun SnapshotRow(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Icon(
-            imageVector = Icons.Filled.Restore,
+            imageVector = GymIcons.Restore,
             contentDescription = null,
             tint = if (isLatest) BrandLime else OliveSubtext,
             modifier = Modifier.size(16.dp),
@@ -992,7 +976,7 @@ private fun FloatingTimerRow(enabled: Boolean, onChange: (Boolean) -> Unit) {
     )
     if (enabled && !granted) {
         SettingsRow(
-            icon = Icons.Filled.Visibility,
+            icon = GymIcons.Eye,
             iconTint = OliveSubtext,
             title = stringResource(R.string.timer_overlay_permission),
             subtitle = stringResource(R.string.timer_overlay_disabled),
@@ -1007,7 +991,7 @@ private fun NotificationRow() {
     val context = LocalContext.current
     val granted by rememberNotificationGranted()
     SettingsRow(
-        icon = if (granted) Icons.Filled.Notifications else Icons.Filled.NotificationsOff,
+        icon = if (granted) GymIcons.Notifications else GymIcons.NotificationsOff,
         iconTint = if (granted) BrandLime else DestructiveCoral,
         title = "TIMER NOTIFICATION",
         subtitle = if (granted) "Allowed — persistent rest timer notification active"
@@ -1304,7 +1288,7 @@ private fun GymTrackerAboutDialog(onDismiss: () -> Unit) {
                         horizontalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         Icon(
-                            imageVector = Icons.Filled.Refresh,
+                            imageVector = GymIcons.Refresh,
                             contentDescription = null,
                             tint = OliveSubtext,
                             modifier = Modifier.size(12.dp),
@@ -1488,7 +1472,7 @@ private fun SettingsRow(
     badgeText: String? = null,
     badgeColor: Color = BrandLime,
     trailingLabel: String? = null,
-    trailingIcon: ImageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+    trailingIcon: ImageVector = GymIcons.ChevronForward,
     trailingIconTint: Color = OliveSubtext,
     enabled: Boolean = true,
 ) {

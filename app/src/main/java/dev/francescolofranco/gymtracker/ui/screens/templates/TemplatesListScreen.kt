@@ -18,10 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -55,6 +51,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.TemplateEntity
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
+import dev.francescolofranco.gymtracker.ui.components.GymIcons
 import dev.francescolofranco.gymtracker.ui.components.Loadable
 import dev.francescolofranco.gymtracker.ui.components.LoadingPane
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
@@ -98,7 +95,7 @@ fun TemplatesListScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                            Icon(GymIcons.ArrowBack, contentDescription = "Back")
                         }
                     },
                 )
@@ -119,7 +116,7 @@ fun TemplatesListScreen(
                     .shadow(8.dp, RoundedCornerShape(2.dp)),
             ) {
                 Icon(
-                    imageVector = Icons.Filled.Add,
+                    imageVector = GymIcons.Add,
                     contentDescription = null,
                     modifier = Modifier.size(18.dp),
                 )
@@ -207,7 +204,7 @@ fun TemplatesListScreen(
                                     contentAlignment = Alignment.Center,
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Filled.Delete,
+                                        imageVector = GymIcons.Delete,
                                         contentDescription = null,
                                         tint = DestructiveCoral,
                                         modifier = Modifier.size(18.dp),
