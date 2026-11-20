@@ -36,7 +36,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
@@ -55,6 +55,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -100,6 +104,8 @@ import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceControl
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -132,12 +138,37 @@ fun ActiveSessionScreen(
     var confirmDiscard by remember { mutableStateOf(false) }
     var sessionNotesEditor by remember { mutableStateOf(false) }
     var exerciseNotesTarget by remember { mutableStateOf<SessionExerciseDetail?>(null) }
+    val blocks = remember(details) { details.workoutExerciseBlocks() }
+    val pairableExercises = remember(blocks) { blocks.filter { it.canPair }.map { it.lead } }
+    var pairingLeadId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var supersetToShow by rememberSaveable { mutableStateOf<Long?>(null) }
+    val snackbar = remember { SnackbarHostState() }
 
     LaunchedEffect(viewModel) {
+        var snackbarJob: Job? = null
         viewModel.events.collect { event ->
             when (event) {
                 ActiveSessionViewModel.Event.Exit -> onExit()
                 is ActiveSessionViewModel.Event.OpenCompleted -> onCompleted(event.sessionId)
+                is ActiveSessionViewModel.Event.SupersetCreated -> {
+                    supersetToShow = event.leadId
+                    snackbarJob?.cancel()
+                    snackbarJob = launch {
+                        val result = snackbar.showSnackbar(
+                            message = "Superset created",
+                            actionLabel = "Undo",
+                            duration = SnackbarDuration.Short,
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            if (supersetToShow == event.leadId) supersetToShow = null
+                            viewModel.removeSuperset(event.leadId, event.partnerId)
+                        }
+                    }
+                }
+                ActiveSessionViewModel.Event.SupersetUnavailable -> {
+                    snackbarJob?.cancel()
+                    snackbarJob = launch { snackbar.showSnackbar("These exercises can no longer be paired") }
+                }
             }
         }
     }
@@ -193,6 +224,7 @@ fun ActiveSessionScreen(
 
     Scaffold(
         containerColor = SurfaceDeep,
+        snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             Column(modifier = Modifier.background(SurfaceBase)) {
                 TopAppBar(
@@ -357,8 +389,19 @@ fun ActiveSessionScreen(
                 return@Column
             }
 
-            val reorder = rememberSessionExerciseDrag(details, viewModel::reorderExercises)
-            val orderedDetails = reorder.orderedDetails(details)
+            val reorder = rememberSessionExerciseDrag(blocks, viewModel::reorderExercises)
+            val orderedBlocks = reorder.orderedBlocks(blocks)
+            val hasSessionNotes = session?.notes?.isNotBlank() == true
+            LaunchedEffect(supersetToShow, orderedBlocks, hasSessionNotes) {
+                val id = supersetToShow ?: return@LaunchedEffect
+                val index = orderedBlocks.indexOfFirst { it.id == id && it.partner != null }
+                if (index != -1) {
+                    val notesItems = if (hasSessionNotes) 2 else 0
+                    val headerIndex = notesItems + orderedBlocks.take(index).sumOf { it.itemCount }
+                    reorder.listState.animateScrollToItem(headerIndex)
+                    supersetToShow = null
+                }
+            }
             androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
                 LazyColumn(
                     state = reorder.listState,
@@ -375,36 +418,62 @@ fun ActiveSessionScreen(
                             Spacer(Modifier.height(12.dp))
                         }
                     }
-                    orderedDetails.forEach { detail ->
-                        val sectionId = detail.sessionExercise.id
+                    orderedBlocks.forEach { block ->
                         exerciseSection(
-                            detail = detail,
-                            headerModifier = reorder.headerModifier(sectionId),
-                            bodyModifier = reorder.bodyModifier(sectionId),
-                            footerModifier = reorder.footerModifier(sectionId),
+                            block = block,
+                            headerModifier = reorder.headerModifier(block.id),
+                            bodyModifier = reorder.bodyModifier(block.id),
+                            footerModifier = reorder.footerModifier(block.id),
                             unit = unit,
-                            hints = hints.byExerciseId[detail.exercise.id] ?: emptyList(),
-                            personalRecords = personalRecords[detail.exercise.id].orEmpty(),
+                            hints = hints.byExerciseId,
+                            personalRecords = personalRecords,
                             editable = true,
                             onCommitSet = { setLogId, reps, kg -> viewModel.logSet(setLogId, reps, kg) },
                             onUncommitSet = { setLogId -> viewModel.unlogSet(setLogId) },
-                            onDraftSet = { setLogId, reps, kg, kgExplicit ->
-                                viewModel.saveSetDraft(detail.sessionExercise.id, setLogId, reps, kg, kgExplicit)
+                            onDraftSet = { id, setLogId, reps, kg, kgExplicit ->
+                                viewModel.saveSetDraft(id, setLogId, reps, kg, kgExplicit)
                             },
                             onToggleSetSkipped = { setLogId, currentlySkipped ->
                                 viewModel.toggleSetSkipped(setLogId, currentlySkipped)
                             },
-                            onSkipExercise = { skipped ->
+                            onSkipExercise = { detail, skipped ->
                                 viewModel.setExerciseSkipped(detail.sessionExercise.id, skipped)
                             },
-                            onEditExerciseNotes = { exerciseNotesTarget = detail },
-                            onRemoveExercise = { viewModel.removeSessionExercise(detail.sessionExercise.id) },
-                            onOpenExerciseStats = { onOpenExerciseStats(detail.exercise.id) },
+                            onEditExerciseNotes = { exerciseNotesTarget = it },
+                            onRemoveExercise = { viewModel.removeSessionExercise(it.sessionExercise.id) },
+                            onOpenExerciseStats = onOpenExerciseStats,
+                            onCreateSuperset = if (block.canPair && pairableExercises.size > 1) {
+                                { pairingLeadId = block.id }
+                            } else {
+                                null
+                            },
+                            onRemoveSuperset = block.partner?.let { partner ->
+                                {
+                                    snackbar.currentSnackbarData?.dismiss()
+                                    if (supersetToShow == block.id) supersetToShow = null
+                                    viewModel.removeSuperset(block.id, partner.sessionExercise.id)
+                                }
+                            },
                         )
                     }
                 }
-                SessionExerciseDragPreview(reorder, orderedDetails)
+                SessionExerciseDragPreview(reorder, orderedBlocks)
             }
+        }
+    }
+
+    pairableExercises.firstOrNull { it.sessionExercise.id == pairingLeadId }?.let { lead ->
+        val choices = pairableExercises.filter { it.sessionExercise.id != pairingLeadId }
+        if (choices.isNotEmpty()) {
+            SupersetPartnerSheet(
+                lead = lead,
+                choices = choices,
+                onPick = { partnerId ->
+                    pairingLeadId = null
+                    viewModel.createSuperset(lead.sessionExercise.id, partnerId)
+                },
+                onDismiss = { pairingLeadId = null },
+            )
         }
     }
 
@@ -768,42 +837,43 @@ private fun Modifier.completionRail(isComplete: Boolean): Modifier {
 }
 
 /**
- * Adds one exercise as granular lazy items. A whole [ExerciseCard] used to be one very tall lazy
- * item, so crossing an exercise boundary forced Compose to create its header and every set row in
- * a single frame. Keeping each set as its own keyed item spreads that work across prefetch frames.
+ * Keeps each set in a keyed lazy item so even a long superset can prefetch one row at a time.
  */
 internal fun LazyListScope.exerciseSection(
-    headerModifier: Modifier = Modifier,
-    bodyModifier: Modifier = Modifier,
-    footerModifier: Modifier = Modifier,
-    detail: SessionExerciseDetail,
+    block: WorkoutExerciseBlock,
+    headerModifier: Modifier,
+    bodyModifier: Modifier,
+    footerModifier: Modifier,
     unit: WeightUnit,
-    hints: List<HintRow>,
-    personalRecords: Set<PersonalRecordType> = emptySet(),
+    hints: Map<Long, List<HintRow>>,
+    personalRecords: Map<Long, Set<PersonalRecordType>> = emptyMap(),
     editable: Boolean,
     onCommitSet: (setLogId: Long, reps: Int, kg: Double) -> Unit,
     onUncommitSet: (setLogId: Long) -> Unit,
-    onDraftSet: (setLogId: Long, reps: Int?, kg: Double?, kgFromExplicitEntry: Boolean) -> Unit,
+    onDraftSet: (sessionExerciseId: Long, setLogId: Long, reps: Int?, kg: Double?, kgExplicit: Boolean) -> Unit,
     onToggleSetSkipped: (setLogId: Long, currentlySkipped: Boolean) -> Unit,
-    onSkipExercise: (skipped: Boolean) -> Unit,
-    onEditExerciseNotes: () -> Unit,
-    onRemoveExercise: (() -> Unit)?,
-    onOpenExerciseStats: () -> Unit,
+    onSkipExercise: (SessionExerciseDetail, Boolean) -> Unit,
+    onEditExerciseNotes: (SessionExerciseDetail) -> Unit,
+    onRemoveExercise: ((SessionExerciseDetail) -> Unit)?,
+    onOpenExerciseStats: (Long) -> Unit,
+    onCreateSuperset: (() -> Unit)? = null,
+    onRemoveSuperset: (() -> Unit)? = null,
 ) {
-    val exercise = detail.exercise
-    val sets = detail.setLogs.sortedWith(compareBy({ it.setNumber }, { it.side.ordinal }))
-    val loggedSets = sets.count { it.loggedAt != null && it.reps != null && !it.isSkipped }
-    val plannedSets = sets.count { !it.isSkipped }
-    val incomplete = !detail.sessionExercise.isSkipped && loggedSets < plannedSets
-    val isComplete = !detail.sessionExercise.isSkipped &&
-        plannedSets > 0 && loggedSets >= plannedSets
-    val sectionId = detail.sessionExercise.id
+    val rows = block.rows
+    val isSuperset = block.partner != null
+    val sectionId = block.id
+    val completeExercises = block.exercises.filter { detail ->
+        val planned = detail.setLogs.filterNot { it.isSkipped }
+        !detail.sessionExercise.isSkipped && planned.isNotEmpty() &&
+            planned.all { it.loggedAt != null && it.reps != null }
+    }
+    val isComplete = completeExercises.size == block.exercises.size
 
     item(
         key = "exercise-$sectionId-header",
         contentType = "exercise-header",
     ) {
-        ExerciseSectionHeader(
+        Column(
             modifier = Modifier
                 .animateItem(
                     fadeInSpec = GymMotion.ItemFadeIn,
@@ -811,22 +881,32 @@ internal fun LazyListScope.exerciseSection(
                     fadeOutSpec = GymMotion.ItemFadeOut,
                 )
                 .then(headerModifier),
-            detail = detail,
-            hints = hints,
-            personalRecords = personalRecords,
-            isComplete = isComplete,
-            incomplete = incomplete,
-            loggedSets = loggedSets,
-            hasSets = sets.isNotEmpty(),
-            editable = editable,
-            onSkipExercise = onSkipExercise,
-            onEditExerciseNotes = onEditExerciseNotes,
-            onRemoveExercise = onRemoveExercise,
-            onOpenExerciseStats = onOpenExerciseStats,
-        )
+        ) {
+            if (isSuperset) SupersetHeader(onRemoveSuperset)
+            for (detail in block.exercises) {
+                val plannedSets = detail.setLogs.count { !it.isSkipped }
+                val loggedSets = detail.setLogs.count { it.loggedAt != null && it.reps != null && !it.isSkipped }
+                ExerciseSectionHeader(
+                    detail = detail,
+                    hints = hints[detail.exercise.id].orEmpty(),
+                    personalRecords = personalRecords[detail.exercise.id].orEmpty(),
+                    isComplete = detail in completeExercises,
+                    incomplete = !detail.sessionExercise.isSkipped && loggedSets < plannedSets,
+                    loggedSets = loggedSets,
+                    hasSets = rows.isNotEmpty(),
+                    editable = editable,
+                    onSkipExercise = { onSkipExercise(detail, it) },
+                    onEditExerciseNotes = { onEditExerciseNotes(detail) },
+                    onRemoveExercise = onRemoveExercise?.let { remove -> { remove(detail) } },
+                    onOpenExerciseStats = { onOpenExerciseStats(detail.exercise.id) },
+                    onCreateSuperset = onCreateSuperset,
+                    isSupersetMember = isSuperset,
+                )
+            }
+        }
     }
 
-    if (sets.isNotEmpty()) {
+    if (rows.isNotEmpty()) {
         item(
             key = "exercise-$sectionId-columns",
             contentType = "set-columns",
@@ -847,18 +927,17 @@ internal fun LazyListScope.exerciseSection(
             }
         }
 
-        val activeSetId = if (editable) {
-            sets.firstOrNull { !it.isSkipped && !(it.loggedAt != null && it.reps != null) }?.id
-        } else {
-            null
-        }
-        items(
-            items = sets,
-            key = { "set-${it.id}" },
-            contentType = { if (it.id == sets.last().id) "set-row-last" else "set-row" },
-        ) { log ->
-            val hint = hints.firstOrNull { it.setNumber == log.setNumber && it.side == log.side }
-            val isLast = log.id == sets.last().id
+        itemsIndexed(
+            items = rows,
+            key = { _, row -> "set-${row.log.id}" },
+            contentType = { index, _ -> if (index == rows.lastIndex) "set-row-last" else "set-row" },
+        ) { index, (detail, log) ->
+            val exercise = detail.exercise
+            val hint = hints[exercise.id]?.firstOrNull { it.setNumber == log.setNumber && it.side == log.side }
+            val previous = rows.getOrNull(index - 1)
+            val startsRound = previous?.log?.setNumber != log.setNumber
+            val startsExercise = startsRound || previous.exercise.sessionExercise.id != detail.sessionExercise.id
+            val isLast = index == rows.lastIndex
             val shape = if (isLast) {
                 RoundedCornerShape(bottomStart = 4.dp, bottomEnd = 4.dp)
             } else {
@@ -877,6 +956,13 @@ internal fun LazyListScope.exerciseSection(
                     .completionRail(isComplete)
                     .border(1.dp, EditorialBorder, shape),
             ) {
+                if (isSuperset && startsExercise) {
+                    SupersetSetLabel(
+                        exerciseName = exercise.name,
+                        round = log.setNumber.takeIf { startsRound },
+                        active = editable && log.id == block.nextSetId,
+                    )
+                }
                 SetRow(
                     state = SetRowState(
                         log = log,
@@ -886,12 +972,12 @@ internal fun LazyListScope.exerciseSection(
                         unit = unit,
                         hintReps = hint?.reps,
                         hintKg = hint?.kg,
-                        isActive = log.id == activeSetId,
-                        showBilateralLabel = sets.any { it.side != ExerciseSide.BOTH },
+                        isActive = editable && log.id == block.nextSetId,
+                        showBilateralLabel = detail.setLogs.any { it.side != ExerciseSide.BOTH },
                     ),
                     onCommit = { reps, kg -> onCommitSet(log.id, reps, kg) },
                     onUncommit = { onUncommitSet(log.id) },
-                    onDraft = { reps, kg, kgExplicit -> onDraftSet(log.id, reps, kg, kgExplicit) },
+                    onDraft = { reps, kg, kgExplicit -> onDraftSet(detail.sessionExercise.id, log.id, reps, kg, kgExplicit) },
                     onSkipToggle = { onToggleSetSkipped(log.id, log.isSkipped) },
                     editable = editable,
                 )
@@ -920,7 +1006,6 @@ internal fun LazyListScope.exerciseSection(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ExerciseSectionHeader(
-    modifier: Modifier = Modifier,
     detail: SessionExerciseDetail,
     hints: List<HintRow>,
     personalRecords: Set<PersonalRecordType>,
@@ -933,10 +1018,14 @@ private fun ExerciseSectionHeader(
     onEditExerciseNotes: () -> Unit,
     onRemoveExercise: (() -> Unit)?,
     onOpenExerciseStats: () -> Unit,
+    onCreateSuperset: (() -> Unit)?,
+    isSupersetMember: Boolean,
 ) {
     val exercise = detail.exercise
     var menuExpanded by remember { mutableStateOf(false) }
-    val shape = if (hasSets) {
+    val shape = if (isSupersetMember) {
+        RoundedCornerShape(0.dp)
+    } else if (hasSets) {
         RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp)
     } else {
         RoundedCornerShape(4.dp)
@@ -945,7 +1034,7 @@ private fun ExerciseSectionHeader(
     val sessionNote = detail.sessionExercise.notes?.takeIf { it.isNotBlank() }
 
     Column(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
             .background(SurfaceElevated)
@@ -1021,6 +1110,15 @@ private fun ExerciseSectionHeader(
                     )
                 }
                 DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    if (onCreateSuperset != null) {
+                        DropdownMenuItem(
+                            text = { Text("Create superset") },
+                            onClick = {
+                                menuExpanded = false
+                                onCreateSuperset()
+                            },
+                        )
+                    }
                     DropdownMenuItem(
                         text = { Text("View stats") },
                         leadingIcon = { Icon(GymIcons.BarChart, contentDescription = null) },

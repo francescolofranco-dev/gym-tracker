@@ -183,6 +183,18 @@ class ActiveSessionViewModel @Inject constructor(
         repo.reorderSessionExercises(ids)
     }
 
+    fun createSuperset(leadId: Long, partnerId: Long) = viewModelScope.launch {
+        if (repo.createSuperset(sessionId, leadId, partnerId)) {
+            _events.send(Event.SupersetCreated(leadId, partnerId))
+        } else {
+            _events.send(Event.SupersetUnavailable)
+        }
+    }
+
+    fun removeSuperset(leadId: Long, partnerId: Long) = viewModelScope.launch {
+        repo.removeSuperset(sessionId, leadId, partnerId)
+    }
+
     fun setExerciseSkipped(sessionExerciseId: Long, skipped: Boolean) = viewModelScope.launch {
         repo.setSessionExerciseSkipped(sessionExerciseId, skipped)
     }
@@ -271,6 +283,8 @@ class ActiveSessionViewModel @Inject constructor(
     }
 
     sealed interface Event {
+        data class SupersetCreated(val leadId: Long, val partnerId: Long) : Event
+        data object SupersetUnavailable : Event
         data object Exit : Event
         data class OpenCompleted(val sessionId: Long) : Event
     }

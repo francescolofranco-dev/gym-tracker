@@ -264,6 +264,7 @@ private fun JSONObject.parseSessionExercise(): SessionExerciseEntity {
         pinnedNotes = optStringOrNull("pinnedNotes") ?: notes.takeIf { isPinned },
         noteCarryForward = !isPinned && carryForward,
         isSkipped = getBoolean("isSkipped"),
+        supersetLeadId = if (isNull("supersetLeadId")) null else getLong("supersetLeadId"),
     )
 }
 

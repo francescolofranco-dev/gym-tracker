@@ -45,17 +45,17 @@ class SessionExerciseDragTest {
         assertEquals(ids, reorderedExerciseIds(ids, 22L, 22L))
     }
 
-    @Test fun orderedExerciseDetailsAppliesPendingOrderImmediately() {
-        val details = listOf(detail(11L), detail(22L), detail(33L))
-        val reordered = orderedExerciseDetails(details, listOf(33L, 11L, 22L))
-        assertEquals(listOf(33L, 11L, 22L), reordered.map { it.sessionExercise.id })
+    @Test fun orderedExerciseBlocksAppliesPendingOrderImmediately() {
+        val blocks = listOf(detail(11L), detail(22L), detail(33L)).workoutExerciseBlocks()
+        val reordered = orderedExerciseBlocks(blocks, listOf(33L, 11L, 22L))
+        assertEquals(listOf(33L, 11L, 22L), reordered.map { it.id })
     }
 
-    @Test fun orderedExerciseDetailsFallsBackWhenPendingOrderIsNullOrStale() {
-        val details = listOf(detail(11L), detail(22L), detail(33L))
-        assertEquals(details, orderedExerciseDetails(details, null))
-        assertEquals(details, orderedExerciseDetails(details, listOf(33L, 11L)))
-        assertEquals(details, orderedExerciseDetails(details, listOf(33L, 11L, 99L)))
+    @Test fun orderedExerciseBlocksFallsBackWhenPendingOrderIsNullOrStale() {
+        val blocks = listOf(detail(11L), detail(22L), detail(33L)).workoutExerciseBlocks()
+        assertEquals(blocks, orderedExerciseBlocks(blocks, null))
+        assertEquals(blocks, orderedExerciseBlocks(blocks, listOf(33L, 11L)))
+        assertEquals(blocks, orderedExerciseBlocks(blocks, listOf(33L, 11L, 99L)))
     }
 
     @Test fun targetNudgeDirectionReflectsDropSideAndIgnoresSelfOrInactive() {

@@ -28,7 +28,7 @@ internal fun validateBackupData(
     val exerciseIds = exercises.mapTo(HashSet()) { it.id }
     val templateIds = templates.mapTo(HashSet()) { it.id }
     val sessionIds = sessions.mapTo(HashSet()) { it.id }
-    val sessionExerciseIds = sessionExercises.mapTo(HashSet()) { it.id }
+    val sessionExercisesById = sessionExercises.associateBy { it.id }
     if (exercises.any {
             it.name.isBlank() || it.primaryMuscles.isEmpty() || it.targetSets <= 0 ||
                 it.repRangeMin <= 0 || it.repRangeMax < it.repRangeMin
@@ -48,8 +48,17 @@ internal fun validateBackupData(
     if (sessionExercises.any { it.sessionId !in sessionIds || it.exerciseId !in exerciseIds }) {
         throw BackupParseException("Backup contains a session with a missing exercise.")
     }
+    val supersetPartners = sessionExercises.filter { it.supersetLeadId != null }
+    val leadIds = supersetPartners.map { it.supersetLeadId }
+    if (leadIds.size != leadIds.toSet().size || supersetPartners.any { partner ->
+            val lead = sessionExercisesById[partner.supersetLeadId]
+            lead == null || lead.sessionId != partner.sessionId || lead.supersetLeadId != null
+        }
+    ) {
+        throw BackupParseException("Backup contains an invalid superset.")
+    }
     if (setLogs.any {
-            it.sessionExerciseId !in sessionExerciseIds ||
+            it.sessionExerciseId !in sessionExercisesById ||
                 (it.reps ?: 0) < 0 ||
                 it.kg?.let { kg -> !kg.isFinite() || kg < -9999.0 || kg > 9999.0 } == true
         }

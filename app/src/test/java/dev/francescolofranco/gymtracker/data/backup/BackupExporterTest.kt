@@ -145,6 +145,27 @@ class BackupExporterTest {
         assertNotEquals(hashBefore, hashAfter)
     }
 
+    @Test
+    fun supersetPairingSurvivesBackupWithoutChangingSetOwnership() = runBlocking {
+        val partnerExercise = sampleExercise.copy(id = 2, name = "Row")
+        exercises.addAll(listOf(sampleExercise, partnerExercise))
+        sessions.add(sampleSession)
+        val partner = sampleSessionExercise.copy(id = 21, exerciseId = 2, orderInSession = 1)
+        sessionExercises.addAll(listOf(sampleSessionExercise, partner))
+        setLogs.add(sampleSet)
+        val original = exporter.export()
+
+        sessionExercises[1] = partner.copy(supersetLeadId = sampleSessionExercise.id)
+        val paired = exporter.export()
+        val importer = BackupImporter()
+
+        assertNotEquals(original.contentHash, paired.contentHash)
+        assertEquals(listOf(null, null), importer.parseBackup(original.json).sessionExercises.map { it.supersetLeadId })
+        val restored = importer.parseBackup(paired.json)
+        assertEquals(sessionExercises, restored.sessionExercises)
+        assertEquals(setLogs, restored.setLogs)
+    }
+
     private inline fun <reified T> createProxy(crossinline handler: (String) -> Any?): T {
         return Proxy.newProxyInstance(
             T::class.java.classLoader,

@@ -26,7 +26,7 @@ import dev.francescolofranco.gymtracker.data.db.entities.TemplateExerciseEntity
         TemplateEntity::class,
         TemplateExerciseEntity::class,
     ],
-    version = 9,
+    version = 10,
     exportSchema = true,
 )
 @TypeConverters(Converters::class)
@@ -39,6 +39,16 @@ abstract class AppDatabase : RoomDatabase() {
 
     companion object {
         const val NAME = "gym-tracker.db"
+
+        val MIGRATION_9_10 = object : Migration(9, 10) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "ALTER TABLE session_exercise ADD COLUMN supersetLeadId INTEGER " +
+                        "REFERENCES session_exercise(id) ON DELETE SET NULL DEFERRABLE INITIALLY DEFERRED",
+                )
+                db.execSQL("CREATE UNIQUE INDEX index_session_exercise_supersetLeadId ON session_exercise(supersetLeadId)")
+            }
+        }
 
         /**
          * v8 → v9: historical assisted exercise sets were logged as effective lifted weight

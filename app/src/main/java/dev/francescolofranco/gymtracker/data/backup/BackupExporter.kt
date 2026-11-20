@@ -105,6 +105,7 @@ private fun SessionExerciseEntity.toJson(): JSONObject = JSONObject().apply {
     put("pinnedNotes", pinnedNotes ?: JSONObject.NULL)
     put("noteCarryForward", noteCarryForward)
     put("isSkipped", isSkipped)
+    supersetLeadId?.let { put("supersetLeadId", it) }
 }
 
 private fun SetLogEntity.toJson(): JSONObject = JSONObject().apply {

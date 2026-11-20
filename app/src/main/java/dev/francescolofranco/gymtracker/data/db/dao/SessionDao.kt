@@ -156,6 +156,15 @@ interface SessionDao {
     @Query("SELECT * FROM session_exercise WHERE id = :id LIMIT 1")
     suspend fun sessionExerciseById(id: Long): SessionExerciseEntity?
 
+    @Query("SELECT EXISTS(SELECT 1 FROM session_exercise WHERE supersetLeadId IN (:ids))")
+    suspend fun leadsSuperset(ids: List<Long>): Boolean
+
+    @Query("UPDATE session_exercise SET supersetLeadId = :leadId WHERE id = :partnerId")
+    suspend fun pairExercises(leadId: Long, partnerId: Long)
+
+    @Query("UPDATE session_exercise SET supersetLeadId = NULL WHERE id = :partnerId AND supersetLeadId = :leadId AND sessionId = :sessionId")
+    suspend fun unpairExercises(sessionId: Long, leadId: Long, partnerId: Long)
+
     @Query("UPDATE session_exercise SET orderInSession = :order WHERE id = :id")
     suspend fun setExerciseOrder(id: Long, order: Int)
 

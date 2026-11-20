@@ -62,7 +62,6 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.util.lerp
-import dev.francescolofranco.gymtracker.data.db.projections.SessionExerciseDetail
 import dev.francescolofranco.gymtracker.ui.components.GymIcons
 import dev.francescolofranco.gymtracker.ui.motion.GymMotion
 import dev.francescolofranco.gymtracker.ui.theme.BrandLime
@@ -88,8 +87,8 @@ internal class SessionExerciseDrag(val listState: LazyListState) {
     var indicatorProgress by mutableFloatStateOf(0f)
     val displacementBySection = mutableStateMapOf<Long, State<Float>>()
 
-    fun orderedDetails(details: List<SessionExerciseDetail>): List<SessionExerciseDetail> =
-        orderedExerciseDetails(details, pendingOrder)
+    fun orderedBlocks(blocks: List<WorkoutExerciseBlock>): List<WorkoutExerciseBlock> =
+        orderedExerciseBlocks(blocks, pendingOrder)
 
     fun isDragged(id: Long): Boolean = draggedId == id
 
@@ -175,19 +174,19 @@ private fun DrawScope.drawDropIndicator(color: Color, y: Float, progress: Float)
 
 @Composable
 internal fun rememberSessionExerciseDrag(
-    details: List<SessionExerciseDetail>,
+    blocks: List<WorkoutExerciseBlock>,
     onReorder: (List<Long>) -> Unit,
 ): SessionExerciseDrag {
     val listState = rememberLazyListState()
     val state = remember(listState) { SessionExerciseDrag(listState) }
-    val latestDetails by rememberUpdatedState(details)
+    val latestBlocks by rememberUpdatedState(blocks)
     val latestOnReorder by rememberUpdatedState(onReorder)
     state.indicatorColor = BrandLime
     val haptics = LocalHapticFeedback.current
     val edge = with(LocalDensity.current) { 64.dp.toPx() }
 
-    val orderedIds = remember(details, state.pendingOrder) {
-        state.orderedDetails(details).map { it.sessionExercise.id }
+    val orderedIds = remember(blocks, state.pendingOrder) {
+        state.orderedBlocks(blocks).map { it.id }
     }
 
     val pickupAnim = remember { Animatable(0f) }
@@ -243,9 +242,9 @@ internal fun rememberSessionExerciseDrag(
         state.displacementBySection[sectionId] = animatedShift
     }
 
-    LaunchedEffect(details, state.pendingOrder) {
+    LaunchedEffect(blocks, state.pendingOrder) {
         val pending = state.pendingOrder ?: return@LaunchedEffect
-        val currentIds = details.map { it.sessionExercise.id }
+        val currentIds = blocks.map { it.id }
         if (currentIds == pending || currentIds.toSet() != pending.toSet()) {
             state.pendingOrder = null
         }
@@ -261,10 +260,10 @@ internal fun rememberSessionExerciseDrag(
         val key = item?.key as? String
         if (key?.startsWith("set-") == true) {
             val setId = key.removePrefix("set-").toLongOrNull()
-            latestDetails.firstOrNull { detail -> detail.setLogs.any { it.id == setId } }
-                ?.let { state.targetId = it.sessionExercise.id }
+            latestBlocks.firstOrNull { block -> block.rows.any { it.log.id == setId } }
+                ?.let { state.targetId = it.id }
         }
-        val ids = state.orderedDetails(latestDetails).map { it.sessionExercise.id }
+        val ids = state.orderedBlocks(latestBlocks).map { it.id }
         state.dropAfter = ids.indexOf(state.targetId) > ids.indexOf(state.draggedId)
         if (state.draggedId != null &&
             (state.targetId != previousTargetId || state.dropAfter != previousDropAfter)
@@ -301,7 +300,7 @@ internal fun rememberSessionExerciseDrag(
                 }
                 val id = (item?.key as? String)?.removePrefix("exercise-")
                     ?.removeSuffix("-header")?.toLongOrNull()
-                if (id != null && latestDetails.size > 1) {
+                if (id != null && latestBlocks.size > 1) {
                     state.draggedId = id
                     state.targetId = id
                     state.dropAfter = false
@@ -318,7 +317,7 @@ internal fun rememberSessionExerciseDrag(
                 }
             },
             onDragEnd = {
-                val ids = state.orderedDetails(latestDetails).map { it.sessionExercise.id }
+                val ids = state.orderedBlocks(latestBlocks).map { it.id }
                 val reordered = reorderedExerciseIds(ids, state.draggedId, state.targetId)
                 if (reordered != ids) {
                     // Keep the viewport anchored at its current scroll offset instead of jumping
@@ -329,7 +328,10 @@ internal fun rememberSessionExerciseDrag(
                     )
                     state.pendingOrder = reordered
                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    latestOnReorder(reordered)
+                    val blocksById = latestBlocks.associateBy { it.id }
+                    latestOnReorder(reordered.flatMap { id ->
+                        blocksById.getValue(id).exercises.map { it.sessionExercise.id }
+                    })
                 }
                 state.draggedId = null
                 state.targetId = null
@@ -352,17 +354,17 @@ internal fun reorderedExerciseIds(ids: List<Long>, draggedId: Long?, targetId: L
     return ids.toMutableList().apply { add(to, removeAt(from)) }
 }
 
-internal fun orderedExerciseDetails(
-    details: List<SessionExerciseDetail>,
+internal fun orderedExerciseBlocks(
+    blocks: List<WorkoutExerciseBlock>,
     pendingOrder: List<Long>?,
-): List<SessionExerciseDetail> {
-    if (pendingOrder == null || pendingOrder.size != details.size) return details
-    val byId = details.associateBy { it.sessionExercise.id }
+): List<WorkoutExerciseBlock> {
+    if (pendingOrder == null || pendingOrder.size != blocks.size) return blocks
+    val byId = blocks.associateBy { it.id }
     val ordered = pendingOrder.mapNotNull { byId[it] }
-    return if (ordered.size == details.size && ordered.map { it.sessionExercise.id }.toSet() == byId.keys) {
+    return if (ordered.size == blocks.size && ordered.map { it.id }.toSet() == byId.keys) {
         ordered
     } else {
-        details
+        blocks
     }
 }
 
@@ -408,13 +410,13 @@ internal fun sectionDisplacementDp(
 
 /** Rendered outside the lazy items so the dragged label stays visible during edge scrolling. */
 @Composable
-internal fun SessionExerciseDragPreview(state: SessionExerciseDrag, details: List<SessionExerciseDetail>) {
-    val dragged = details.firstOrNull { it.sessionExercise.id == state.draggedId } ?: return
-    val target = details.firstOrNull { it.sessionExercise.id == state.targetId }
+internal fun SessionExerciseDragPreview(state: SessionExerciseDrag, blocks: List<WorkoutExerciseBlock>) {
+    val dragged = blocks.firstOrNull { it.id == state.draggedId } ?: return
+    val target = blocks.firstOrNull { it.id == state.targetId }
     val statusText = if (target == null || target == dragged) {
         "DRAG UP OR DOWN TO REORDER"
     } else {
-        "DROP ${if (state.dropAfter) "AFTER" else "BEFORE"} ${target.exercise.name.uppercase()}"
+        "DROP ${if (state.dropAfter) "AFTER" else "BEFORE"} ${target.title.uppercase()}"
     }
     val previewScale = lerp(0.96f, 1.02f, state.pickupProgress)
 
@@ -466,7 +468,7 @@ internal fun SessionExerciseDragPreview(state: SessionExerciseDrag, details: Lis
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
                     Text(
-                        text = dragged.exercise.name.uppercase(),
+                        text = dragged.title.uppercase(),
                         style = MaterialTheme.typography.titleMedium.copy(
                             fontSize = 15.sp,
                             fontWeight = FontWeight.Bold,
@@ -485,7 +487,7 @@ internal fun SessionExerciseDragPreview(state: SessionExerciseDrag, details: Lis
                             .padding(horizontal = 6.dp, vertical = 2.dp),
                     ) {
                         Text(
-                            text = dragged.setPlanLabel().uppercase(),
+                            text = dragged.exercises.joinToString(" + ") { it.setPlanLabel() }.uppercase(),
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontSize = 9.sp,
                                 fontWeight = FontWeight.Bold,

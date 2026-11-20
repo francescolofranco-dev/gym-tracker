@@ -210,8 +210,9 @@ fun SessionDetailScreen(
         if (content == null) {
             LoadingPane(modifier = Modifier.padding(padding))
         } else {
-            val reorder = rememberSessionExerciseDrag(details, viewModel::reorderExercises)
-            val orderedDetails = reorder.orderedDetails(details)
+            val blocks = remember(details) { details.workoutExerciseBlocks() }
+            val reorder = rememberSessionExerciseDrag(blocks, viewModel::reorderExercises)
+            val orderedBlocks = reorder.orderedBlocks(blocks)
             Box(Modifier.fillMaxSize().background(SurfaceDeep).padding(padding)) {
                 LazyColumn(
                     state = reorder.listState,
@@ -268,34 +269,33 @@ fun SessionDetailScreen(
                             }
                         }
                     }
-                    orderedDetails.forEach { detail ->
-                        val sectionId = detail.sessionExercise.id
+                    orderedBlocks.forEach { block ->
                         exerciseSection(
-                            detail = detail,
-                            headerModifier = reorder.headerModifier(sectionId),
-                            bodyModifier = reorder.bodyModifier(sectionId),
-                            footerModifier = reorder.footerModifier(sectionId),
+                            block = block,
+                            headerModifier = reorder.headerModifier(block.id),
+                            bodyModifier = reorder.bodyModifier(block.id),
+                            footerModifier = reorder.footerModifier(block.id),
                             unit = unit,
-                            hints = hints.byExerciseId[detail.exercise.id] ?: emptyList(),
+                            hints = hints.byExerciseId,
                             editable = true,
                             onCommitSet = { setLogId, reps, kg -> viewModel.logSet(setLogId, reps, kg) },
                             onUncommitSet = { setLogId -> viewModel.unlogSet(setLogId) },
-                            onDraftSet = { setLogId, reps, kg, kgExplicit ->
-                                viewModel.saveSetDraft(detail.sessionExercise.id, setLogId, reps, kg, kgExplicit)
+                            onDraftSet = { id, setLogId, reps, kg, kgExplicit ->
+                                viewModel.saveSetDraft(id, setLogId, reps, kg, kgExplicit)
                             },
                             onToggleSetSkipped = { setLogId, currentlySkipped ->
                                 viewModel.toggleSetSkipped(setLogId, currentlySkipped)
                             },
-                            onSkipExercise = { skipped ->
+                            onSkipExercise = { detail, skipped ->
                                 viewModel.setExerciseSkipped(detail.sessionExercise.id, skipped)
                             },
-                            onEditExerciseNotes = { exerciseNotesTarget = detail },
-                            onRemoveExercise = if (canAmend) ({ exerciseToRemove = detail }) else null,
-                            onOpenExerciseStats = { onOpenExerciseStats(detail.exercise.id) },
+                            onEditExerciseNotes = { exerciseNotesTarget = it },
+                            onRemoveExercise = if (canAmend) ({ exerciseToRemove = it }) else null,
+                            onOpenExerciseStats = onOpenExerciseStats,
                         )
                     }
                 }
-                SessionExerciseDragPreview(reorder, orderedDetails)
+                SessionExerciseDragPreview(reorder, orderedBlocks)
             }
         }
     }

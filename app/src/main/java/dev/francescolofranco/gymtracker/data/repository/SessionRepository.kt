@@ -238,6 +238,24 @@ class SessionRepository @Inject constructor(
     suspend fun removeSessionExercise(sessionExerciseId: Long) =
         sessionDao.removeExercise(sessionExerciseId)
 
+    suspend fun createSuperset(sessionId: Long, leadId: Long, partnerId: Long): Boolean =
+        db.withTransaction {
+            if (leadId == partnerId) return@withTransaction false
+            val session = sessionDao.byId(sessionId) ?: return@withTransaction false
+            if (session.endedAt != null) return@withTransaction false
+            val ids = listOf(leadId, partnerId)
+            val eligible = ids.all { id ->
+                val row = sessionDao.sessionExerciseById(id)
+                row != null && row.sessionId == sessionId && !row.isSkipped && row.supersetLeadId == null
+            }
+            if (!eligible || sessionDao.leadsSuperset(ids)) return@withTransaction false
+            sessionDao.pairExercises(leadId, partnerId)
+            true
+        }
+
+    suspend fun removeSuperset(sessionId: Long, leadId: Long, partnerId: Long) =
+        sessionDao.unpairExercises(sessionId, leadId, partnerId)
+
     /**
      * Swap the position of two session-exercise rows. Used by the move up / move down menu
      * items; the caller (a ViewModel) is responsible for finding the adjacent neighbour and
