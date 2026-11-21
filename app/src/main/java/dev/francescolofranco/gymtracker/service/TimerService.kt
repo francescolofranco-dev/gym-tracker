@@ -148,7 +148,7 @@ class TimerService : Service() {
         val expandedView = buildTimerView(state, R.layout.notification_timer, expanded = true)
 
         val builder = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_launcher_monochrome)
+            .setSmallIcon(R.drawable.ic_stat_timer)
             .setContentTitle(getString(R.string.timer_title))
             .setContentIntent(openAppPi)
             .setOngoing(true)
