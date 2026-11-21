@@ -235,30 +235,7 @@ private fun CompletedSessionContent(
                             )
                             HorizontalDivider(color = EditorialBorder, thickness = 1.dp)
                             summary.exercises.take(5).forEach { exercise ->
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Text(
-                                        text = exercise.name.uppercase(),
-                                        style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                                        modifier = Modifier.weight(1f),
-                                    )
-                                    Spacer(Modifier.width(12.dp))
-                                    Column(horizontalAlignment = Alignment.End) {
-                                        Text(
-                                            text = exercise.firstSetWeightLabel(unit),
-                                            style = MaterialTheme.typography.titleSmall,
-                                            fontWeight = FontWeight.Bold,
-                                            color = BrandLime,
-                                        )
-                                        Text(
-                                            text = exercise.setsLabel,
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MutedOlive,
-                                        )
-                                    }
-                                }
+                                CompletionExerciseRow(exercise, unit)
                             }
                             if (summary.exercises.size > 5) {
                                 Text(
@@ -272,6 +249,40 @@ private fun CompletedSessionContent(
                 }
             }
         }
+    }
+}
+
+@Composable
+internal fun CompletionExerciseRow(exercise: SessionShareExercise, unit: WeightUnit) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        // Keep rep details out of this row so they cannot squeeze the exercise name.
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text(
+                text = exercise.name.uppercase(),
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                modifier = Modifier.weight(1f),
+            )
+            Text(
+                text = exercise.firstSetWeightLabel(unit),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                color = BrandLime,
+            )
+        }
+        Text(
+            text = exercise.setsLabel,
+            modifier = Modifier.fillMaxWidth(),
+            style = MaterialTheme.typography.labelMedium,
+            color = MutedOlive,
+            textAlign = TextAlign.End,
+        )
     }
 }
 
