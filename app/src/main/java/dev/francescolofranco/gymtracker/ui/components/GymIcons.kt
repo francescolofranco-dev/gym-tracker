@@ -57,8 +57,9 @@ object GymIcons {
     )
     val Edit by outline(
         "Edit",
-        "M4 16 L16.5 3.5 Q17.5 2.5 18.5 3.5 L20.5 5.5 Q21.5 6.5 20.5 7.5 " +
-            "L8 20 L3 21 Z M14.5 5.5 L18.5 9.5",
+        "M12 5 H5 Q3 5 3 7 V19 Q3 21 5 21 H17 Q19 21 19 19 V13 " +
+            "M9.5 13 L18 4.5 Q18.75 3.75 19.5 4.5 L21 6 Q21.75 6.75 21 7.5 " +
+            "L12.5 16 L8.5 17 Z",
     )
     val EditCalendar by outline(
         "EditCalendar",
