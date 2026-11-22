@@ -5,27 +5,28 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -60,7 +61,6 @@ import java.time.LocalDate
 import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
 import java.time.temporal.WeekFields
 
 @Composable
@@ -84,10 +84,13 @@ internal fun WorkoutHistoryCalendar(
     }
 
     val history = remember(summaries, zone) { completedWorkoutsByMonth(summaries, zone) }
-    val firstYear = history.keys.minOfOrNull { it.year }?.coerceAtMost(today.year) ?: today.year
-    val lastYear = history.keys.maxOfOrNull { it.year }?.coerceAtLeast(today.year) ?: today.year
-    var selectedYear by rememberSaveable { mutableStateOf<Int?>(null) }
-    val year = selectedYear?.coerceIn(firstYear, lastYear) ?: today.year
+    val currentMonth = YearMonth.from(today)
+    val monthRows = remember(currentMonth, history) {
+        workoutHistoryMonths(currentMonth, history.keys).chunked(2)
+    }
+    val futureMonthRows = remember(currentMonth, history) {
+        history.keys.filter { it > currentMonth }.sortedDescending().chunked(2)
+    }
 
     LazyColumn(
         modifier = modifier.fillMaxWidth(),
@@ -95,66 +98,89 @@ internal fun WorkoutHistoryCalendar(
     ) {
         item(key = "weekly-progress") { weeklyProgress() }
         item(key = "workout-history-heading") {
-            Row(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 12.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                    .padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
                     text = stringResource(R.string.workout_history),
                     style = MaterialTheme.typography.titleLarge,
-                    modifier = Modifier.weight(1f).semantics { heading() },
-                )
-                TextButton(onClick = { onOpenMonth(YearMonth.from(today)) }) {
-                    Text(stringResource(R.string.workout_history_this_month))
-                }
-            }
-        }
-        item(key = "workout-history-year") {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(
-                    onClick = { selectedYear = year - 1 },
-                    enabled = year > firstYear,
-                ) {
-                    Icon(GymIcons.ArrowBack, stringResource(R.string.workout_history_previous_year))
-                }
-                Text(
-                    text = year.toString(),
-                    style = MaterialTheme.typography.headlineSmall,
                     modifier = Modifier.semantics { heading() },
                 )
-                IconButton(
-                    onClick = { selectedYear = if (year + 1 == today.year) null else year + 1 },
-                    enabled = year < lastYear,
-                ) {
-                    Icon(GymIcons.ArrowForward, stringResource(R.string.workout_history_next_year))
-                }
+                WorkoutSetLegend()
             }
         }
-        items(count = 6, key = { "workout-months-$it" }) { row ->
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 5.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                repeat(2) { column ->
-                    val month = YearMonth.of(year, row * 2 + column + 1)
-                    WorkoutMonthCard(
-                        month = month,
-                        workouts = history[month].orEmpty(),
-                        today = today,
-                        zone = zone,
-                        onClick = { onOpenMonth(month) },
-                        modifier = Modifier.weight(1f),
-                    )
-                }
+        workoutMonthRows(monthRows, history, today, zone, onOpenMonth)
+        if (futureMonthRows.isNotEmpty()) {
+            item(key = "future-workouts-heading") {
+                Text(
+                    text = stringResource(R.string.workout_history_future),
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp).semantics { heading() },
+                )
             }
+            workoutMonthRows(futureMonthRows, history, today, zone, onOpenMonth)
         }
+    }
+}
+
+private fun LazyListScope.workoutMonthRows(
+    rows: List<List<YearMonth>>,
+    history: Map<YearMonth, List<SessionSummary>>,
+    today: LocalDate,
+    zone: ZoneId,
+    onOpenMonth: (YearMonth) -> Unit,
+) {
+    items(rows, key = { it.first().toString() }) { months ->
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 5.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            months.forEach { month ->
+                WorkoutMonthCard(
+                    month = month,
+                    workouts = history[month].orEmpty(),
+                    today = today,
+                    zone = zone,
+                    onClick = { onOpenMonth(month) },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+            if (months.size == 1) Spacer(Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
+private fun WorkoutSetLegend() {
+    val description = stringResource(R.string.workout_history_set_brightness, BRIGHTEST_DAY_SETS)
+    Row(
+        modifier = Modifier.clearAndSetSemantics { contentDescription = description },
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = stringResource(R.string.workout_history_logged_sets),
+            color = SlateSubtext,
+            style = MaterialTheme.typography.labelMedium,
+            modifier = Modifier.padding(end = 4.dp),
+        )
+        Text("0", color = MutedOlive, style = MaterialTheme.typography.labelSmall)
+        for (sets in 0..BRIGHTEST_DAY_SETS step 5) {
+            Box(
+                Modifier.size(9.dp).background(
+                    BrandLime.copy(alpha = loggedSetsBrightness(sets.toLong())),
+                    RoundedCornerShape(2.dp),
+                ),
+            )
+        }
+        Text(
+            text = stringResource(R.string.workout_history_sets_or_more, BRIGHTEST_DAY_SETS),
+            color = SlateSubtext,
+            style = MaterialTheme.typography.labelSmall,
+        )
     }
 }
 
@@ -172,7 +198,7 @@ private fun WorkoutMonthCard(
     val days = remember(month, workouts, zone, firstDayOfWeek) {
         workoutCalendarDays(month, workouts, zone, firstDayOfWeek)
     }
-    val monthName = month.month.getDisplayName(TextStyle.SHORT_STANDALONE, locale)
+    val shortMonthLabel = month.format(DateTimeFormatter.ofPattern("LLL yyyy", locale))
     val monthLabel = month.format(DateTimeFormatter.ofPattern("LLLL yyyy", locale))
     val currentMonth = month == YearMonth.from(today)
     val shape = RoundedCornerShape(4.dp)
@@ -192,7 +218,7 @@ private fun WorkoutMonthCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = monthName.replaceFirstChar { it.titlecase(locale) },
+                text = shortMonthLabel.replaceFirstChar { it.titlecase(locale) },
                 style = MaterialTheme.typography.titleMedium,
                 color = if (currentMonth) BrandLime else MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f).clearAndSetSemantics { contentDescription = monthLabel },
@@ -212,8 +238,7 @@ private fun WorkoutMonthCard(
                 if (day == null) return@forEachIndexed
                 val position = Offset(index % 7 * (cell + gap), index / 7 * (cell + gap))
                 val color = when {
-                    day.workoutCount > 1 -> BrandLime
-                    day.workoutCount == 1 -> BrandLime.copy(alpha = 0.64f)
+                    day.loggedSets != null -> BrandLime.copy(alpha = loggedSetsBrightness(day.loggedSets))
                     day.date.isAfter(today) -> SurfaceChip.copy(alpha = 0.4f)
                     else -> SurfaceChip
                 }
