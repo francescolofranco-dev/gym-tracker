@@ -29,6 +29,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -907,6 +909,7 @@ private fun UnitsRow(unit: WeightUnit, onChange: (WeightUnit) -> Unit) {
                 .height(40.dp)
                 .clip(RoundedCornerShape(2.dp))
                 .background(SurfaceChip)
+                .selectableGroup()
                 .padding(4.dp),
             horizontalArrangement = Arrangement.spacedBy(2.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -923,11 +926,14 @@ private fun UnitsRow(unit: WeightUnit, onChange: (WeightUnit) -> Unit) {
                         .height(32.dp)
                         .clip(RoundedCornerShape(2.dp))
                         .background(if (selected) SurfaceElevated else Color.Transparent)
-                        .clickable { onChange(option) }
-                        .semantics {
-                            role = Role.RadioButton
-                            contentDescription = a11yLabel
-                        }
+                        .selectable(
+                            selected = selected,
+                            interactionSource = null,
+                            indication = null,
+                            role = Role.RadioButton,
+                            onClick = { onChange(option) },
+                        )
+                        .semantics { contentDescription = a11yLabel }
                         .padding(horizontal = 14.dp),
                 ) {
                     Text(
