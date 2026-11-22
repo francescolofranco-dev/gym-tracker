@@ -1166,13 +1166,6 @@ private val TRAINING_TIPS = listOf(
 
 @Composable
 private fun GymTrackerAboutDialog(onDismiss: () -> Unit) {
-    val context = LocalContext.current
-    val version = remember {
-        runCatching {
-            val pi = context.packageManager.getPackageInfo(context.packageName, 0)
-            pi.versionName ?: "?"
-        }.getOrDefault("?")
-    }
     var tipIndex by remember { mutableIntStateOf(0) }
     val currentTip = TRAINING_TIPS[tipIndex]
 
@@ -1186,28 +1179,6 @@ private fun GymTrackerAboutDialog(onDismiss: () -> Unit) {
                 .padding(20.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(SurfaceChip)
-                        .padding(horizontal = 6.dp, vertical = 2.dp),
-                ) {
-                    Text(
-                        text = "BUILD v$version",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontFamily = SpaceGroteskFontFamily,
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                        ),
-                        color = OliveSubtext,
-                    )
-                }
-            }
-
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
