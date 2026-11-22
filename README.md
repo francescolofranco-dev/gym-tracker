@@ -1,6 +1,12 @@
 # Gym Tracker
 
-Android workout tracker for logging gym sessions, sets, reps, weight, notes, and progress over time.
+**Track your lifts. See your progress.**
+
+Log sets, reps, and weights and see how your lifts change over time. No login or personal details
+required. Workout logging and progress tracking work offline.
+
+Gym Tracker saves your workouts on your device. You can back them up to a file or connect
+Google Drive for optional cloud backup.
 
 ## Features
 

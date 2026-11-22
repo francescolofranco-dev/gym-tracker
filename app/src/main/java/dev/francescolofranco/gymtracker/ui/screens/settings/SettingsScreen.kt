@@ -1119,7 +1119,7 @@ private fun SettingsFooter() {
                 interactive = false,
             )
             Text(
-                text = "CRAFTED WITH CARE. BUILT FOR YOUR PROGRESS.",
+                text = "Track your lifts. See your progress.",
                 style = MaterialTheme.typography.labelSmall.copy(
                     fontFamily = SpaceGroteskFontFamily,
                     fontSize = 11.sp,
@@ -1130,7 +1130,7 @@ private fun SettingsFooter() {
             )
         }
         Text(
-            text = "Your personal gym tracker. Always offline.",
+            text = "Works offline. No login required.",
             style = MaterialTheme.typography.bodySmall.copy(
                 fontFamily = SpaceGroteskFontFamily,
                 fontSize = 12.sp,
@@ -1202,7 +1202,7 @@ private fun GymTrackerAboutDialog(onDismiss: () -> Unit) {
                         color = DarkOnSurface,
                     )
                     Text(
-                        text = "Log your workouts, follow your progress, and plan your next session.",
+                        text = "Track your lifts. See your progress.",
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontFamily = SpaceGroteskFontFamily,
                             fontSize = 12.sp,
@@ -1211,6 +1211,12 @@ private fun GymTrackerAboutDialog(onDismiss: () -> Unit) {
                     )
                 }
             }
+
+            Text(
+                text = "Log sets, reps, and weights offline. No login or personal details required.",
+                style = MaterialTheme.typography.bodySmall,
+                color = SlateSubtext,
+            )
 
             Row(
                 modifier = Modifier
