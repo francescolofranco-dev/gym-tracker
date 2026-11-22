@@ -28,6 +28,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,6 +44,7 @@ import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
 import dev.francescolofranco.gymtracker.ui.theme.MutedOlive
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceBase
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -63,10 +65,12 @@ import dev.francescolofranco.gymtracker.ui.screens.sessions.ActiveSessionScreen
 import dev.francescolofranco.gymtracker.ui.screens.sessions.SessionCompletedScreen
 import dev.francescolofranco.gymtracker.ui.screens.sessions.SessionDetailScreen
 import dev.francescolofranco.gymtracker.ui.screens.sessions.SessionsScreen
+import dev.francescolofranco.gymtracker.ui.screens.sessions.WorkoutMonthScreen
 import dev.francescolofranco.gymtracker.ui.screens.settings.SettingsScreen
 import dev.francescolofranco.gymtracker.ui.screens.stats.StatsScreen
 import dev.francescolofranco.gymtracker.ui.screens.templates.TemplateEditScreen
 import dev.francescolofranco.gymtracker.ui.screens.templates.TemplatesListScreen
+import java.time.YearMonth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -114,7 +118,7 @@ fun GymApp() {
                         SessionsScreen(
                             onOpenActive = { id -> nav.navigate(SessionRoutes.active(id)) },
                             onOpenCompleted = { id -> nav.navigate(SessionRoutes.complete(id)) },
-                            onOpenDetail = { id -> nav.navigate(SessionRoutes.detail(id)) },
+                            onOpenMonth = { month -> nav.navigate(SessionRoutes.historyMonth(month)) },
                             onOpenTemplates = { nav.navigate(TemplateRoutes.LIST) },
                         )
                     }
@@ -178,6 +182,20 @@ fun GymApp() {
                     arguments = listOf(navArgument(SessionRoutes.COMPLETE_ARG) { type = NavType.LongType }),
                 ) {
                     SessionCompletedScreen(onDone = { nav.popBackStack() })
+                }
+                composable(
+                    route = SessionRoutes.HISTORY_MONTH,
+                    arguments = listOf(navArgument(SessionRoutes.HISTORY_MONTH_ARG) { type = NavType.StringType }),
+                ) { entry ->
+                    val monthArg = requireNotNull(entry.arguments?.getString(SessionRoutes.HISTORY_MONTH_ARG))
+                    val month = YearMonth.parse(monthArg)
+                    val homeEntry = remember(entry) { nav.getBackStackEntry(TopDestination.Sessions.route) }
+                    WorkoutMonthScreen(
+                        month = month,
+                        onBack = { nav.popBackStack() },
+                        onOpenDetail = { id -> nav.navigate(SessionRoutes.detail(id)) },
+                        viewModel = hiltViewModel(homeEntry),
+                    )
                 }
                 composable(
                     route = SessionRoutes.DETAIL,

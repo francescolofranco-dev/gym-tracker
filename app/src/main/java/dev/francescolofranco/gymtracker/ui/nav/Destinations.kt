@@ -2,6 +2,7 @@ package dev.francescolofranco.gymtracker.ui.nav
 
 import androidx.compose.ui.graphics.vector.ImageVector
 import dev.francescolofranco.gymtracker.ui.components.GymIcons
+import java.time.YearMonth
 
 enum class TopDestination(
     val route: String,
@@ -21,10 +22,13 @@ object SessionRoutes {
     const val COMPLETE = "session/complete/{$COMPLETE_ARG}"
     const val DETAIL_ARG = "sessionId"
     const val DETAIL = "session/detail/{$DETAIL_ARG}"
+    const val HISTORY_MONTH_ARG = "month"
+    const val HISTORY_MONTH = "session/history/{$HISTORY_MONTH_ARG}"
 
     fun active(sessionId: Long) = "session/active/$sessionId"
     fun complete(sessionId: Long) = "session/complete/$sessionId"
     fun detail(sessionId: Long) = "session/detail/$sessionId"
+    fun historyMonth(month: YearMonth) = "session/history/$month"
 }
 
 object TemplateRoutes {

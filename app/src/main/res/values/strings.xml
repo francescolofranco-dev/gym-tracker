@@ -5,6 +5,17 @@
     <string name="tab_stats">Stats</string>
     <string name="tab_settings">Settings</string>
 
+    <string name="workout_history">Workout history</string>
+    <string name="workout_history_this_month">This month</string>
+    <string name="workout_history_previous_year">Previous year</string>
+    <string name="workout_history_next_year">Next year</string>
+    <string name="workout_history_back">Back to workout history</string>
+    <string name="workout_history_empty_month">No completed workouts this month.</string>
+    <plurals name="workout_history_workouts">
+        <item quantity="one">%d workout</item>
+        <item quantity="other">%d workouts</item>
+    </plurals>
+
     <!-- Timer service -->
     <string name="timer_title">Gym timer</string>
     <string name="timer_running">Running — open the app for the live counter.</string>

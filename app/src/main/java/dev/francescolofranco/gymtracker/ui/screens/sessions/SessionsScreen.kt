@@ -19,7 +19,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,8 +27,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -38,7 +35,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
@@ -70,8 +66,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.francescolofranco.gymtracker.data.db.entities.SessionEntity
 import dev.francescolofranco.gymtracker.data.db.entities.TemplateEntity
 import dev.francescolofranco.gymtracker.data.db.projections.SessionSummary
-import dev.francescolofranco.gymtracker.domain.WeightUnit
-import dev.francescolofranco.gymtracker.domain.workoutDuration
 import dev.francescolofranco.gymtracker.domain.workoutStartedAt
 import dev.francescolofranco.gymtracker.ui.components.GymIcons
 import dev.francescolofranco.gymtracker.ui.components.Loadable
@@ -90,14 +84,10 @@ import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
 import kotlinx.coroutines.delay
-import java.text.NumberFormat
 import java.time.Duration
 import java.time.Instant
 import java.time.YearMonth
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
-import kotlin.math.roundToInt
 import kotlin.time.Duration.Companion.milliseconds
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -105,7 +95,7 @@ import kotlin.time.Duration.Companion.milliseconds
 fun SessionsScreen(
     onOpenActive: (Long) -> Unit,
     onOpenCompleted: (Long) -> Unit,
-    onOpenDetail: (Long) -> Unit,
+    onOpenMonth: (YearMonth) -> Unit,
     onOpenTemplates: () -> Unit = {},
     viewModel: SessionsViewModel = hiltViewModel(),
 ) {
@@ -156,8 +146,8 @@ fun SessionsScreen(
             title = { Text("End this session?") },
             text = {
                 Text(
-                    "It will move to the past sessions list with whatever's been logged. " +
-                        "You can delete it from there if it's a phantom from earlier testing.",
+                    "It will appear in workout history with whatever you’ve logged. " +
+                        "You can delete it from the workout details.",
                 )
             },
             confirmButton = {
@@ -177,7 +167,7 @@ fun SessionsScreen(
             Loadable.Loading -> LoadingPane(modifier = Modifier.padding(padding))
             is Loadable.Error -> ErrorPane(current.message, viewModel::retry, Modifier.padding(padding))
             is Loadable.Ready -> {
-                val (active, past, unit, suggestion, weeklyGoal, templates) = current.value
+                val (active, past, _, suggestion, weeklyGoal, templates) = current.value
                 if (showTemplatePicker) {
                     TemplatePickerSheet(
                         templates = templates,
@@ -236,43 +226,14 @@ fun SessionsScreen(
                         }
                     }
 
-                    if (past.isEmpty() && active == null) {
-                        Column(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                    WorkoutHistoryCalendar(
+                        summaries = past,
+                        onOpenMonth = onOpenMonth,
+                        modifier = Modifier.weight(1f),
+                        weeklyProgress = {
                             WeeklyProgress(past, weeklyGoal, onEditGoal = { editGoal = true })
-                            EmptyState(modifier = Modifier.weight(1f).fillMaxWidth())
-                        }
-                    } else {
-                        val grouped = remember(past) { groupPastSessionsByMonth(past) }
-                        LazyColumn(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxWidth(),
-                            contentPadding = PaddingValues(bottom = 16.dp),
-                        ) {
-                            item(key = "weekly-progress") {
-                                WeeklyProgress(past, weeklyGoal, onEditGoal = { editGoal = true })
-                            }
-                            grouped.forEach { (label, group) ->
-                                item(key = "h-$label") {
-                                    MonthHeader(label = label, sessionCount = group.size)
-                                }
-                                itemsIndexed(items = group, key = { _, it -> it.session.id }) { index, summary ->
-                                    PastSessionRow(
-                                        summary = summary,
-                                        unit = unit,
-                                        isFirst = index == 0,
-                                        isLast = index == group.lastIndex,
-                                        onClick = { onOpenDetail(summary.session.id) },
-                                        modifier = Modifier.animateItem(
-                                            fadeInSpec = GymMotion.ItemFadeIn,
-                                            placementSpec = GymMotion.ItemPlacement,
-                                            fadeOutSpec = GymMotion.ItemFadeOut,
-                                        ),
-                                    )
-                                }
-                            }
-                        }
-                    }
+                        },
+                    )
 
                     Column(
                         modifier = Modifier
@@ -745,211 +706,6 @@ private fun ActiveSessionBanner(
                     .padding(8.dp),
             )
         }
-    }
-}
-
-@Composable
-private fun PastSessionRow(
-    summary: SessionSummary,
-    unit: WeightUnit,
-    isFirst: Boolean,
-    isLast: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val ended = summary.session.endedAt
-    val duration = if (ended != null) summary.session.workoutDuration() else Duration.ZERO
-    val shape = RoundedCornerShape(
-        topStart = if (isFirst) 4.dp else 0.dp,
-        topEnd = if (isFirst) 4.dp else 0.dp,
-        bottomStart = if (isLast) 4.dp else 0.dp,
-        bottomEnd = if (isLast) 4.dp else 0.dp,
-    )
-    val convertedVolume = convertFromKg(summary.totalVolume, unit).roundToInt()
-    val formattedVolumeNumber = remember(convertedVolume) {
-        NumberFormat.getIntegerInstance(Locale.US).format(convertedVolume)
-    }
-
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .clip(shape)
-            .background(SurfaceBase)
-            .border(1.dp, EditorialBorder, shape)
-            .clickable(onClick = onClick),
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 14.dp),
-        ) {
-            Column(
-                modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                Text(
-                    text = formatSessionDate(summary.session.workoutStartedAt()),
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontSize = 15.sp,
-                        fontWeight = FontWeight.Bold,
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = buildList {
-                        add("${summary.exerciseCount} exercise${if (summary.exerciseCount == 1) "" else "s"}")
-                        add("${summary.setCount} set${if (summary.setCount == 1) "" else "s"}")
-                        if (ended != null) add(formatDuration(duration))
-                    }.joinToString("  •  "),
-                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                    color = SlateSubtext,
-                )
-            }
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Column(horizontalAlignment = Alignment.End) {
-                    Row(
-                        verticalAlignment = Alignment.Bottom,
-                        horizontalArrangement = Arrangement.spacedBy(3.dp),
-                    ) {
-                        Text(
-                            text = formattedVolumeNumber,
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                            ),
-                            color = MaterialTheme.colorScheme.onSurface,
-                        )
-                        Text(
-                            text = unit.label().uppercase(),
-                            style = MaterialTheme.typography.labelSmall.copy(
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                            ),
-                            color = MutedOlive,
-                            modifier = Modifier.padding(bottom = 2.dp),
-                        )
-                    }
-                    Text(
-                        text = "TOTAL VOLUME",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontSize = 9.sp,
-                            letterSpacing = 0.72.sp,
-                        ),
-                        color = MutedOlive,
-                    )
-                }
-                Icon(
-                    imageVector = GymIcons.ChevronForward,
-                    contentDescription = null,
-                    tint = MutedOlive,
-                    modifier = Modifier.size(18.dp),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun EmptyState(modifier: Modifier = Modifier) {
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(32.dp),
-        ) {
-            Text(
-                text = "NO SESSIONS YET",
-                style = MaterialTheme.typography.titleLarge,
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = "Tap Start Workout to begin tracking your first session.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = SlateSubtext,
-            )
-        }
-    }
-}
-
-@Composable
-private fun MonthHeader(label: String, sessionCount: Int) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 10.dp),
-    ) {
-        Row(
-            verticalAlignment = Alignment.Bottom,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                text = label.uppercase(),
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.5.sp,
-                ),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-            Text(
-                text = "MONTHLY LOG",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.55.sp,
-                ),
-                color = MutedOlive,
-                modifier = Modifier.padding(bottom = 2.dp),
-            )
-        }
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            modifier = Modifier
-                .clip(RoundedCornerShape(2.dp))
-                .background(SurfaceCard)
-                .border(1.dp, EditorialBorder, RoundedCornerShape(2.dp))
-                .padding(horizontal = 10.dp, vertical = 5.dp),
-        ) {
-            Icon(
-                imageVector = GymIcons.BarChart,
-                contentDescription = null,
-                tint = BrandLime,
-                modifier = Modifier.size(13.dp),
-            )
-            Text(
-                text = "$sessionCount SESSION${if (sessionCount == 1) "" else "S"}",
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.55.sp,
-                ),
-                color = MaterialTheme.colorScheme.onSurface,
-            )
-        }
-    }
-}
-
-private val monthFormatter = DateTimeFormatter.ofPattern("LLLL yyyy")
-
-private fun groupPastSessionsByMonth(items: List<SessionSummary>): List<Pair<String, List<SessionSummary>>> {
-    if (items.isEmpty()) return emptyList()
-    val zone = ZoneId.systemDefault()
-    val byMonth = LinkedHashMap<YearMonth, MutableList<SessionSummary>>()
-    items.forEach { s ->
-        val ym = YearMonth.from(s.session.workoutStartedAt().atZone(zone))
-        byMonth.getOrPut(ym) { mutableListOf() }.add(s)
-    }
-    return byMonth.entries.map { (ym, group) ->
-        ym.format(monthFormatter).replaceFirstChar { it.titlecase() } to group
     }
 }
 
