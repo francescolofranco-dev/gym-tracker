@@ -8,7 +8,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -53,7 +52,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.francescolofranco.gymtracker.domain.Muscle
 import dev.francescolofranco.gymtracker.domain.WeightUnit
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.components.GymIcons
@@ -69,7 +67,6 @@ import dev.francescolofranco.gymtracker.ui.theme.OliveSubtext
 import dev.francescolofranco.gymtracker.ui.theme.OswaldFontFamily
 import dev.francescolofranco.gymtracker.ui.theme.SpaceGroteskFontFamily
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
-import dev.francescolofranco.gymtracker.ui.theme.SurfaceChip
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceControl
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
@@ -92,8 +89,6 @@ fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
         LoadingPane()
         return
     }
-
-    var showAllMuscles by rememberSaveable { mutableStateOf(false) }
 
     LazyColumn(
         modifier = Modifier
@@ -142,8 +137,6 @@ fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
         item(key = "coverage") {
             MuscleCoverageCard(
                 state = state,
-                showAll = showAllMuscles,
-                onToggleShowAll = { showAllMuscles = !showAllMuscles },
                 onMuscleClick = viewModel::selectMuscle,
                 modifier = Modifier
                     .animateItem(
@@ -426,187 +419,6 @@ private fun buildInsights(state: StatsUiState): List<Insight> {
 }
 
 @Composable
-private fun MuscleCoverageCard(
-    state: StatsUiState,
-    showAll: Boolean,
-    onToggleShowAll: () -> Unit,
-    onMuscleClick: (Muscle) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val rows = remember(state.muscleVolumes, state.previousMuscleVolumes, state.period) {
-        Muscle.entries.mapNotNull { muscle ->
-            val current = state.muscleVolumes[muscle] ?: return@mapNotNull null
-            val previous = state.previousMuscleVolumes[muscle]
-            val currentWeekly = weeklyAverage(current.effectiveSets, state.period)
-            val previousWeekly = weeklyAverage(previous?.effectiveSets ?: 0.0, state.period)
-            CoverageRow(current, currentWeekly, previousWeekly)
-                .takeIf { currentWeekly > 0.0 || previousWeekly > 0.0 }
-        }.sortedByDescending { it.currentWeekly }
-    }
-    val visibleRows = if (showAll) rows else rows.take(6)
-
-    StatsCard(modifier) {
-        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text(
-                text = "MUSCLE COVERAGE",
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontFamily = OswaldFontFamily,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    letterSpacing = 0.45.sp,
-                ),
-                color = DarkOnSurface,
-            )
-            Text(
-                text = "AVERAGE EFFECTIVE SETS PER WEEK · TAP FOR DETAILS",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontFamily = SpaceGroteskFontFamily,
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 0.66.sp,
-                ),
-                color = OliveSubtext,
-            )
-        }
-        if (rows.isEmpty()) {
-            Text(
-                text = "No completed sets in this period.",
-                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceGroteskFontFamily),
-                color = OliveSubtext,
-                modifier = Modifier.padding(vertical = 8.dp),
-            )
-        } else {
-            Column(
-                modifier = Modifier.padding(top = 2.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                visibleRows.forEach { row ->
-                    WeeklyMuscleRow(row, onClick = { onMuscleClick(row.volume.muscle) })
-                }
-            }
-            if (rows.size > 6) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 2.dp)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(SurfaceElevated)
-                        .clickable(onClick = onToggleShowAll)
-                        .padding(vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    Text(
-                        text = if (showAll) "SHOW LESS" else "SHOW ALL ${rows.size}",
-                        color = BrandLime,
-                        style = MaterialTheme.typography.titleLarge.copy(
-                            fontFamily = OswaldFontFamily,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
-                            letterSpacing = 0.7.sp,
-                        ),
-                    )
-                    Icon(
-                        imageVector = if (showAll) GymIcons.ChevronUp else GymIcons.ChevronDown,
-                        contentDescription = null,
-                        tint = BrandLime,
-                        modifier = Modifier
-                            .padding(start = 4.dp)
-                            .size(16.dp),
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun WeeklyMuscleRow(row: CoverageRow, onClick: () -> Unit) {
-    val delta = row.currentWeekly - row.previousWeekly
-    val fraction = (row.currentWeekly / Muscle.WEEKLY_MAX).coerceIn(0.0, 1.0).toFloat()
-    val animatedFraction by animateFloatAsState(
-        targetValue = fraction,
-        animationSpec = tween(GymMotion.Emphasized, easing = GymMotion.EmphasizedEasing),
-        label = "muscle coverage",
-    )
-    val color = volumeColor(row.currentWeekly)
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(4.dp))
-            .clickable(onClick = onClick)
-            .semantics {
-                contentDescription = "${row.volume.muscle.displayName}, ${formatSetCount(row.currentWeekly)} effective sets per week"
-            },
-        verticalArrangement = Arrangement.spacedBy(5.dp),
-    ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Text(
-                text = row.volume.muscle.displayName,
-                style = MaterialTheme.typography.titleMedium.copy(
-                    fontFamily = SpaceGroteskFontFamily,
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.Medium,
-                    letterSpacing = (-0.15).sp,
-                ),
-                color = DarkOnSurface,
-                modifier = Modifier.weight(1f),
-            )
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Text(
-                    text = "${formatSetCount(row.currentWeekly)}/wk",
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontFamily = OswaldFontFamily,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = (-0.15).sp,
-                    ),
-                    color = DarkOnSurface,
-                )
-                if (abs(delta) >= 0.05) {
-                    ChangeLabel(formatSignedSets(delta), direction(delta))
-                } else {
-                    Text(
-                        text = "0",
-                        style = MaterialTheme.typography.labelSmall.copy(
-                            fontFamily = SpaceGroteskFontFamily,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 0.66.sp,
-                        ),
-                        color = OliveSubtext,
-                    )
-                }
-            }
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(6.dp)
-                .clip(RoundedCornerShape(12.dp))
-                .background(SurfaceChip),
-        ) {
-            if (animatedFraction > 0f) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(animatedFraction)
-                        .height(6.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(color),
-                )
-            }
-        }
-    }
-}
-
-@Composable
 private fun ExerciseProgressCard(state: StatsUiState, modifier: Modifier = Modifier) {
     var expanded by rememberSaveable { mutableStateOf(false) }
     val progress = state.exerciseProgress
@@ -803,7 +615,7 @@ private fun ProgressRow(signal: ExerciseProgressSignal, unit: WeightUnit, hasPr:
 }
 
 @Composable
-private fun StatsCard(
+internal fun StatsCard(
     modifier: Modifier = Modifier,
     content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit,
 ) {
@@ -851,7 +663,6 @@ private fun ChangeLabel(text: String, direction: Direction, modifier: Modifier =
 }
 
 private data class Insight(val icon: ImageVector, val text: String, val emphasized: Boolean)
-private data class CoverageRow(val volume: MuscleVolume, val currentWeekly: Double, val previousWeekly: Double)
 private data class SignedValue(val text: String, val direction: Direction)
 private enum class Direction { Up, Down, Flat }
 
@@ -891,9 +702,6 @@ private fun formatTrainingTime(seconds: Long): String {
         else -> "${minutes}m"
     }
 }
-
-private fun formatSignedSets(value: Double): String =
-    if (value > 0) "+${formatSetCount(value)}" else "−${formatSetCount(abs(value))}"
 
 private fun formatPercent(value: Double): String {
     val rounded = abs(value).roundToInt()
