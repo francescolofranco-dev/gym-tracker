@@ -105,21 +105,34 @@ Without it, release artifacts are built unsigned. `versionCode` is the git commi
 # app/build/outputs/bundle/release/app-release.aab
 ```
 
-Every push to `main` that changes the app runs `.github/workflows/release.yml`: unit tests, signed
-bundle, upload to Google Play, and a `play/<versionCode>` tag marking what was published. Release
-notes are the commit subjects since the previous `play/*` tag. Docs-only pushes are skipped.
+Every app-changing push to `main` runs `.github/workflows/release.yml`. CD checks the track's
+[release lifecycle](https://developers.google.com/android-publisher/api-ref/rest/v3/applications.tracks.releases)
+and waits until outstanding releases are published before submitting another one. Pushes during
+review are coalesced into the latest `main`; a scheduled retry every 30 minutes resumes automatically
+(GitHub schedules may run late). Intermediate versions are skipped. Rejected, draft, awaiting-submission,
+awaiting-manual-publication, unknown states, and API errors block uploads and need attention.
+
+When the gate opens, CI checks out the selected commit, runs Python regression checks and Android
+unit tests, builds the optimized signed bundle, and submits it to production. A `play/<versionCode>`
+tag marks submission, not Google approval. Release notes include commit subjects since the previous
+`play/*` tag. Already submitted versions and docs-only changes are skipped, including on scheduled
+retries. A failed build is not uploaded; it retries on the next run. The gate reads Play state without
+creating or committing an edit. With managed publishing off, Google publishes approved releases
+automatically. Changing managed publishing to on requires manually publishing the approved release
+before CD can continue.
 
 Repository variables choose the destination (`gh variable set NAME --body VALUE`):
 
 | Variable | Default | Values |
 |---|---|---|
-| `PLAY_TRACK` | `alpha` | `alpha`, `internal`, `beta`, `production` |
+| `PLAY_TRACK` | `production` | `alpha`, `internal`, `beta`, `production` |
 | `PLAY_RELEASE_STATUS` | `completed` | `completed`, `draft`, `inProgress` (staged) |
 | `PLAY_USER_FRACTION` | unset | rollout share for `inProgress`, e.g. `0.2` |
 
 Required secrets: `KEYSTORE_BASE64` (base64 upload keystore), `KEYSTORE_PASSWORD`, and
-`PLAY_SERVICE_ACCOUNT_JSON` (Play Developer API service account key). Without the last one the
-workflow builds the bundle but skips the upload. To upload from your machine instead, add
+`PLAY_SERVICE_ACCOUNT_JSON` (Play Developer API service account key). The service account key is
+also required for the review gate; without it, CD fails before building. To upload from your machine
+instead, add
 `playServiceAccount=/absolute/path/to/key.json` to `keystore.properties` and run
 `./gradlew :app:publishReleaseBundle`.
 

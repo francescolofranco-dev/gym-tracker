@@ -1,8 +1,9 @@
 name: Play release
 
-# Every push to main that touches the app is tested, built, signed and uploaded to Google Play.
+# CD submits the latest main only when the previous Play release is published.
+# Pushes during review are coalesced; the schedule retries without another push.
 # Repository variables (gh variable set NAME --body VALUE) control where it goes:
-#   PLAY_TRACK           alpha (default) | internal | beta | production
+#   PLAY_TRACK           production (default) | alpha | internal | beta
 #   PLAY_RELEASE_STATUS  completed (default) | draft | inProgress
 #   PLAY_USER_FRACTION   staged rollout share when status is inProgress, e.g. 0.2
 on:
@@ -11,19 +12,52 @@ on:
     paths-ignore:
       - "**.md"
       - "docs/**"
-      - "scripts/**"
       - "app/src/main/play/listings/**"
   workflow_dispatch:
+  schedule:
+    - cron: "17,47 * * * *"
 
 concurrency:
   group: play-release
   cancel-in-progress: false
 
 permissions:
-  contents: write # push the play/<versionCode> tag that marks what was published
+  contents: write # push the play/<versionCode> tag that marks what was submitted
 
 jobs:
+  gate:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      ready: ${{ steps.gate.outputs.ready }}
+      sha: ${{ steps.gate.outputs.sha }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main # Coalesce queued pushes into the latest main, including scheduled retries.
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Release gate and SQL regression tests
+        run: python -m unittest discover -s scripts -p 'test_*.py'
+
+      - name: Install Play API authentication
+        run: python -m pip install 'google-auth[requests]>=2,<3'
+
+      - name: Wait for the previous release to be published
+        id: gate
+        env:
+          ANDROID_PUBLISHER_CREDENTIALS: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
+          PLAY_TRACK: ${{ vars.PLAY_TRACK || 'production' }}
+        run: python scripts/play_release_gate.py
+
   publish:
+    needs: gate
+    if: needs.gate.outputs.ready == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -31,6 +65,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ needs.gate.outputs.sha }}
           fetch-depth: 0 # versionCode is the commit count, release notes use history
 
       - uses: actions/setup-java@v4
@@ -79,11 +114,11 @@ jobs:
           ANDROID_PUBLISHER_CREDENTIALS: ${{ secrets.PLAY_SERVICE_ACCOUNT_JSON }}
         run: >
           ./gradlew :app:publishReleaseBundle
-          --track "${{ vars.PLAY_TRACK || 'alpha' }}"
+          --track "${{ vars.PLAY_TRACK || 'production' }}"
           --release-status "${{ vars.PLAY_RELEASE_STATUS || 'completed' }}"
           ${{ vars.PLAY_USER_FRACTION && format('--user-fraction {0}', vars.PLAY_USER_FRACTION) || '' }}
 
-      - name: Tag published build
+      - name: Tag submitted build
         if: env.HAS_PLAY_CREDENTIALS == 'true'
         run: |
           tag="play/$(git rev-list --count HEAD)"
