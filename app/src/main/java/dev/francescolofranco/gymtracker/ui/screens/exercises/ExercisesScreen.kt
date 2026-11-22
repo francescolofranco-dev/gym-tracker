@@ -26,9 +26,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -46,7 +43,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.francescolofranco.gymtracker.data.db.entities.ExerciseEntity
 import dev.francescolofranco.gymtracker.domain.MuscleCategory
 import dev.francescolofranco.gymtracker.ui.components.ErrorPane
 import dev.francescolofranco.gymtracker.ui.components.ExerciseSearchField
@@ -59,7 +55,6 @@ import dev.francescolofranco.gymtracker.ui.theme.BrandLime
 import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
 import dev.francescolofranco.gymtracker.ui.theme.OliveSubtext
 import dev.francescolofranco.gymtracker.ui.theme.SlateSubtext
-import dev.francescolofranco.gymtracker.ui.theme.SurfaceCard
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceControl
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
@@ -75,10 +70,8 @@ fun ExercisesScreen(
     val grouped by viewModel.grouped.collectAsStateWithLifecycle()
     val editing by viewModel.editing.collectAsStateWithLifecycle()
 
-    val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    var deleteConfirmTarget by remember { mutableStateOf<ExerciseEntity?>(null) }
     var searchQuery by rememberSaveable { mutableStateOf("") }
     var selectedCategoryName by rememberSaveable { mutableStateOf<String?>(null) }
     val selectedCategory = remember(selectedCategoryName) {
@@ -99,23 +92,8 @@ fun ExercisesScreen(
         scope.launch { exerciseListState.scrollToItem(0) }
     }
 
-    fun deleteWithUndo(target: ExerciseEntity) {
-        viewModel.softDelete(target.id)
-        scope.launch {
-            val result = snackbarHostState.showSnackbar(
-                message = "Deleted ${target.name}",
-                actionLabel = "Undo",
-                withDismissAction = true,
-            )
-            if (result == SnackbarResult.ActionPerformed) {
-                viewModel.restore(target.id)
-            }
-        }
-    }
-
     Scaffold(
         containerColor = SurfaceDeep,
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         bottomBar = {
             if (grouped is Loadable.Ready) {
                 Box(
@@ -239,7 +217,6 @@ fun ExercisesScreen(
                                             exercise = exercise,
                                             showPrimaryMuscles = true,
                                             onTap = { onOpenDetail(exercise.id) },
-                                            onDeleteRequest = { deleteConfirmTarget = exercise },
                                         )
                                     }
                                 }
@@ -261,31 +238,6 @@ fun ExercisesScreen(
                 onSave = { viewModel.save(it) },
             )
         }
-    }
-
-    deleteConfirmTarget?.let { target ->
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { deleteConfirmTarget = null },
-            shape = dev.francescolofranco.gymtracker.ui.theme.DialogShape,
-            containerColor = SurfaceCard,
-            title = { Text("Delete \"${target.name}\"?") },
-            text = {
-                Text(
-                    "Past session history that references this exercise stays intact. You can " +
-                        "restore the exercise from the snackbar's Undo action immediately after.",
-                )
-            },
-            confirmButton = {
-                androidx.compose.material3.TextButton(onClick = {
-                    val t = target
-                    deleteConfirmTarget = null
-                    deleteWithUndo(t)
-                }) { Text("Delete") }
-            },
-            dismissButton = {
-                androidx.compose.material3.TextButton(onClick = { deleteConfirmTarget = null }) { Text("Cancel") }
-            },
-        )
     }
 }
 

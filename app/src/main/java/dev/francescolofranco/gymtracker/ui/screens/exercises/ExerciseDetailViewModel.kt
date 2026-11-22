@@ -53,6 +53,10 @@ class ExerciseDetailViewModel @Inject constructor(
         .flowOn(Dispatchers.Default)
         .asLoadableState(viewModelScope)
 
+    suspend fun deleteExercise() = repo.softDelete(exerciseId)
+
+    suspend fun restoreExercise() = repo.restore(exerciseId)
+
     /**
      * Save the edited form back into the exercise. Stats queries join through the exercise
      * table at read time so muscle reassignments retroactively re-attribute every historical

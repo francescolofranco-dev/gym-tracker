@@ -62,14 +62,6 @@ class ExercisesViewModel @Inject constructor(
             _editing.value = EditMode.None
         }
     }
-
-    fun softDelete(id: Long) = viewModelScope.launch {
-        repo.softDelete(id)
-    }
-
-    fun restore(id: Long) = viewModelScope.launch {
-        repo.restore(id)
-    }
 }
 
 internal fun groupExercisesByCategory(

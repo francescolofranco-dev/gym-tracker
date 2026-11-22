@@ -1,5 +1,6 @@
 package dev.francescolofranco.gymtracker.ui.screens.exercises
 
+import android.database.sqlite.SQLiteException
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -10,19 +11,27 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -30,6 +39,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -62,6 +72,7 @@ import dev.francescolofranco.gymtracker.ui.screens.sessions.label
 import dev.francescolofranco.gymtracker.ui.theme.BrandLime
 import dev.francescolofranco.gymtracker.ui.theme.CardShape
 import dev.francescolofranco.gymtracker.ui.theme.DarkOnPrimary
+import dev.francescolofranco.gymtracker.ui.theme.DialogShape
 import dev.francescolofranco.gymtracker.ui.theme.EditorialBorder
 import dev.francescolofranco.gymtracker.ui.theme.MutedOlive
 import dev.francescolofranco.gymtracker.ui.theme.OliveSubtext
@@ -73,6 +84,7 @@ import dev.francescolofranco.gymtracker.ui.theme.SurfaceDeep
 import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
 import dev.francescolofranco.gymtracker.ui.theme.TagShape
 import dev.francescolofranco.gymtracker.ui.theme.VolumeGreen
+import kotlinx.coroutines.launch
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -87,6 +99,10 @@ fun ExerciseDetailScreen(
     val content = (loadableContent as? Loadable.Ready)?.value
     val exercise = content?.exercise
     var showEdit by remember { mutableStateOf(false) }
+    var showDeleteConfirmation by rememberSaveable { mutableStateOf(false) }
+    var deleting by remember { mutableStateOf(false) }
+    val snackbar = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     (loadableContent as? Loadable.Error)?.let {
         ErrorPane(it.message, viewModel::retry)
@@ -95,6 +111,7 @@ fun ExerciseDetailScreen(
 
     Scaffold(
         containerColor = SurfaceDeep,
+        snackbarHost = { SnackbarHost(snackbar) },
         topBar = {
             Column(modifier = Modifier.background(SurfaceBase)) {
                 TopAppBar(
@@ -252,7 +269,69 @@ fun ExerciseDetailScreen(
                     }
                 }
             }
+            item {
+                if (ex.deletedAt == null) {
+                    Button(
+                        onClick = { showDeleteConfirmation = true },
+                        enabled = !deleting,
+                        shape = RoundedCornerShape(2.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.error,
+                            contentColor = MaterialTheme.colorScheme.onError,
+                        ),
+                        modifier = Modifier
+                            .padding(horizontal = 16.dp)
+                            .fillMaxWidth()
+                            .heightIn(min = 54.dp),
+                    ) {
+                        Text("Delete exercise")
+                    }
+                } else {
+                    Text(
+                        text = "This exercise was removed from the library.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = OliveSubtext,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                }
+            }
         }
+    }
+
+    if (showDeleteConfirmation && exercise != null && exercise.deletedAt == null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation = false },
+            shape = DialogShape,
+            containerColor = SurfaceCard,
+            title = { Text("Delete \"${exercise.name}\"?") },
+            text = { Text("This removes the exercise from your library. Past sessions keep their history.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showDeleteConfirmation = false
+                    deleting = true
+                    scope.launch {
+                        try {
+                            viewModel.deleteExercise()
+                            val result = snackbar.showSnackbar(
+                                message = "Deleted ${exercise.name}",
+                                actionLabel = "Undo",
+                                withDismissAction = true,
+                            )
+                            if (result == SnackbarResult.ActionPerformed) {
+                                viewModel.restoreExercise()
+                            }
+                        } catch (_: SQLiteException) {
+                            snackbar.showSnackbar("Couldn't update this exercise")
+                        } finally {
+                            deleting = false
+                        }
+                    }
+                }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation = false }) { Text("Cancel") }
+            },
+        )
     }
 
     if (showEdit) {
