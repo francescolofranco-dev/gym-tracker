@@ -32,6 +32,7 @@ data class PeriodAggregate(
     val sessions: Int,
     val loggedSets: Int,
     val trainingTime: Duration,
+    val averageSetsPerWorkout: Double?,
 )
 
 data class StatsUiState(
@@ -119,6 +120,8 @@ class StatsViewModel @Inject constructor(
             sessions = sessions.size,
             loggedSets = loggedSets,
             trainingTime = Duration.ofSeconds(trainingSeconds),
+            averageSetsPerWorkout = sessions.size.takeIf { it > 0 }
+                ?.let { sessions.sumOf { summary -> summary.setCount.toLong() }.toDouble() / it },
         )
     }
 

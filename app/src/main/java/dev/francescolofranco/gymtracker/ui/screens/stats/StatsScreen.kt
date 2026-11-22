@@ -122,8 +122,8 @@ fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
                     .padding(horizontal = 16.dp),
             )
         }
-        item(key = "changes") {
-            WhatChangedCard(
+        item(key = "highlights") {
+            TrainingHighlightsCard(
                 state,
                 Modifier
                     .animateItem(
@@ -330,92 +330,125 @@ private fun Kpi(
 }
 
 @Composable
-private fun WhatChangedCard(state: StatsUiState, modifier: Modifier = Modifier) {
-    val insights = remember(state) { buildInsights(state) }
+private fun TrainingHighlightsCard(state: StatsUiState, modifier: Modifier = Modifier) {
+    val highlights = remember(state) { buildTrainingHighlights(state) }
     StatsCard(modifier) {
-        Text(
-            text = "WHAT CHANGED",
-            style = MaterialTheme.typography.titleLarge.copy(
-                fontFamily = OswaldFontFamily,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.SemiBold,
-                letterSpacing = 0.45.sp,
-            ),
-            color = DarkOnSurface,
-        )
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(
+                text = "TRAINING HIGHLIGHTS",
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontFamily = OswaldFontFamily,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    letterSpacing = 0.45.sp,
+                ),
+                color = DarkOnSurface,
+            )
+            val days = state.period.days
+            val comparison = if (state.previousPeriod.sessions > 0) {
+                "Last $days days vs. the $days days before"
+            } else {
+                "Last $days days · No workouts in the prior period"
+            }
+            Text(
+                text = comparison,
+                style = MaterialTheme.typography.bodySmall,
+                color = OliveSubtext,
+            )
+        }
         Column(
             modifier = Modifier.padding(top = 2.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            insights.forEach { insight ->
+            highlights.forEach { highlight ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.Top,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
                     Icon(
-                        imageVector = insight.icon,
+                        imageVector = highlight.icon,
                         contentDescription = null,
-                        tint = if (insight.emphasized) BrandLime else OliveSubtext,
-                        modifier = Modifier.size(15.dp),
+                        tint = if (highlight.emphasized) BrandLime else OliveSubtext,
+                        modifier = Modifier.padding(top = 2.dp).size(16.dp),
                     )
-                    Text(
-                        text = insight.text,
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontFamily = SpaceGroteskFontFamily,
-                            fontSize = 14.sp,
-                            fontWeight = if (insight.emphasized) FontWeight.Medium else FontWeight.Normal,
-                        ),
-                        color = if (insight.emphasized) DarkOnSurface else OliveSubtext,
-                        modifier = Modifier.weight(1f),
-                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = highlight.title,
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                            color = DarkOnSurface,
+                        )
+                        highlight.detail?.let { detail ->
+                            Text(
+                                text = detail,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = OliveSubtext,
+                            )
+                        }
+                    }
                 }
             }
         }
     }
 }
 
-private fun buildInsights(state: StatsUiState): List<Insight> {
-    if (state.currentPeriod.sessions == 0) {
+private fun buildTrainingHighlights(state: StatsUiState): List<TrainingHighlight> {
+    val currentAverage = state.currentPeriod.averageSetsPerWorkout
+    if (currentAverage == null) {
         return listOf(
-            Insight(
+            TrainingHighlight(
                 icon = GymIcons.ArrowForward,
-                text = "No workouts logged in this period.",
-                emphasized = false,
+                title = "No workouts logged in this period",
             ),
         )
     }
-    val result = mutableListOf<Insight>()
-    if (state.personalRecords.count > 0) {
-        val suffix = if (state.personalRecords.count == 1) "record" else "records"
-        result += Insight(
-            icon = GymIcons.TrendUp,
-            text = "${state.personalRecords.count} personal $suffix",
-            emphasized = true,
+
+    return buildList {
+        val records = state.personalRecords
+        if (records.count > 0) {
+            val recordLabel = if (records.count == 1) "record" else "records"
+            val exerciseCount = records.exerciseIds.size
+            val exerciseLabel = if (exerciseCount == 1) "exercise" else "exercises"
+            add(
+                TrainingHighlight(
+                    icon = GymIcons.Trophy,
+                    title = "${records.count} personal $recordLabel",
+                    detail = "Across $exerciseCount $exerciseLabel",
+                    emphasized = true,
+                ),
+            )
+        }
+
+        val previousAverage = state.previousPeriod.averageSetsPerWorkout
+        val averageComparison = previousAverage?.let { " vs. ${formatSetCount(it)} before" }.orEmpty()
+        add(
+            TrainingHighlight(
+                icon = GymIcons.Dumbbell,
+                title = "Average sets per workout",
+                detail = "${formatSetCount(currentAverage)} this period$averageComparison",
+            ),
         )
+
+        if (previousAverage != null) {
+            val biggestIncrease = state.muscleChanges.maxByOrNull { it.deltaWeeklySets }
+                ?.takeIf { it.deltaWeeklySets > 0 }
+            val biggestDecrease = state.muscleChanges.minByOrNull { it.deltaWeeklySets }
+                ?.takeIf { it.deltaWeeklySets < 0 }
+            biggestIncrease?.let { add(muscleHighlight(it, GymIcons.ArrowUp)) }
+            biggestDecrease?.let { add(muscleHighlight(it, GymIcons.ArrowDown)) }
+        }
     }
-    state.muscleChanges.filter { it.deltaWeeklySets < 0 }.minByOrNull { it.deltaWeeklySets }?.let {
-        result += Insight(
-            icon = GymIcons.ArrowDown,
-            text = "${it.muscle.displayName} received ${abs(it.percentChange ?: 0.0).roundToInt()}% less work",
-            emphasized = false,
-        )
-    }
-    state.muscleChanges.filter { it.deltaWeeklySets > 0 }.maxByOrNull { it.deltaWeeklySets }?.let {
-        result += Insight(
-            icon = GymIcons.ArrowUp,
-            text = "${it.muscle.displayName} received ${abs(it.percentChange ?: 0.0).roundToInt()}% more work",
-            emphasized = true,
-        )
-    }
-    if (result.isEmpty()) {
-        result += Insight(
-            icon = GymIcons.ArrowForward,
-            text = "Training stayed close to the previous ${state.period.days} days.",
-            emphasized = false,
-        )
-    }
-    return result.take(3)
+}
+
+private fun muscleHighlight(change: MuscleChange, icon: ImageVector): TrainingHighlight {
+    val current = formatSetCount(change.currentWeeklySets)
+    val previous = formatSetCount(change.previousWeeklySets)
+    val percent = change.percentChange?.let { " · ${formatPercent(it)}" }.orEmpty()
+    return TrainingHighlight(
+        icon = icon,
+        title = "${change.muscle.displayName}$percent",
+        detail = "$current vs. $previous effective sets per week",
+    )
 }
 
 @Composable
@@ -662,7 +695,12 @@ private fun ChangeLabel(text: String, direction: Direction, modifier: Modifier =
     )
 }
 
-private data class Insight(val icon: ImageVector, val text: String, val emphasized: Boolean)
+private data class TrainingHighlight(
+    val icon: ImageVector,
+    val title: String,
+    val detail: String? = null,
+    val emphasized: Boolean = false,
+)
 private data class SignedValue(val text: String, val direction: Direction)
 private enum class Direction { Up, Down, Flat }
 
