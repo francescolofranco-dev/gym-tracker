@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -75,6 +76,8 @@ import dev.francescolofranco.gymtracker.ui.theme.SurfaceElevated
 import dev.francescolofranco.gymtracker.ui.theme.TagShape
 import kotlin.math.abs
 import kotlin.math.roundToInt
+
+private const val COLLAPSED_EXERCISE_COUNT = 5
 
 @Composable
 fun StatsScreen(viewModel: StatsViewModel = hiltViewModel()) {
@@ -605,6 +608,9 @@ private fun WeeklyMuscleRow(row: CoverageRow, onClick: () -> Unit) {
 
 @Composable
 private fun ExerciseProgressCard(state: StatsUiState, modifier: Modifier = Modifier) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val progress = state.exerciseProgress
+
     StatsCard(modifier) {
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -650,7 +656,7 @@ private fun ExerciseProgressCard(state: StatsUiState, modifier: Modifier = Modif
                 color = OliveSubtext,
             )
         }
-        if (state.exerciseProgress.isEmpty()) {
+        if (progress.isEmpty()) {
             Text(
                 text = "No comparable exercise performances yet.",
                 style = MaterialTheme.typography.bodyMedium.copy(fontFamily = SpaceGroteskFontFamily),
@@ -658,15 +664,46 @@ private fun ExerciseProgressCard(state: StatsUiState, modifier: Modifier = Modif
                 modifier = Modifier.padding(vertical = 8.dp),
             )
         } else {
+            val visibleProgress = if (expanded) progress else progress.take(COLLAPSED_EXERCISE_COUNT)
             Column(
                 modifier = Modifier.padding(top = 2.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                state.exerciseProgress.take(5).forEach { signal ->
+                visibleProgress.forEach { signal ->
                     ProgressRow(
                         signal = signal,
                         unit = state.unit,
                         hasPr = signal.exerciseId in state.personalRecords.exerciseIds,
+                    )
+                }
+            }
+            if (progress.size > COLLAPSED_EXERCISE_COUNT) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 48.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(SurfaceElevated)
+                        .clickable(role = Role.Button) { expanded = !expanded }
+                        .padding(horizontal = 10.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterHorizontally),
+                ) {
+                    Text(
+                        text = if (expanded) "SHOW LESS" else "SHOW ALL ${progress.size}",
+                        color = BrandLime,
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontFamily = OswaldFontFamily,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Medium,
+                            letterSpacing = 0.7.sp,
+                        ),
+                    )
+                    Icon(
+                        imageVector = if (expanded) GymIcons.ChevronUp else GymIcons.ChevronDown,
+                        contentDescription = null,
+                        tint = BrandLime,
+                        modifier = Modifier.size(16.dp),
                     )
                 }
             }
