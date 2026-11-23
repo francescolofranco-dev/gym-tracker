@@ -6,8 +6,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import dagger.hilt.android.AndroidEntryPoint
-import dev.francescolofranco.gymtracker.ui.GymApp
-import dev.francescolofranco.gymtracker.ui.theme.GymTrackerTheme
+import dev.francescolofranco.gymtracker.ui.OgmaApp
+import dev.francescolofranco.gymtracker.ui.theme.OgmaTheme
 import dev.francescolofranco.gymtracker.ui.theme.withUiZoom
 import dev.francescolofranco.gymtracker.service.TimerService
 import dev.francescolofranco.gymtracker.service.TimerState
@@ -53,8 +53,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            GymTrackerTheme {
-                GymApp()
+            OgmaTheme {
+                OgmaApp()
             }
         }
     }

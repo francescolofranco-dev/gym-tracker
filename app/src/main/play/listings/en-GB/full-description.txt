@@ -8,4 +8,4 @@ Log sets, reps, and weights and see how your lifts change over time. No login or
 • Keep exercise notes for the next time you lift.
 • Run a workout timer from your notifications or Quick Settings.
 
-Your workout history is saved on your device. You can back it up to a file or connect Google Drive for optional cloud backup. Gym Tracker has no ads or analytics.
+Your workout history is saved on your device. You can back it up to a file or connect Google Drive for optional cloud backup. Ogma has no ads or analytics.

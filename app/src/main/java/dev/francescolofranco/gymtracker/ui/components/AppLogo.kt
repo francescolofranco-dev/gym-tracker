@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -45,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.francescolofranco.gymtracker.R
 import dev.francescolofranco.gymtracker.ui.theme.DarkOnSurface
 import dev.francescolofranco.gymtracker.ui.theme.OswaldFontFamily
 import dev.francescolofranco.gymtracker.ui.theme.SpaceGroteskFontFamily
@@ -82,12 +84,13 @@ fun AppLogo(
     size: Dp = 32.dp,
     variant: LogoVariant = LogoVariant.MarkOnly,
     badge: String? = null,
-    wordmark: String = "GYM TRACKER",
     showContainer: Boolean = false,
     monochromeTint: Color = DarkOnSurface,
     interactive: Boolean = true,
     onClick: (() -> Unit)? = null,
 ) {
+    val appName = stringResource(R.string.app_name)
+    val logoDescription = stringResource(R.string.app_logo_description, appName)
     val isMonochrome = variant == LogoVariant.Monochrome
     val isLockup = variant == LogoVariant.FullLockup
 
@@ -151,7 +154,7 @@ fun AppLogo(
         modifier = modifier
             .then(clickableModifier)
             .semantics {
-                contentDescription = "Gym Tracker Logo"
+                contentDescription = logoDescription
                 if (onClick != null) {
                     role = Role.Button
                 }
@@ -275,7 +278,7 @@ fun AppLogo(
             ) {
                 val wordmarkFontSize = (size.value * (if (showContainer) 0.56f else 0.68f)).roundToInt().sp
                 Text(
-                    text = wordmark.uppercase(),
+                    text = appName.uppercase(),
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontFamily = OswaldFontFamily,
                         fontSize = wordmarkFontSize,

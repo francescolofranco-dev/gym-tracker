@@ -1,6 +1,6 @@
-# Gym Tracker
+# Ogma
 
-Gym Tracker records strength-training sessions and exercise progress.
+Ogma records strength-training sessions and exercise progress.
 
 ## Language
 

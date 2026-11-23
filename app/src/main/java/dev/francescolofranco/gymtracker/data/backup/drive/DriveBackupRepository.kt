@@ -95,7 +95,7 @@ class DriveBackupRepository @Inject constructor(
 
             val bytes = export.json.toByteArray()
             val now = Instant.now()
-            val name = "gymtracker-${now.toString().replace(":", "-")}.json"
+            val name = "ogma-backup-${now.toString().replace(":", "-")}.json"
             val fileId = client.upload(token, name, bytes)
 
             val pruned = pruneToLast(token, MAX_SNAPSHOTS)

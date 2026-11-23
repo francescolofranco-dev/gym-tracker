@@ -93,7 +93,7 @@ fun buildSessionShareText(
 
         appendLine()
         appendLine()
-        append("Tracked with Gym Tracker")
+        append("Tracked with Ogma")
     }
 }
 

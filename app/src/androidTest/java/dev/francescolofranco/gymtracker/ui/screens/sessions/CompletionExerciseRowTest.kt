@@ -10,7 +10,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import dev.francescolofranco.gymtracker.domain.WeightUnit
-import dev.francescolofranco.gymtracker.ui.theme.GymTrackerTheme
+import dev.francescolofranco.gymtracker.ui.theme.OgmaTheme
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -25,7 +25,7 @@ class CompletionExerciseRowTest(private val widthDp: Int, private val fontScale:
         val name = "Standing calf raise with a long exercise name"
         val sets = "4 sets/side (L 20, 15, 14, 15, R 20, 15, 15, 15 reps)"
         compose.setContent {
-            GymTrackerTheme {
+            OgmaTheme {
                 val density = LocalDensity.current
                 CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
                     Box(Modifier.width(widthDp.dp)) {

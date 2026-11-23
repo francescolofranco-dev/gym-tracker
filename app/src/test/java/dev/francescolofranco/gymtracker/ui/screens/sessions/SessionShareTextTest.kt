@@ -71,7 +71,7 @@ class SessionShareTextTest {
 
             • Bench press — 2 sets (10, 8 reps) · 100 kg
 
-            Tracked with Gym Tracker
+            Tracked with Ogma
             """.trimIndent(),
             text,
         )

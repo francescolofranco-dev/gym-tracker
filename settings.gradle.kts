@@ -23,5 +23,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "GymTracker"
+rootProject.name = "Ogma"
 include(":app")

@@ -74,7 +74,7 @@ import java.time.YearMonth
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun GymApp() {
+fun OgmaApp() {
     val nav = rememberNavController()
     val fadeThroughEnter = fadeIn(
         animationSpec = tween(
@@ -239,7 +239,6 @@ private fun TopLevelScaffold(
                     AppLogo(
                         size = 36.dp,
                         variant = LogoVariant.FullLockup,
-                        wordmark = stringResource(dev.francescolofranco.gymtracker.R.string.app_name),
                         showContainer = true,
                     )
                 }

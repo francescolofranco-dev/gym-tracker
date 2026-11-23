@@ -99,7 +99,7 @@ class BackupRepository @Inject constructor(
     fun hasRecovery(): Boolean = recoveryStore.exists()
 
     fun suggestedFilename(now: Instant = Instant.now()): String =
-        "gymtracker-backup-${now.toString().replace(":", "-")}.json"
+        "ogma-backup-${now.toString().replace(":", "-")}.json"
 
     private fun plural(n: Int) = if (n == 1) "" else "s"
 

@@ -1,11 +1,11 @@
-# Gym Tracker
+# Ogma
 
 **Track your lifts. See your progress.**
 
 Log sets, reps, and weights and see how your lifts change over time. No login or personal details
 required. Workout logging and progress tracking work offline.
 
-Gym Tracker saves your workouts on your device. You can back them up to a file or connect
+Ogma saves your workouts on your device. You can back them up to a file or connect
 Google Drive for optional cloud backup.
 
 ## Features
@@ -22,8 +22,8 @@ Google Drive for optional cloud backup.
 - Back up and preview restores from files or Google Drive, with one-step restore recovery.
 - Configure display units, templates, notifications, and keep-screen-on behavior.
 - Enable **Settings → Floating timer** to allow a small, draggable time counter at the top right
-  above other apps and full-screen videos while the timer runs; it hides automatically while Gym
-  Tracker is active and focused. Reset/Stop stay in the notification.
+  above other apps and full-screen videos while the timer runs; it hides automatically while Ogma
+  is active and focused. Reset/Stop stay in the notification.
   Android system surfaces and apps that explicitly block overlays can hide it.
   Switch it off to hide the overlay without stopping the timer; the choice is saved.
   A translucent dark background keeps the counter readable on light content.
@@ -119,9 +119,9 @@ review are coalesced into the latest `main`; a scheduled retry every 30 minutes 
 awaiting-manual-publication, unknown states, and API errors block uploads and need attention.
 
 When the gate opens, CI checks out the selected commit, runs Python regression checks and Android
-unit tests, builds the optimized signed bundle, and submits it to production. A `play/<versionCode>`
-tag marks submission, not Google approval. Release notes include commit subjects since the previous
-`play/*` tag. Already submitted versions and docs-only changes are skipped, including on scheduled
+unit tests, and submits the optimized signed bundle and Play listing to production.
+A `play/<versionCode>` tag marks submission, not Google approval. Release notes include commit
+subjects since the previous `play/*` tag. Already submitted versions and docs-only changes are skipped, including on scheduled
 retries. A failed build is not uploaded; it retries on the next run. The gate reads Play state without
 creating or committing an edit. With managed publishing off, Google publishes approved releases
 automatically. Changing managed publishing to on requires manually publishing the approved release

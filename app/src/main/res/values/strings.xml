@@ -1,5 +1,7 @@
 <resources>
-    <string name="app_name">Gym Tracker</string>
+    <string name="app_name">Ogma</string>
+    <string name="app_logo_description">%1$s logo</string>
+    <string name="about_app_description">About %1$s</string>
     <string name="tab_sessions">Sessions</string>
     <string name="tab_exercises">Exercises</string>
     <string name="tab_stats">Stats</string>
@@ -18,7 +20,7 @@
     </plurals>
 
     <!-- Timer service -->
-    <string name="timer_title">Gym timer</string>
+    <string name="timer_title">Ogma timer</string>
     <string name="timer_running">Running — open the app for the live counter.</string>
     <string name="timer_stopped">Stopped — tap Reset to start.</string>
     <string name="timer_reset">Reset</string>
@@ -31,5 +33,5 @@
     <string name="timer_channel_name">Workout timer</string>
     <string name="timer_channel_desc">Persistent timer for workouts.</string>
     <string name="timer_elapsed_placeholder">00:00</string>
-    <string name="tile_timer_label">Gym Timer</string>
+    <string name="tile_timer_label">Ogma Timer</string>
 </resources>

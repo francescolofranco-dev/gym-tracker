@@ -74,7 +74,7 @@ private val DarkColors = darkColorScheme(
 
 /** Fixed dark editorial identity, independent of wallpaper and system appearance. */
 @Composable
-fun GymTrackerTheme(content: @Composable () -> Unit) {
+fun OgmaTheme(content: @Composable () -> Unit) {
     val view = LocalView.current
     if (!view.isInEditMode) {
         SideEffect {

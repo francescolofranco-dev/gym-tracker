@@ -7,7 +7,7 @@
 
 ### Issue tracker
 
-Track issues and specs in GitHub Issues for `francescolofranco-dev/gym-tracker`. Before issue tracker operations, read `docs/agents/issue-tracker.md`.
+Track issues and specs in GitHub Issues for `francescolofranco-dev/ogma`. Before issue tracker operations, read `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

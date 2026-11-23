@@ -78,7 +78,7 @@ class DriveRestorePromptViewModel @Inject constructor(
 
 /**
  * One-shot Drive-restore offer for fresh-install + signed-in users. Mounted at the top of
- * GymApp so it overlays whatever screen is current. Once the user accepts, skips, or sees an
+ * OgmaApp so it overlays whatever screen is current. Once the user accepts, skips, or sees an
  * error, the underlying flag in UserPrefs is set so we never ask again on this device.
  */
 @Composable

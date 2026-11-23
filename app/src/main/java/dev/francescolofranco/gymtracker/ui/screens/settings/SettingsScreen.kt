@@ -389,7 +389,7 @@ fun SettingsScreen(
     }
 
     if (showAboutPopup) {
-        GymTrackerAboutDialog(onDismiss = { showAboutPopup = false })
+        OgmaAboutDialog(onDismiss = { showAboutPopup = false })
     }
 
     backupState.preview?.let { preview ->
@@ -1040,6 +1040,8 @@ private fun checkNotificationGranted(context: android.content.Context): Boolean 
 
 @Composable
 private fun AboutRow(onClick: () -> Unit) {
+    val appName = stringResource(R.string.app_name)
+    val aboutDescription = stringResource(R.string.about_app_description, appName)
     val context = LocalContext.current
     val version = remember {
         runCatching {
@@ -1053,7 +1055,7 @@ private fun AboutRow(onClick: () -> Unit) {
             .clickable(onClick = onClick)
             .semantics {
                 role = Role.Button
-                contentDescription = "Gym Tracker system manifesto and diagnostics"
+                contentDescription = aboutDescription
             }
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1069,7 +1071,7 @@ private fun AboutRow(onClick: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
-                text = "GYM TRACKER",
+                text = appName.uppercase(),
                 style = MaterialTheme.typography.titleLarge.copy(
                     fontFamily = OswaldFontFamily,
                     fontSize = 18.sp,
@@ -1165,7 +1167,8 @@ private val TRAINING_TIPS = listOf(
 )
 
 @Composable
-private fun GymTrackerAboutDialog(onDismiss: () -> Unit) {
+private fun OgmaAboutDialog(onDismiss: () -> Unit) {
+    val appName = stringResource(R.string.app_name)
     var tipIndex by remember { mutableIntStateOf(0) }
     val currentTip = TRAINING_TIPS[tipIndex]
 
@@ -1192,7 +1195,7 @@ private fun GymTrackerAboutDialog(onDismiss: () -> Unit) {
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
                     Text(
-                        text = "GYM TRACKER",
+                        text = appName.uppercase(),
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontFamily = OswaldFontFamily,
                             fontSize = 26.sp,

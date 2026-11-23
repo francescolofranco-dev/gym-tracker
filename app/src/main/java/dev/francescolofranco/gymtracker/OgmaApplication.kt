@@ -7,7 +7,7 @@ import dev.francescolofranco.gymtracker.work.DailyBackupScheduler
 import javax.inject.Inject
 
 @HiltAndroidApp
-class GymApp : Application() {
+class OgmaApplication : Application() {
 
     @Inject lateinit var dailyBackupScheduler: DailyBackupScheduler
 
