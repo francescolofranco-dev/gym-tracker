@@ -508,6 +508,7 @@ private fun PickerRow(
             ) {
                 Text(
                     text = exercise.name,
+                    modifier = Modifier.weight(1f, fill = false),
                     style = MaterialTheme.typography.titleLarge.copy(
                         fontSize = 17.sp,
                         fontWeight = FontWeight.SemiBold,
@@ -528,6 +529,8 @@ private fun PickerRow(
                                 fontWeight = FontWeight.Bold,
                             ),
                             color = if (alreadyAdded) DarkOnPrimary else OliveSubtext,
+                            maxLines = 1,
+                            softWrap = false,
                         )
                     }
                 }
