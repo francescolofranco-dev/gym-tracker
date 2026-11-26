@@ -1113,6 +1113,7 @@ private fun ExerciseSectionHeader(
                     if (onCreateSuperset != null) {
                         DropdownMenuItem(
                             text = { Text("Create superset") },
+                            leadingIcon = { Icon(GymIcons.Link, contentDescription = null) },
                             onClick = {
                                 menuExpanded = false
                                 onCreateSuperset()

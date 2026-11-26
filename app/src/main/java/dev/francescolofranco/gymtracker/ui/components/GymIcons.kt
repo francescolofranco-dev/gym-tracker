@@ -100,6 +100,11 @@ object GymIcons {
         "Pin",
         "M8 3 H16 L15 6 V10 L18 13 V15 H6 V13 L9 10 V6 Z M12 15 V22",
     )
+    val Link by outline(
+        "Link",
+        "M10 13 A5 5 0 0 0 17.54 13.54 L20.54 10.54 A5 5 0 0 0 13.46 3.46 L11.75 5.18 " +
+            "M14 11 A5 5 0 0 0 6.46 10.46 L3.46 13.46 A5 5 0 0 0 10.54 20.54 L12.25 18.82",
+    )
     val Sliders by outline(
         "Sliders",
         "M4 6 H8 M12 6 H20 M8 3.5 V8.5 M4 12 H12 M16 12 H20 M16 9.5 V14.5 " +
